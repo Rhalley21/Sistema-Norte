@@ -1,4 +1,13 @@
-const uid = () => Math.random().toString(36).slice(2,9);
+// UUID v4 real — permite futura sincronização entre ambientes sem colisão de IDs
+// (Documento 03, Cap. 4 — Chaves Primárias). Usa crypto.randomUUID() quando
+// disponível (todo navegador moderno), com um gerador manual como reserva.
+const uid = () => {
+  if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random()*16|0, v = c==='x' ? r : (r&0x3|0x8);
+    return v.toString(16);
+  });
+};
 
 function showToast(msg){
   const t = document.getElementById('toast');

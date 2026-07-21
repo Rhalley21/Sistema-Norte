@@ -253,13 +253,24 @@ function addColaborador(){
     showToast('Todos os vínculos (cargo, unidade, setor, gestor direto) são obrigatórios — RN020.'); return;
   }
   const cargo = state.cargos.find(c=>c.id===cargoId);
+  const unidade = state.estrutura.find(n=>n.id===unidadeId);
+  const setor = state.estrutura.find(n=>n.id===setorId);
+  const gestor = _perfisEmpresa.find(pf=>pf.id===gestorPerfilId);
+  const hoje = new Date().toISOString().slice(0,10);
   state.colaboradores.push({
     id: uid(), nome, cargoId, unidadeId, setorId, gestorPerfilId,
     versaoCargoVinculada: cargo.desenho.versao,
     perfilId: document.getElementById('p_perfil').value || null,
     admissao: document.getElementById('p_admissao').value,
-    movimentacoes: [{ id: uid(), data: new Date().toISOString().slice(0,10), tipo: 'Cadastro inicial',
+    movimentacoes: [{ id: uid(), data: hoje, tipo: 'Cadastro inicial',
       detalhes: `Cadastrado no cargo "${cargo.nome}" (v${cargo.desenho.versao})` }],
+    // Documento 03, Cap. 6 — abre a vigência inicial de cada vínculo desde já.
+    historicoVinculos: [
+      { id: uid(), campo:'cargo', valorAnteriorId:null, valorAnteriorNome:null, novoValorId:cargoId, novoValorNome:cargo.nome, vigenteDe:hoje, vigenteAte:null },
+      { id: uid(), campo:'unidade', valorAnteriorId:null, valorAnteriorNome:null, novoValorId:unidadeId, novoValorNome:unidade?.nome, vigenteDe:hoje, vigenteAte:null },
+      { id: uid(), campo:'setor', valorAnteriorId:null, valorAnteriorNome:null, novoValorId:setorId, novoValorNome:setor?.nome, vigenteDe:hoje, vigenteAte:null },
+      { id: uid(), campo:'gestor', valorAnteriorId:null, valorAnteriorNome:null, novoValorId:gestorPerfilId, novoValorNome:gestor?.nome, vigenteDe:hoje, vigenteAte:null },
+    ],
     ...novoCarimbo(),
   });
   showToast('Colaborador cadastrado com todos os vínculos da RN020. Já pode participar de um ciclo de avaliação.');
@@ -305,6 +316,7 @@ function renderFormMovimentacao(p, cargosAprovados, unidades, setores, contasGes
 }
 
 function renderHistoricoMovimentacao(p){
+  const CAMPO_LABEL = { cargo:'Cargo', unidade:'Unidade', setor:'Setor', gestor:'Gestor direto' };
   return `
     <tr><td colspan="6">
       <div class="card" style="margin:0;">
@@ -318,7 +330,39 @@ function renderHistoricoMovimentacao(p){
           </tbody>
         </table>
       </div>
+      ${p.historicoVinculos?.length ? `
+      <div class="card" style="margin:12px 0 0;">
+        <h3 style="font-size:14px;">Vigência de vínculos <small>Documento 03, Cap. 6 — quem era o quê, e quando (nunca sobrescrito)</small></h3>
+        <table>
+          <thead><tr><th>Campo</th><th>De</th><th>Para</th><th>Vigente de</th><th>Vigente até</th></tr></thead>
+          <tbody>
+            ${p.historicoVinculos.slice().reverse().map(v=>`
+              <tr>
+                <td><span class="tag">${CAMPO_LABEL[v.campo]}</span></td>
+                <td class="small-muted">${v.valorAnteriorNome || '—'}</td>
+                <td class="small-muted">${v.novoValorNome || '—'}</td>
+                <td class="small-muted">${v.vigenteDe}</td>
+                <td>${v.vigenteAte ? `<span class="small-muted">${v.vigenteAte}</span>` : '<span class="pill pill-alavancar">vigente</span>'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>` : ''}
     </td></tr>`;
+}
+
+// Documento 03, Cap. 6 — histórico de vínculo com vigência: cada mudança de
+// cargo/unidade/setor/gestor fecha a vigência anterior (vigenteAte) e abre uma
+// nova (vigenteDe), sem apagar nada — permite reconstruir "quem era o quê, quando".
+function registrarVinculoHistorico(p, campo, valorAnteriorId, valorAnteriorNome, novoValorId, novoValorNome){
+  p.historicoVinculos = p.historicoVinculos || [];
+  const hoje = new Date().toISOString().slice(0,10);
+  const vigenteAnterior = p.historicoVinculos.find(v=>v.campo===campo && v.vigenteAte===null);
+  if(vigenteAnterior) vigenteAnterior.vigenteAte = hoje;
+  p.historicoVinculos.push({
+    id: uid(), campo, valorAnteriorId, valorAnteriorNome, novoValorId, novoValorNome,
+    vigenteDe: hoje, vigenteAte: null,
+  });
 }
 
 function confirmarMovimentacao(colabId){
@@ -332,23 +376,38 @@ function confirmarMovimentacao(colabId){
   const motivo = document.getElementById(`mv_motivo_${colabId}`).value.trim();
 
   const mudancas = [];
+  const alteracoesEstruturadas = [];
   if(novoCargoId !== p.cargoId){
     const cargoAntigo = state.cargos.find(c=>c.id===p.cargoId);
     const cargoNovo = state.cargos.find(c=>c.id===novoCargoId);
     mudancas.push(`Cargo: "${cargoAntigo?cargoAntigo.nome:'—'}" → "${cargoNovo.nome}" (v${cargoNovo.desenho.versao})`);
+    alteracoesEstruturadas.push({ campo:'cargo_id', valorAnterior: p.cargoId, novoValor: novoCargoId });
+    registrarVinculoHistorico(p, 'cargo', p.cargoId, cargoAntigo?.nome, novoCargoId, cargoNovo.nome);
     p.cargoId = novoCargoId;
     p.versaoCargoVinculada = cargoNovo.desenho.versao;
   }
   if(novaUnidadeId !== p.unidadeId){
-    mudancas.push(`Unidade: "${state.estrutura.find(n=>n.id===p.unidadeId)?.nome||'—'}" → "${state.estrutura.find(n=>n.id===novaUnidadeId)?.nome}"`);
+    const unidadeAntiga = state.estrutura.find(n=>n.id===p.unidadeId);
+    const unidadeNova = state.estrutura.find(n=>n.id===novaUnidadeId);
+    mudancas.push(`Unidade: "${unidadeAntiga?.nome||'—'}" → "${unidadeNova?.nome}"`);
+    alteracoesEstruturadas.push({ campo:'unidade_id', valorAnterior: p.unidadeId, novoValor: novaUnidadeId });
+    registrarVinculoHistorico(p, 'unidade', p.unidadeId, unidadeAntiga?.nome, novaUnidadeId, unidadeNova?.nome);
     p.unidadeId = novaUnidadeId;
   }
   if(novoSetorId !== p.setorId){
-    mudancas.push(`Setor: "${state.estrutura.find(n=>n.id===p.setorId)?.nome||'—'}" → "${state.estrutura.find(n=>n.id===novoSetorId)?.nome}"`);
+    const setorAntigo = state.estrutura.find(n=>n.id===p.setorId);
+    const setorNovo = state.estrutura.find(n=>n.id===novoSetorId);
+    mudancas.push(`Setor: "${setorAntigo?.nome||'—'}" → "${setorNovo?.nome}"`);
+    alteracoesEstruturadas.push({ campo:'setor_id', valorAnterior: p.setorId, novoValor: novoSetorId });
+    registrarVinculoHistorico(p, 'setor', p.setorId, setorAntigo?.nome, novoSetorId, setorNovo?.nome);
     p.setorId = novoSetorId;
   }
   if(novoGestorId !== p.gestorPerfilId){
-    mudancas.push(`Gestor direto: "${_perfisEmpresa.find(pf=>pf.id===p.gestorPerfilId)?.nome||'—'}" → "${_perfisEmpresa.find(pf=>pf.id===novoGestorId)?.nome}"`);
+    const gestorAntigo = _perfisEmpresa.find(pf=>pf.id===p.gestorPerfilId);
+    const gestorNovo = _perfisEmpresa.find(pf=>pf.id===novoGestorId);
+    mudancas.push(`Gestor direto: "${gestorAntigo?.nome||'—'}" → "${gestorNovo?.nome}"`);
+    alteracoesEstruturadas.push({ campo:'gestor_perfil_id', valorAnterior: p.gestorPerfilId, novoValor: novoGestorId });
+    registrarVinculoHistorico(p, 'gestor', p.gestorPerfilId, gestorAntigo?.nome, novoGestorId, gestorNovo?.nome);
     // RN006: se há um ciclo em andamento, o gestor anterior pode registrar uma
     // nota de transição não vinculante (não entra no cálculo da média ponderada).
     const cicloEmAndamento = state.ciclos.find(c=>c.colaboradorId===p.id && (c.estado==='Aberto'||c.estado==='Em Consolidação'));
@@ -372,7 +431,7 @@ function confirmarMovimentacao(colabId){
   p.movimentacoes = p.movimentacoes || [];
   p.movimentacoes.push({ id: uid(), data: new Date().toISOString().slice(0,10), tipo, detalhes: mudancas.join(' · ') + (motivo?` — Motivo: ${motivo}`:'') });
 
-  registrarAuditoria('colaborador.movimentado', { nome: p.nome, tipo, mudancas });
+  registrarAuditoria('colaborador.movimentado', { colaboradorId: p.id, nome: p.nome, tipo, mudancas, alteracoes: alteracoesEstruturadas });
   _movimentarColabId = null;
 
   // RN012/RN013 (UC008) — promoção dispara agendamento automático de um

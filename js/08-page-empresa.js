@@ -135,6 +135,7 @@ async function salvarEmpresa(){
   }
 
   const jaEstavaAtiva = state.empresa && state.empresa.estado === 'Ativa';
+  const empresaAnterior = jaEstavaAtiva ? { ...state.empresa } : null;
 
   // 1) Tenta sincronizar o CNPJ na tabela empresas (fonte de verdade multi-tenant).
   //    Se outro tenant já usa esse CNPJ, o banco recusa (índice único) e
@@ -176,7 +177,11 @@ async function salvarEmpresa(){
     registrarAuditoria('empresa.criada', { razaoSocial: state.empresa.razaoSocial, cnpj });
     showToast('Empresa ativada. Módulo Estrutura Organizacional liberado.');
   } else {
-    registrarAuditoria('empresa.atualizada', { razaoSocial: state.empresa.razaoSocial });
+    const camposComparar = ['razaoSocial','nomeFantasia','cnpj','segmento','porte','tipo','logotipo'];
+    const alteracoes = camposComparar
+      .filter(campo => empresaAnterior[campo] !== state.empresa[campo])
+      .map(campo => ({ campo, valorAnterior: empresaAnterior[campo], novoValor: state.empresa[campo] }));
+    registrarAuditoria('empresa.atualizada', { razaoSocial: state.empresa.razaoSocial, alteracoes });
     showToast('Dados da empresa atualizados.');
   }
   render();
