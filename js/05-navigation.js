@@ -67,6 +67,8 @@ function compassSVG(){
   </div>`;
 }
 
+let _menuMobileAberto = false;
+
 function renderSidebar(){
   const roles = [
     {id:'admin', label:'Administrador'},
@@ -84,50 +86,56 @@ function renderSidebar(){
         <div class="brand-name">NORTE</div>
         <div class="brand-sub">Instituto INETRIS</div>
       </div>
+      <button class="menu-hamburguer" onclick="_menuMobileAberto=!_menuMobileAberto; render();" aria-label="Abrir menu">
+        ${_menuMobileAberto ? '✕' : '☰'}
+      </button>
     </div>
 
-    <div class="role-switcher">
-      <div class="role-label">${podeAlternarPapel ? 'Ver como (pré-visualização)' : 'Seu papel'}</div>
-      ${podeAlternarPapel
-        ? roles.map(r=>`
-            <button class="role-btn ${state.role===r.id?'active':''}" onclick="setRole('${r.id}')">
-              <span class="dot"></span>${r.label}
-            </button>
-          `).join('')
-        : `<div class="role-btn active" style="cursor:default;"><span class="dot"></span>${roles.find(r=>r.id===state.role)?.label || state.role}</div>`
-      }
-    </div>
+    <div class="sidebar-nav-content ${_menuMobileAberto ? 'aberto' : ''}">
+      <div class="role-switcher">
+        <div class="role-label">${podeAlternarPapel ? 'Ver como (pré-visualização)' : 'Seu papel'}</div>
+        ${podeAlternarPapel
+          ? roles.map(r=>`
+              <button class="role-btn ${state.role===r.id?'active':''}" onclick="setRole('${r.id}')">
+                <span class="dot"></span>${r.label}
+              </button>
+            `).join('')
+          : `<div class="role-btn active" style="cursor:default;"><span class="dot"></span>${roles.find(r=>r.id===state.role)?.label || state.role}</div>`
+        }
+      </div>
 
-    <nav class="steps">
-      ${groups.map(g=>`
-        <div class="step-group-label">${g}</div>
-        ${STEPS.filter(s=>s.group===g).map(s=>{
-          const unlocked = stepUnlocked(s.id);
-          const idx = STEPS.indexOf(s)+1;
-          const clickAction = unlocked ? ("goto('"+s.id+"')") : ("showToast('Complete a etapa anterior primeiro — o NORTE não permite pular passos.')");
-          return `<button class="step-btn ${state.route===s.id?'active':''} ${unlocked?'':'locked'}"
-            onclick="${clickAction}">
-            <span class="num">${String(idx).padStart(2,'0')}</span>${s.label}
-          </button>`;
-        }).join('')}
-      `).join('')}
-    </nav>
+      <nav class="steps">
+        ${groups.map(g=>`
+          <div class="step-group-label">${g}</div>
+          ${STEPS.filter(s=>s.group===g).map(s=>{
+            const unlocked = stepUnlocked(s.id);
+            const idx = STEPS.indexOf(s)+1;
+            const clickAction = unlocked ? ("goto('"+s.id+"')") : ("showToast('Complete a etapa anterior primeiro — o NORTE não permite pular passos.')");
+            return `<button class="step-btn ${state.route===s.id?'active':''} ${unlocked?'':'locked'}"
+              onclick="${clickAction}">
+              <span class="num">${String(idx).padStart(2,'0')}</span>${s.label}
+            </button>`;
+          }).join('')}
+        `).join('')}
+      </nav>
 
-    <button class="step-btn" style="margin-top:8px;opacity:.75;" onclick="sair()">
-      <span class="num">⏻</span>Sair
-    </button>
+      <button class="step-btn" style="margin-top:8px;opacity:.75;" onclick="sair()">
+        <span class="num">⏻</span>Sair
+      </button>
 
-    <div class="footer-note">
-      “Desempenho se mede.<br>Nível se constrói.”<br>
-      <span style="opacity:.7">— Metodologia NORTE, Leilane Mendes</span>
+      <div class="footer-note">
+        “Desempenho se mede.<br>Nível se constrói.”<br>
+        <span style="opacity:.7">— Metodologia NORTE, Leilane Mendes</span>
+      </div>
     </div>
   </aside>`;
 }
 
-function setRole(r){ state.role = r; render(); }
+function setRole(r){ state.role = r; _menuMobileAberto = false; render(); }
 function goto(id){
   if(!STEPS.find(s=>s.id===id)){ showToast('Você não tem acesso a essa área.'); return; }
   state.route = id;
+  _menuMobileAberto = false;
   if(id === 'usuarios') carregarUsuarios();
   render();
 }

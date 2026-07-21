@@ -233,18 +233,31 @@ tr:hover td{background:rgba(255,255,255,.012);}
 .small-muted{font-size:11.5px;color:var(--ink-faint);}
 hr.sep{border:none;border-top:1px solid var(--line);margin:20px 0;}
 
+.menu-hamburguer{display:none;}
+
 @media(max-width:880px){
   #app{flex-direction:column;}
-  .sidebar{width:100%;height:auto;position:relative;flex-direction:row;flex-wrap:wrap;}
-  main{padding:24px 18px 60px;}
+  .sidebar{ width:100%; height:auto; position:relative; flex-direction:column; padding:14px 16px; }
+  .brand{ margin-bottom:0; padding-bottom:14px; }
+  .menu-hamburguer{
+    display:flex; align-items:center; justify-content:center;
+    width:36px; height:36px; margin-left:auto; flex:0 0 auto;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:8px;
+    color:var(--ink); font-size:16px;
+  }
+  .sidebar-nav-content{ display:none; }
+  .sidebar-nav-content.aberto{ display:flex; flex-direction:column; margin-top:14px; }
+  main{padding:20px 16px 50px;}
   .grid2,.grid3,.kpi-grid{grid-template-columns:1fr;}
+  h1{font-size:22px;}
+  .page-desc{font-size:13px;}
 }
 
 /* RNF008 — Responsividade: telas pequenas (celular), com prioridade para os
    fluxos do Colaborador (autoavaliação e registro de evidências). */
 @media(max-width:640px){
   /* Tabelas não quebram o layout — rolam horizontalmente dentro do card. */
-  .card{ overflow-x:auto; }
+  .card{ overflow-x:auto; padding:16px; }
 
   /* Linha de indicador + escolha IDA: empilha em vez de espremer tudo numa linha só. */
   .ida-row{ flex-direction:column; align-items:flex-start; gap:10px; }
@@ -254,4 +267,12 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:20px 0;}
   /* Botões maiores e mais fáceis de tocar. */
   .btn{ padding:10px 14px; }
   .filtro-categorias{ overflow-x:auto; flex-wrap:nowrap; padding-bottom:4px; }
+
+  .flow{ gap:4px; }
+  .flow-item{ font-size:11px; padding:6px 10px; }
+  .kpi{ padding:14px; }
+  .kpi .n{ font-size:22px; }
+  .pagehead, .page-head{ margin-bottom:20px; }
+  .pendencia-item{ flex-direction:column; align-items:flex-start; gap:6px; }
+  .pendencia-item .btn{ width:100%; justify-content:center; }
 }
