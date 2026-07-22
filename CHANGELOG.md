@@ -3,6 +3,24 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.12.0 — Adaptação de cor ao logotipo + logo da empresa no menu
+- **Cores do sistema adaptadas ao logotipo**: ao definir um logotipo (em
+  Cadastro de Empresa ou em Configurações → Identidade Visual, pelos 3
+  modos da v0.11.1), o sistema tenta extrair a cor dominante da imagem via
+  canvas e aplica como cor de destaque do tema (botões, abas ativas, etc.)
+  — as cores de classificação IDA (Iniciar/Desenvolver/Alavancar) não
+  mudam, pois são semânticas da metodologia, não da marca da empresa.
+  Quando o logotipo veio de um link (URL) externo sem CORS liberado, a
+  extração de cor pode não funcionar (limitação do navegador, não do
+  sistema) — nesse caso as cores continuam ajustáveis manualmente em
+  Configurações. O tema escolhido é salvo e reaplicado automaticamente a
+  cada novo login.
+- **Logotipo da empresa no canto superior esquerdo**: o menu lateral agora
+  mostra o logotipo da empresa (quando definido) no lugar do símbolo do
+  Instituto INETRIS, com o nome fantasia da empresa como título — mantendo
+  "Metodologia NORTE" como crédito. Sem logotipo definido, continua exibindo
+  a marca padrão do Instituto INETRIS, como sempre foi.
+
 ## v0.11.1 — Upload de logotipo com 3 opções
 - Novo componente reutilizável (`logoUploadWidgetHTML`, em
   `js/02-core-helpers.js`) usado tanto no Cadastro de Empresa quanto em

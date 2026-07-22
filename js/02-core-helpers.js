@@ -180,8 +180,87 @@ function logoAtualizarPreview(fieldId, valor){
       ? `<img src="${valor}" style="max-height:60px;max-width:200px;border:1px solid var(--line);border-radius:6px;background:#fff;padding:4px;">`
       : '<span class="small-muted">Nenhum logotipo definido ainda.</span>';
   }
+  if(valor) adaptarCoresAoLogo(valor, fieldId);
 }
 function logoDefinirURL(fieldId, url){ logoAtualizarPreview(fieldId, url.trim()); }
+
+/* ---------- Adaptação automática de cor a partir do logotipo ----------
+   Ao definir um logotipo (em qualquer um dos dois campos — Empresa ou
+   Identidade Visual), tenta extrair a cor dominante da imagem e aplica
+   como cor primária do tema (o destaque usado em botões, abas ativas
+   etc.). As cores de classificação IDA (Iniciar/Desenvolver/Alavancar)
+   NÃO mudam — são semânticas da metodologia, não da marca da empresa. */
+function rgbParaHex(r,g,b){
+  return '#' + [r,g,b].map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('');
+}
+function corMaisClara(hex, fator){
+  const h = (hex||'').replace('#','');
+  if(h.length!==6) return hex;
+  const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+  const clarear = (v) => v + (255-v)*fator;
+  return rgbParaHex(clarear(r), clarear(g), clarear(b));
+}
+function extrairCorDominante(urlOuDataUrl, callback){
+  const img = new Image();
+  img.crossOrigin = 'anonymous'; // necessário pra conseguir ler pixels de URLs externas com CORS liberado
+  img.onload = () => {
+    try{
+      const canvas = document.createElement('canvas');
+      const w = canvas.width = 50, h = canvas.height = 50;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      const data = ctx.getImageData(0,0,w,h).data;
+      let r=0,g=0,b=0,count=0;
+      for(let i=0;i<data.length;i+=4){
+        const rr=data[i], gg=data[i+1], bb=data[i+2], aa=data[i+3];
+        if(aa < 100) continue; // pixel transparente
+        const luminancia = 0.299*rr + 0.587*gg + 0.114*bb;
+        if(luminancia > 240 || luminancia < 15) continue; // ignora fundo quase-branco/quase-preto do logo
+        r+=rr; g+=gg; b+=bb; count++;
+      }
+      if(!count){ callback(null); return; }
+      callback(rgbParaHex(r/count, g/count, b/count));
+    }catch(e){
+      // Canvas "manchado" por CORS — típico de link externo sem cabeçalho
+      // liberando leitura de pixel. Sem solução no cliente; a pessoa pode
+      // ajustar a cor manualmente, ou usar "Colar imagem"/"Enviar arquivo"
+      // (que não têm esse problema, pois viram base64 local).
+      callback(null);
+    }
+  };
+  img.onerror = () => callback(null);
+  img.src = urlOuDataUrl;
+}
+function aplicarTemaCores(corPrimaria){
+  if(!corPrimaria || !/^#[0-9a-f]{6}$/i.test(corPrimaria)) return;
+  const h = corPrimaria.replace('#','');
+  const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+  document.documentElement.style.setProperty('--gold', corPrimaria);
+  document.documentElement.style.setProperty('--gold-soft', `rgba(${r},${g},${b},.16)`);
+}
+function adaptarCoresAoLogo(valorLogo, origemPagina){
+  if(!valorLogo) return;
+  extrairCorDominante(valorLogo, (hex) => {
+    if(!hex) return;
+    const corSecund = corMaisClara(hex, 0.35);
+    state.configuracoes = state.configuracoes || {};
+    state.configuracoes.identidadeVisual = {
+      ...(state.configuracoes.identidadeVisual||{}),
+      logoUrl: valorLogo, corPrimaria: hex, corSecundaria: corSecund,
+    };
+    aplicarTemaCores(hex);
+    // Se os seletores de cor estiverem na tela (Configurações), reflete lá
+    // também — só no DOM, sem re-renderizar a página inteira (evitaria
+    // perder outros campos do formulário ainda não salvos pela pessoa).
+    const corCor1 = document.getElementById('cfg_cor1');
+    const corCor2 = document.getElementById('cfg_cor2');
+    if(corCor1) corCor1.value = hex;
+    if(corCor2) corCor2.value = corSecund;
+    registrarAuditoria('configuracoes.tema_adaptado_ao_logo', { origemPagina });
+    agendarSalvamento(); // persiste em segundo plano, sem redesenhar a tela
+    showToast('Cores do sistema adaptadas ao logotipo. Ajuste manualmente em Configurações, se quiser.');
+  });
+}
 function logoRedimensionarEConverter(file, callback){
   const leitor = new FileReader();
   leitor.onload = (e) => {

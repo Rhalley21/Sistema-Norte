@@ -57,10 +57,20 @@ function render(){
   agendarSalvamento();
 }
 
+function logoEmpresaAtual(){
+  return state.configuracoes?.identidadeVisual?.logoUrl || state.empresa?.logotipo || '';
+}
 function compassSVG(){
   const stageIdx = STEPS.findIndex(s=>s.id===state.route);
   const total = STEPS.length || 1;
   const progresso = stageIdx>=0 ? Math.round(((stageIdx+1)/total)*100) : 0;
+  const logoEmpresa = logoEmpresaAtual();
+  if(logoEmpresa){
+    return `
+    <div class="compass-wrap" title="Ciclo NORTE — ${progresso}% navegado">
+      <img src="${logoEmpresa}" alt="Logotipo da empresa" style="width:100%;height:100%;object-fit:contain;background:#fff;border-radius:6px;" />
+    </div>`;
+  }
   return `
   <div class="compass-wrap" title="Ciclo NORTE — ${progresso}% navegado">
     <img src="data:image/png;base64,${LOGO_INETRIS_B64}" alt="Instituto INETRIS" style="width:100%;height:100%;object-fit:contain;" />
@@ -83,8 +93,8 @@ function renderSidebar(){
     <div class="brand">
       ${compassSVG()}
       <div>
-        <div class="brand-name">NORTE</div>
-        <div class="brand-sub">Instituto INETRIS</div>
+        <div class="brand-name">${logoEmpresaAtual() && state.empresa?.nomeFantasia ? state.empresa.nomeFantasia : 'NORTE'}</div>
+        <div class="brand-sub">${logoEmpresaAtual() ? 'Metodologia NORTE' : 'Instituto INETRIS'}</div>
       </div>
       <button class="menu-hamburguer" onclick="_menuMobileAberto=!_menuMobileAberto; render();" aria-label="Abrir menu">
         ${_menuMobileAberto ? '✕' : '☰'}

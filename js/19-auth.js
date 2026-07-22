@@ -190,6 +190,7 @@ async function iniciarComSessao(sessao){
 
   seed(); // estado em branco antes de carregar
   await carregarEstado();
+  aplicarTemaCores(state.configuracoes?.identidadeVisual?.corPrimaria);
   await carregarUsuarios(); // popula _perfisEmpresa/_convitesEmpresa, usados também fora da aba Usuários
   state.role = PAPEL_PARA_ROLE[meuPapelReal] || 'colaborador';
   state.route = 'dashboard_role';
