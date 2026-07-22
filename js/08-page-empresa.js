@@ -62,7 +62,7 @@ function pageEmpresa(){
             ${['privada','publica'].map(v=>`<option value="${v}" ${e.tipo===v?'selected':''}>${v==='privada'?'Privada':'Pública'}</option>`).join('')}
           </select>
         </div>
-        <div class="field"><label>Logotipo <small>(cole o link/URL da imagem)</small></label><input id="f_logo" value="${e.logotipo||''}" placeholder="https://..."></div>
+        <div class="field"><label>Logotipo</label>${logoUploadWidgetHTML('f_logo', e.logotipo||'')}</div>
       </div>
     </div>
 

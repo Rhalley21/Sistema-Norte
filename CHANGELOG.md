@@ -3,6 +3,19 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.11.1 — Upload de logotipo com 3 opções
+- Novo componente reutilizável (`logoUploadWidgetHTML`, em
+  `js/02-core-helpers.js`) usado tanto no Cadastro de Empresa quanto em
+  Configurações → Identidade Visual. Antes só dava para colar um link
+  (URL) da imagem; agora tem 3 opções lado a lado:
+  - **Link (URL)** — como já era.
+  - **Colar imagem** — cola (Ctrl+V) uma imagem copiada de qualquer lugar.
+  - **Enviar arquivo** — escolhe um arquivo de imagem do computador.
+  Nos dois novos modos, a imagem é redimensionada no próprio navegador
+  (máx. 300px no maior lado) e guardada como base64 — não depende de
+  nenhum servidor de upload de arquivos. Preview do logotipo atual sempre
+  visível abaixo dos controles.
+
 ## v0.11.0 — Integração do Documento 07 (Backlog de Desenvolvimento)
 - **Dossiê completo em PDF** (História 5.4, MVP): novo tipo de relatório em
   `js/20-page-relatorios.js` que consolida **Desenho de Cargo + Avaliação +

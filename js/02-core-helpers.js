@@ -130,3 +130,101 @@ function seed(){
    indicadores sugeridos por família de cargo (Cap. 6 do doc. funcional).
    Cap. 11.5 (Governança de IA): estas sugestões nunca são aplicadas automaticamente — sempre
    apresentadas como rascunho editável, exigindo confirmação humana. ---------- */
+
+/* =========================================================
+   COMPONENTE REUTILIZÁVEL — upload de logotipo
+   -----------------------------------------------------------
+   3 formas de definir o logotipo: colar um link (URL), colar uma
+   imagem copiada (Ctrl+V) ou enviar um arquivo do computador.
+   Nos dois últimos casos, a imagem é redimensionada no navegador
+   (máx. 300px no maior lado) e guardada como data URL (base64) —
+   não depende de nenhum servidor de upload de arquivos.
+   ========================================================= */
+function logoUploadWidgetHTML(fieldId, valorAtual){
+  const ehUrlHttp = valorAtual && /^https?:\/\//i.test(valorAtual);
+  return `
+    <div id="wrap_${fieldId}">
+      <input type="hidden" id="${fieldId}" value="${valorAtual||''}">
+      <div class="filtro-categorias" style="margin-bottom:8px;">
+        <button type="button" class="filtro-pill active" data-modo="url" onclick="logoTrocarModo('${fieldId}','url')">Link (URL)</button>
+        <button type="button" class="filtro-pill" data-modo="colar" onclick="logoTrocarModo('${fieldId}','colar')">Colar imagem</button>
+        <button type="button" class="filtro-pill" data-modo="arquivo" onclick="logoTrocarModo('${fieldId}','arquivo')">Enviar arquivo</button>
+      </div>
+      <div id="modo_url_${fieldId}">
+        <input type="text" placeholder="https://..." value="${ehUrlHttp?valorAtual:''}" onchange="logoDefinirURL('${fieldId}', this.value)">
+      </div>
+      <div id="modo_colar_${fieldId}" style="display:none;">
+        <div contenteditable="true" onpaste="logoColarImagem(event,'${fieldId}')" style="border:1px dashed var(--line);border-radius:8px;padding:16px;text-align:center;color:var(--ink-faint);font-size:13px;cursor:text;outline:none;">Clique aqui e cole (Ctrl+V) uma imagem copiada</div>
+      </div>
+      <div id="modo_arquivo_${fieldId}" style="display:none;">
+        <input type="file" accept="image/*" onchange="logoDefinirArquivo(event,'${fieldId}')">
+      </div>
+      <div id="preview_${fieldId}" style="margin-top:10px;">
+        ${valorAtual ? `<img src="${valorAtual}" style="max-height:60px;max-width:200px;border:1px solid var(--line);border-radius:6px;background:#fff;padding:4px;">` : '<span class="small-muted">Nenhum logotipo definido ainda.</span>'}
+      </div>
+    </div>`;
+}
+function logoTrocarModo(fieldId, modo){
+  ['url','colar','arquivo'].forEach(m=>{
+    const painel = document.getElementById(`modo_${m}_${fieldId}`);
+    if(painel) painel.style.display = (m===modo ? '' : 'none');
+  });
+  document.querySelectorAll(`#wrap_${fieldId} .filtro-pill`).forEach(b=>b.classList.toggle('active', b.dataset.modo===modo));
+}
+function logoAtualizarPreview(fieldId, valor){
+  const campo = document.getElementById(fieldId);
+  if(campo) campo.value = valor;
+  const preview = document.getElementById(`preview_${fieldId}`);
+  if(preview){
+    preview.innerHTML = valor
+      ? `<img src="${valor}" style="max-height:60px;max-width:200px;border:1px solid var(--line);border-radius:6px;background:#fff;padding:4px;">`
+      : '<span class="small-muted">Nenhum logotipo definido ainda.</span>';
+  }
+}
+function logoDefinirURL(fieldId, url){ logoAtualizarPreview(fieldId, url.trim()); }
+function logoRedimensionarEConverter(file, callback){
+  const leitor = new FileReader();
+  leitor.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const maxLado = 300;
+      let { width, height } = img;
+      if(width > maxLado || height > maxLado){
+        const escala = maxLado / Math.max(width, height);
+        width = Math.round(width*escala); height = Math.round(height*escala);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      callback(canvas.toDataURL('image/png'));
+    };
+    img.src = e.target.result;
+  };
+  leitor.readAsDataURL(file);
+}
+function logoDefinirArquivo(event, fieldId){
+  const file = event.target.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){ showToast('Selecione um arquivo de imagem.'); return; }
+  logoRedimensionarEConverter(file, (dataUrl) => {
+    logoAtualizarPreview(fieldId, dataUrl);
+    showToast('Logotipo carregado.');
+  });
+}
+function logoColarImagem(event, fieldId){
+  const itens = (event.clipboardData || window.clipboardData)?.items || [];
+  let achouImagem = false;
+  for(const item of itens){
+    if(item.type && item.type.startsWith('image/')){
+      achouImagem = true;
+      const file = item.getAsFile();
+      logoRedimensionarEConverter(file, (dataUrl) => {
+        logoAtualizarPreview(fieldId, dataUrl);
+        showToast('Imagem colada como logotipo.');
+      });
+      break;
+    }
+  }
+  if(!achouImagem) showToast('Não encontrei nenhuma imagem na área de transferência — copie uma imagem (não um link de texto) antes de colar aqui.');
+  event.preventDefault();
+}

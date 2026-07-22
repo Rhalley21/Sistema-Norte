@@ -46,8 +46,8 @@ function pageConfiguracoes(){
 
     <div class="card">
       <h3>Identidade visual em relatórios exportados</h3>
-      <div class="grid2">
-        <div class="field"><label>URL do logotipo</label><input id="cfg_logo" value="${iv.logoUrl||''}" placeholder="https://..."></div>
+      <div class="field"><label>Logotipo</label>${logoUploadWidgetHTML('cfg_logo', iv.logoUrl||'')}</div>
+      <div class="grid2" style="margin-top:12px;">
         <div class="field"><label>Cor primária</label><input id="cfg_cor1" type="color" value="${iv.corPrimaria||'#0a2647'}"></div>
         <div class="field"><label>Cor secundária</label><input id="cfg_cor2" type="color" value="${iv.corSecundaria||'#e99610'}"></div>
       </div>
