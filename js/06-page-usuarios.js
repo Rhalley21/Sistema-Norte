@@ -52,6 +52,7 @@ function copiarCodigo(codigo){
   showToast('Código copiado!');
 }
 async function alternarAtivoPerfil(perfilId, desativarAgora){
+  if(desativarAgora && !confirm('Deseja realmente remover este usuário? Esta ação não apaga seu histórico (RN025).')) return;
   const { error } = await sb.from('perfis').update({ desativado: desativarAgora }).eq('id', perfilId);
   if(error){ showToast('Não foi possível atualizar o status da conta.'); return; }
   registrarAuditoria(desativarAgora ? 'usuario.desativado' : 'usuario.reativado', { perfilId });
@@ -62,7 +63,7 @@ async function alternarEscopoEstendido(perfilId, concederAgora){
   const { error } = await sb.from('perfis').update({ escopo_estendido: concederAgora }).eq('id', perfilId);
   if(error){ showToast('Não foi possível atualizar a permissão.'); return; }
   registrarAuditoria(concederAgora ? 'escopo_estendido.concedido' : 'escopo_estendido.revogado', { perfilId });
-  showToast(concederAgora ? 'Escopo estendido concedido — este Gestor agora vê o dashboard consolidado da empresa toda (RN029, exceção explícita).' : 'Escopo estendido revogado — o Gestor volta a ver só a própria equipe.');
+  showToast(concederAgora ? 'Escopo estendido concedido — este Gestor agora vê o dashboard consolidado da empresa toda (exceção explícita do Administrador).' : 'Escopo estendido revogado — o Gestor volta a ver só a própria equipe.');
   await carregarUsuarios();
 }
 function pageUsuarios(){
@@ -80,7 +81,7 @@ function pageUsuarios(){
     <div class="card">
       <h3>Pessoas com acesso</h3>
       <table>
-        <thead><tr><th>Nome</th><th>Papel</th><th>Vínculo na estrutura</th><th>Status</th><th>Escopo (RN029)</th><th>Último acesso</th><th></th></tr></thead>
+        <thead><tr><th>Nome</th><th>Papel</th><th>Vínculo na estrutura</th><th>Status</th><th>Escopo estendido</th><th>Último acesso</th><th></th></tr></thead>
         <tbody>
           ${_perfisEmpresa.map(p => `
             <tr style="${p.desativado?'opacity:.55;':''}">
@@ -100,8 +101,8 @@ function pageUsuarios(){
           `).join('')}
         </tbody>
       </table>
-      <div class="notice" style="margin-top:12px;">RN016: desativar uma conta nunca apaga dados — todo o histórico de avaliações em que essa pessoa participou (como avaliador ou avaliado) permanece intacto. A pessoa só perde o acesso ao sistema.</div>
-      <div class="notice info">RN029: por padrão, todo Gestor só vê dados agregados da própria equipe. O Administrador pode conceder, caso a caso, uma exceção explícita para um Gestor ver o dashboard consolidado da empresa toda.</div>
+      <div class="notice" style="margin-top:12px;">RN025: desativar uma conta nunca apaga dados — todo o histórico de avaliações em que essa pessoa participou (como avaliador ou avaliado) permanece intacto. A pessoa só perde o acesso ao sistema.</div>
+      <div class="notice info">Por padrão, todo Gestor só vê dados agregados da própria equipe. O Administrador pode conceder, caso a caso, uma exceção explícita (escopo estendido) para um Gestor ver o dashboard consolidado da empresa toda.</div>
     </div>
 
     ${souOwner && _historicoAcessos.length ? `
@@ -152,7 +153,7 @@ function pageUsuarios(){
       ` : '<div class="empty" style="margin-top:14px;">Nenhum convite pendente.</div>'}
     </div>
 
-    <div class="notice info">RN016: um usuário pode existir sem estar vinculado a um cargo (ex.: um Administrador puramente técnico). Mas todo Colaborador só participa de um ciclo de avaliação depois de ter um cargo vinculado — isso é garantido na aba <b>Colaboradores</b>.</div>
+    <div class="notice info">Um usuário pode existir sem estar vinculado a um cargo (ex.: um Administrador puramente técnico). Mas todo Colaborador só participa de um ciclo de avaliação depois de ter um cargo vinculado — isso é garantido na aba <b>Colaboradores</b> (critério de aceite do módulo, PRD Cap. 5).</div>
   `;
 }
 

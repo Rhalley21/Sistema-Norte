@@ -12,5 +12,5 @@ let sessaoAtual = null;
 let empresaIdAtual = null;
 let meuPerfilId = null;
 let meuPapelReal = null; // owner | rh | lider | colaborador (papel de verdade, do banco)
-let meuEscopoEstendido = false; // RN029: exceção concedida pelo Administrador para um Gestor ver a empresa toda
+let meuEscopoEstendido = false; // Escopo estendido: exceção concedida pelo Administrador para um Gestor ver a empresa toda (extensão de RBAC — PRD Cap. 3, sem RN própria)
 

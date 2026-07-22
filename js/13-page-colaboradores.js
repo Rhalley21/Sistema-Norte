@@ -174,7 +174,7 @@ function pageColaboradores(){
     <div class="page-head">
       <div class="eyebrow">Etapa 06 · Pessoas</div>
       <h1>Colaboradores</h1>
-      <p class="page-desc">Vínculo obrigatório (RN020): unidade, setor, gestor direto, cargo e versão do Desenho de Cargo. Sem todos esses campos preenchidos, o colaborador não pode participar de um ciclo de avaliação.</p>
+      <p class="page-desc">Vínculo obrigatório (critério de aceite do módulo Colaboradores — PRD Cap. 5): unidade, setor, gestor direto, cargo e versão do Desenho de Cargo. Sem todos esses campos preenchidos, o colaborador não pode participar de um ciclo de avaliação.</p>
     </div>
 
     <div class="card">
@@ -250,7 +250,7 @@ function addColaborador(){
   const setorId = document.getElementById('p_setor').value;
   const gestorPerfilId = document.getElementById('p_gestor_perfil').value;
   if(!cargoId || !unidadeId || !setorId || !gestorPerfilId){
-    showToast('Todos os vínculos (cargo, unidade, setor, gestor direto) são obrigatórios — RN020.'); return;
+    showToast('Todos os vínculos (cargo, unidade, setor, gestor direto) são obrigatórios — critério de aceite do módulo Colaboradores.'); return;
   }
   const cargo = state.cargos.find(c=>c.id===cargoId);
   const unidade = state.estrutura.find(n=>n.id===unidadeId);
@@ -273,7 +273,7 @@ function addColaborador(){
     ],
     ...novoCarimbo(),
   });
-  showToast('Colaborador cadastrado com todos os vínculos da RN020. Já pode participar de um ciclo de avaliação.');
+  showToast('Colaborador cadastrado com todos os vínculos obrigatórios. Já pode participar de um ciclo de avaliação.');
   render();
 }
 
@@ -408,7 +408,7 @@ function confirmarMovimentacao(colabId){
     mudancas.push(`Gestor direto: "${gestorAntigo?.nome||'—'}" → "${gestorNovo?.nome}"`);
     alteracoesEstruturadas.push({ campo:'gestor_perfil_id', valorAnterior: p.gestorPerfilId, novoValor: novoGestorId });
     registrarVinculoHistorico(p, 'gestor', p.gestorPerfilId, gestorAntigo?.nome, novoGestorId, gestorNovo?.nome);
-    // RN006: se há um ciclo em andamento, o gestor anterior pode registrar uma
+    // Nota de transição (regra interna, sem RN correspondente no PRD): se há um ciclo em andamento, o gestor anterior pode registrar uma
     // nota de transição não vinculante (não entra no cálculo da média ponderada).
     const cicloEmAndamento = state.ciclos.find(c=>c.colaboradorId===p.id && (c.estado==='Aberto'||c.estado==='Em Consolidação'));
     if(cicloEmAndamento){
@@ -418,7 +418,7 @@ function confirmarMovimentacao(colabId){
   }
 
   // Autocorreção: se o vínculo de versão do cargo estava faltando (dado
-  // antigo, de antes da RN020 completa), sincroniza com a versão atual.
+  // antigo, de antes do cadastro completo), sincroniza com a versão atual.
   const cargoAtual = state.cargos.find(c=>c.id===p.cargoId);
   if(cargoAtual && p.versaoCargoVinculada !== cargoAtual.desenho.versao){
     mudancas.push(`Vínculo de versão do cargo corrigido para v${cargoAtual.desenho.versao}`);
@@ -434,7 +434,7 @@ function confirmarMovimentacao(colabId){
   registrarAuditoria('colaborador.movimentado', { colaboradorId: p.id, nome: p.nome, tipo, mudancas, alteracoes: alteracoesEstruturadas });
   _movimentarColabId = null;
 
-  // RN012/RN013 (UC008) — promoção dispara agendamento automático de um
+  // RN016 (UC008) — promoção dispara agendamento automático de um
   // ciclo extraordinário 3 meses depois, independente do ciclo anual em curso.
   if(tipo === 'Promoção' && novoCargoId !== cargoIdAntigo){
     agendarCicloExtraordinarioPromocao(p);
@@ -456,7 +456,7 @@ function agendarCicloExtraordinarioPromocao(p){
     const ciclo = {
       id: uid(), colaboradorId: p.id, cargoId: p.cargoId, estado:'Aberto', etapa:'colaborador',
       dataAbertura: new Date().toISOString().slice(0,10), prazoLimite: prazo,
-      extraordinario: true, motivoExtraordinario: 'Promoção — avaliação obrigatória em 3 meses (RN012/RN013)',
+      extraordinario: true, motivoExtraordinario: 'Promoção — avaliação obrigatória em 3 meses (RN016)',
       ausencias: [], notas:{colaborador:{}, gestor:{}, rh:{}},
       indicadoresSnapshot: todosIndicadores(cargo),
       diagnostico:null, pdiDesenvolvimento:null, pdiMentalidade:null, ...novoCarimbo(),
@@ -470,7 +470,7 @@ function agendarCicloExtraordinarioPromocao(p){
 }
 
 /* ---------- RNF011 (LGPD) — desligamento e anonimização ----------
-   O histórico de avaliações nunca pode ser fisicamente apagado (RN030),
+   O histórico de avaliações nunca pode ser fisicamente apagado (RN025),
    mas a LGPD prevê direito de exclusão. Solução: anonimizar os dados
    pessoais identificáveis (nome) de um colaborador já desligado,
    preservando o histórico estatístico/estrutural (ciclos, diagnósticos,

@@ -1,4 +1,4 @@
-/* ---------- Regras de hierarquia (RN015) ---------- */
+/* ---------- Regras de hierarquia (critério de aceite do módulo Estrutura Organizacional — PRD Cap. 5: ao menos 3 níveis; aqui implementados 4) ---------- */
 const NIVEL_RANK = { unidade:0, departamento:1, setor:2, equipe:3 };
 const NIVEL_LABEL = { unidade:'Unidade', departamento:'Departamento', setor:'Setor', equipe:'Equipe' };
 

@@ -3,12 +3,12 @@ function pageCiclos(){
   const colaboradoresElegiveis = state.colaboradores.filter(p=>{
     const cargo = state.cargos.find(c=>c.id===p.cargoId);
     const cargoOk = cargo && cargo.desenho.aprovado && !cargo.descontinuado;
-    // RN020: nenhuma avaliação sem todos os vínculos completos.
+    // Critério de aceite do módulo Colaboradores (PRD Cap. 5): nenhuma avaliação sem todos os vínculos completos.
     return cargoOk && p.unidadeId && p.setorId && p.gestorPerfilId;
   });
   const semCicloAberto = colaboradoresElegiveis.filter(p=>!state.ciclos.some(c=>c.colaboradorId===p.id && c.estado!=='Encerrado'));
 
-  // RN023: antes de listar, verifica se algum ciclo estourou o prazo sem concluir.
+  // Regra interna de prazos (sem RN correspondente no PRD): antes de listar, verifica se algum ciclo estourou o prazo sem concluir.
   state.ciclos.forEach(verificarPendenciaCiclo);
   const ciclosVisiveis = state.ciclos.filter(cicloVisivelParaMim);
 
@@ -40,7 +40,7 @@ function pageCiclos(){
         </div>
       </div>
       <button class="btn btn-primary" onclick="abrirNovoCiclo()">Abrir ciclo de avaliação</button>
-      ` : '<div class="empty">Todos os colaboradores elegíveis já possuem ciclo em andamento, ou nenhum colaborador está apto (RN009).</div>'}
+      ` : '<div class="empty">Todos os colaboradores elegíveis já possuem ciclo em andamento, ou nenhum colaborador está apto — pré-requisitos internos de abertura de ciclo.</div>'}
     </div>
     ` : ''}
 
@@ -51,7 +51,7 @@ function pageCiclos(){
   `;
 }
 
-/* ---------- RN023: prazos, lembretes e pendência de avaliador ---------- */
+/* ---------- Prazos, lembretes e pendência de avaliador (regra interna, sem RN correspondente no PRD) ---------- */
 function diasAteVencimento(ciclo){
   if(!ciclo.prazoLimite) return null;
   const hoje = new Date(new Date().toISOString().slice(0,10));
@@ -83,7 +83,7 @@ function registrarAusenciaCiclo(cicloId){
   ciclo.ausencias = ciclo.ausencias || [];
   ciclo.ausencias.push({ id: uid(), etapa: ciclo.etapa, motivo, registradoPor: meuPerfilId, data: new Date().toISOString().slice(0,10) });
   // A ausência formal é o que desbloqueia o fechamento: avança a etapa mesmo
-  // sem as notas do avaliador ausente. O cálculo da média (RN022) já lida
+  // sem as notas do avaliador ausente. O cálculo da média ponderada (RN003) já lida
   // com notas faltantes redistribuindo o peso entre quem avaliou de fato.
   const info = ETAPA_INFO[ciclo.etapa];
   if(info.proxima){ ciclo.etapa = info.proxima; ciclo.estado = 'Em Consolidação'; }
@@ -93,18 +93,18 @@ function registrarAusenciaCiclo(cicloId){
   render();
 }
 function reabrirCiclo(cicloId){
-  if(meuPapelReal !== 'owner'){ showToast('Só o Administrador pode reabrir um ciclo encerrado (RN010).'); return; }
+  if(meuPapelReal !== 'owner'){ showToast('Só o Administrador pode reabrir um ciclo encerrado (regra interna de reabertura, sem RN correspondente no PRD).'); return; }
 
   const ciclo = state.ciclos.find(c=>c.id===cicloId);
   if(ciclo.dataConsolidacao){
     const dias = Math.round((new Date() - new Date(ciclo.dataConsolidacao)) / (1000*60*60*24));
-    if(dias > 30){ showToast(`Prazo de reabertura expirado — já se passaram ${dias} dias desde a consolidação (limite: 30 dias, RN011).`); return; }
+    if(dias > 30){ showToast(`Prazo de reabertura expirado — já se passaram ${dias} dias desde a consolidação (limite: 30 dias, regra interna).`); return; }
   }
 
   const justificativa = document.getElementById('justificativa_reabertura').value.trim();
-  if(!justificativa){ showToast('Informe a justificativa da reabertura (RN010).'); return; }
+  if(!justificativa){ showToast('Informe a justificativa da reabertura.'); return; }
 
-  // RN011: preserva a revisão original — nunca sobrescreve o diagnóstico anterior.
+  // Preserva a revisão original — nunca sobrescreve o diagnóstico anterior (extensão do princípio de versionamento, RN024).
   ciclo.revisoes = ciclo.revisoes || [];
   ciclo.revisoes.push({
     numero: ciclo.revisoes.length + 1,
@@ -121,7 +121,7 @@ function reabrirCiclo(cicloId){
   atualizarCarimbo(ciclo);
   registrarAuditoria('ciclo.reaberto', { cicloId, justificativa });
   emitirEvento('ciclo.reaberto', { cicloId, justificativa });
-  showToast('Ciclo reaberto formalmente para o RH. A versão anterior foi preservada no histórico de revisões (RN011).');
+  showToast('Ciclo reaberto formalmente para o RH. A versão anterior foi preservada no histórico de revisões.');
   render();
 }
 function renderCiclosTableInteractive(lista){
@@ -153,7 +153,7 @@ function abrirNovoCiclo(){
     prazoLimite: prazo || null,
     ausencias: [],
     notas:{colaborador:{}, gestor:{}, rh:{}},
-    // RN017: retrato congelado dos indicadores válidos no momento da abertura.
+    // Extensão do princípio de versionamento (RN024): retrato congelado dos indicadores válidos no momento da abertura.
     // Mudanças futuras na Cultura Organizacional ou no Desenho de Cargo não
     // afetam este ciclo — só valem a partir do próximo ciclo aberto depois da alteração.
     indicadoresSnapshot: todosIndicadores(cargo),
@@ -167,7 +167,7 @@ function abrirNovoCiclo(){
 }
 
 function todosIndicadores(cargo, ciclo){
-  // RN017: se o ciclo já tem um "retrato" congelado dos indicadores (tirado
+  // Extensão do princípio de versionamento (RN024): se o ciclo já tem um "retrato" congelado dos indicadores (tirado
   // no momento em que foi aberto), usamos ele — assim, mudanças posteriores
   // na Cultura Organizacional (Valores, indicadores T/E) não alteram
   // retroativamente avaliações já em andamento ou encerradas.
@@ -193,7 +193,7 @@ function renderNotaTransicaoGestor(ciclo){
   if(!souGestorAnterior && !ciclo.notaTransicaoGestorAnterior) return '';
   return `
     <div class="card" style="border-left:3px solid var(--gold);">
-      <h3>Nota de transição do gestor anterior <small>Não vinculante — não entra no cálculo da avaliação (RN006)</small></h3>
+      <h3>Nota de transição do gestor anterior <small>Não vinculante — não entra no cálculo da avaliação</small></h3>
       ${ciclo.notaTransicaoGestorAnterior ? `
         <p class="small-muted">${ciclo.notaTransicaoGestorAnterior}</p>
       ` : (souGestorAnterior ? `
@@ -247,7 +247,7 @@ function renderPendenciaAvaliador(ciclo, p, cargo){
     </div>
     ${renderFlowCiclo(ciclo)}
     <div class="notice" style="border-left-color:var(--iniciar);">
-      RN023: o prazo desta avaliação venceu (${ciclo.prazoLimite}) e ${ETAPA_NOME_PENDENTE[ciclo.etapa]} ainda não concluiu sua etapa.
+      O prazo desta avaliação venceu (${ciclo.prazoLimite}) e ${ETAPA_NOME_PENDENTE[ciclo.etapa]} ainda não concluiu sua etapa.
       O ciclo não avança para o Diagnóstico automaticamente até essa pendência ser resolvida.
     </div>
     ${souAdminOuRh ? `
@@ -258,7 +258,7 @@ function renderPendenciaAvaliador(ciclo, p, cargo){
       </div>
       <div class="card">
         <h3>Ou registrar ausência formal</h3>
-        <p class="page-desc">Isso documenta que ${ETAPA_NOME_PENDENTE[ciclo.etapa]} não respondeu dentro do prazo e permite o ciclo avançar sem essa nota — o cálculo da média ponderada (RN022) se ajusta automaticamente entre quem avaliou de fato.</p>
+        <p class="page-desc">Isso documenta que ${ETAPA_NOME_PENDENTE[ciclo.etapa]} não respondeu dentro do prazo e permite o ciclo avançar sem essa nota — o cálculo da média ponderada (RN003) se ajusta automaticamente entre quem avaliou de fato.</p>
         <div class="field"><label>Motivo da ausência</label><textarea id="motivo_ausencia_ciclo" placeholder="Ex: colaborador afastado por licença médica durante toda a janela do ciclo."></textarea></div>
         <button class="btn" onclick="registrarAusenciaCiclo('${ciclo.id}')">Registrar ausência e avançar o ciclo</button>
       </div>
@@ -277,7 +277,7 @@ function renderPainelReabertura(ciclo){
   const prazoExpirado = dias !== null && dias > 30;
   return `
     <div class="card">
-      <h3>Reabertura formal (RN010/RN011) <small>Só o Administrador — até 30 dias após a consolidação, com justificativa obrigatória</small></h3>
+      <h3>Reabertura formal <small>Só o Administrador — até 30 dias após a consolidação, com justificativa obrigatória (regra interna, sem RN correspondente no PRD)</small></h3>
       ${dias !== null ? `<p class="small-muted">Consolidado há ${dias} dia(s).</p>` : ''}
       ${prazoExpirado ? `<div class="notice" style="border-left-color:var(--iniciar);">Prazo de reabertura expirado (mais de 30 dias desde a consolidação).</div>` : `
         <div class="field"><label>Justificativa da reabertura</label><textarea id="justificativa_reabertura" placeholder="Ex: RH identificou nota lançada incorretamente e precisa corrigir antes do fechamento definitivo."></textarea></div>
@@ -289,7 +289,7 @@ function renderPainelReabertura(ciclo){
 function renderHistoricoRevisoes(ciclo){
   return `
     <div class="card">
-      <h3>Histórico de revisões <small>A versão original é sempre preservada, mesmo após reabertura (RN011)</small></h3>
+      <h3>Histórico de revisões <small>A versão original é sempre preservada, mesmo após reabertura (RN024)</small></h3>
       ${ciclo.revisoes.map(r=>`
         <div style="padding:10px 0;border-bottom:1px dashed var(--line);">
           <b>Revisão ${r.numero}</b> — reaberto em ${r.reabertoEm}
@@ -335,14 +335,10 @@ function renderResumoEtapaAnterior(etapaId, ciclo, indicadores){
 function renderEtapaSequencial(ciclo, p, cargo, indicadores){
   const etapa = ciclo.etapa || 'colaborador';
   const info = ETAPA_INFO[etapa];
-  const multiplosRH = etapa==='rh' && state.configuracoes?.multiplosAvaliadoresRH;
-  const notasAtual = multiplosRH
-    ? ((ciclo.notas.rh._multiplos ||= {})[meuPerfilId] ||= {})
-    : ciclo.notas[info.chaveNotas];
+  const notasAtual = ciclo.notas[info.chaveNotas];
   const totalPreenchido = Object.keys(notasAtual).length;
   const completo = totalPreenchido === indicadores.length;
   const editavel = podeEditarEtapa(ciclo);
-  const rhSemNota = etapa==='rh' && state.configuracoes?.modoAvaliacaoRH === 'sem_nota';
   const dias = diasAteVencimento(ciclo);
   let lembretePrazo = '';
   if(dias !== null && state.configuracoes?.notificacoes?.lembretesPrazo !== false){
@@ -355,22 +351,6 @@ function renderEtapaSequencial(ciclo, p, cargo, indicadores){
   if(etapa==='lider') resumosAnteriores = renderResumoEtapaAnterior('colaborador', ciclo, indicadores);
   if(etapa==='rh') resumosAnteriores = renderResumoEtapaAnterior('colaborador', ciclo, indicadores) + renderResumoEtapaAnterior('lider', ciclo, indicadores);
 
-  if(rhSemNota){
-    return `
-      <div class="page-head">
-        <div class="eyebrow">Ciclo de Avaliação · ${ciclo.estado}</div>
-        <h1>${p.nome} <span style="color:var(--ink-faint);font-weight:400;font-size:18px;">— ${cargo.nome}</span></h1>
-        ${lembretePrazo}
-        <button class="btn btn-ghost btn-sm" onclick="state.cicloAtivo=null; render();">← Voltar para lista de ciclos</button>
-      </div>
-      ${renderFlowCiclo(ciclo)}
-      <div class="notice info">Etapa 3 de 3 — Revisão do RH <small style="display:block;margin-top:2px;">Modo configurado: RH revisa sem pontuar (RN004) — o peso dele é redistribuído entre Colaborador e Líder no cálculo.</small></div>
-      ${!editavel ? `<div class="notice">Esta etapa ainda não é sua — só o RH consegue concluir a revisão.</div>` : ''}
-      ${resumosAnteriores}
-      ${editavel ? `<button class="btn btn-primary" onclick="consolidarCiclo('${ciclo.id}')">Concluir revisão e gerar Diagnóstico</button>` : ''}
-    `;
-  }
-
   return `
     <div class="page-head">
       <div class="eyebrow">Ciclo de Avaliação · ${ciclo.estado}</div>
@@ -381,7 +361,6 @@ function renderEtapaSequencial(ciclo, p, cargo, indicadores){
     ${renderFlowCiclo(ciclo)}
 
     <div class="notice info">${info.titulo} <small style="display:block;margin-top:2px;">Peso desta etapa no cálculo final: ${info.peso}</small></div>
-    ${multiplosRH ? `<div class="notice">RN004: múltiplos avaliadores de RH ativado — ${Object.keys(ciclo.notas.rh._multiplos||{}).length} pessoa(s) de RH já registraram notas. A média simples entre elas será usada antes de ponderar os 25%.</div>` : ''}
 
     ${!editavel ? `<div class="notice">Esta etapa ainda não é sua — você pode acompanhar, mas só quem está com a etapa atual consegue preencher.</div>` : ''}
 
@@ -436,22 +415,8 @@ function lancarNota(cicloId, indicadorId, valor){
   const ciclo = state.ciclos.find(c=>c.id===cicloId);
   const etapa = ciclo.etapa || 'colaborador';
   const chave = ETAPA_INFO[etapa].chaveNotas;
-  if(etapa==='rh' && state.configuracoes?.multiplosAvaliadoresRH){
-    ciclo.notas.rh._multiplos = ciclo.notas.rh._multiplos || {};
-    ciclo.notas.rh._multiplos[meuPerfilId] = ciclo.notas.rh._multiplos[meuPerfilId] || {};
-    ciclo.notas.rh._multiplos[meuPerfilId][indicadorId] = valor;
-  } else {
-    ciclo.notas[chave][indicadorId] = valor;
-  }
+  ciclo.notas[chave][indicadorId] = valor;
   render();
-}
-// RN004 — quando há múltiplos avaliadores de RH, calcula a média simples
-// entre eles para um indicador específico (retorna undefined se ninguém avaliou).
-function mediaRHParaIndicador(ciclo, indicadorId){
-  const porAvaliador = ciclo.notas.rh._multiplos || {};
-  const valores = Object.values(porAvaliador).map(notas=>IDA_VAL[notas[indicadorId]]).filter(v=>v!==undefined);
-  if(!valores.length) return undefined;
-  return valores.reduce((a,b)=>a+b,0)/valores.length;
 }
 function consolidarCiclo(cicloId){
   const ciclo = state.ciclos.find(c=>c.id===cicloId);
@@ -463,11 +428,9 @@ function consolidarCiclo(cicloId){
   indicadores.forEach(ind=>{
     const vc = IDA_VAL[ciclo.notas.colaborador[ind.id]];
     const vg = IDA_VAL[ciclo.notas.gestor[ind.id]];
-    const vr = state.configuracoes?.multiplosAvaliadoresRH
-      ? mediaRHParaIndicador(ciclo, ind.id)
-      : IDA_VAL[ciclo.notas.rh[ind.id]];
-    // RN022: média ponderada 25/50/25. Se algum avaliador ficou sem nota
-    // (ausência formal registrada — RN023), o peso dele é redistribuído
+    const vr = IDA_VAL[ciclo.notas.rh[ind.id]];
+    // RN003: média ponderada 25/50/25. Se algum avaliador ficou sem nota
+    // (ausência formal registrada), o peso dele é redistribuído
     // proporcionalmente entre quem de fato avaliou, em vez de quebrar o cálculo.
     const pesos = [
       { valor: vc, peso: 0.25 },
@@ -491,6 +454,16 @@ function consolidarCiclo(cicloId){
   const diagnostico = {
     porIndicador, pilarMedia,
     pilarSigla: Object.fromEntries(Object.entries(pilarMedia).map(([p,m])=>[p, m!==null?classificar(m):null])),
+    // Dimensões (Telas 02/06 do Documento 06): RN008 — N, O, R alimentam Resultado;
+    // RN009 — T alimenta exclusivamente Comportamento; RN010 — E alimenta exclusivamente Potencial.
+    dimensaoMedia: (()=>{
+      const nor = ['N','O','R'].map(p=>pilarMedia[p]).filter(v=>v!==null);
+      return {
+        Resultado: nor.length ? nor.reduce((a,b)=>a+b,0)/nor.length : null,
+        Comportamento: pilarMedia.T,
+        Potencial: pilarMedia.E,
+      };
+    })(),
     geral: classificar(geralMedia),
     geralMedia,
     pontosFortes: Object.values(porIndicador).filter(i=>i.sigla==='A').map(i=>i.nome),
@@ -503,12 +476,15 @@ function consolidarCiclo(cicloId){
     // que alimenta o PDI de Mentalidade.
     potencialDesenvolvimento: pilarMedia.E!==null ? { sigla: classificar(pilarMedia.E), media: pilarMedia.E } : null,
   };
+  diagnostico.dimensaoSigla = Object.fromEntries(
+    Object.entries(diagnostico.dimensaoMedia).map(([d,m])=>[d, m!==null?classificar(m):null])
+  );
   diagnostico.resumoExecutivo = gerarResumoExecutivo(diagnostico);
   ciclo.diagnostico = diagnostico;
   ciclo.estado = 'Diagnóstico Gerado';
   ciclo.dataConsolidacao = new Date().toISOString().slice(0,10);
 
-  // PDI Desenvolvimento — RN024/RN025: ação do Banco de Ações compatível com
+  // PDI Desenvolvimento — RN019 (só indicadores Iniciar/Desenvolver) e RN023 (evidência específica por ação): ação do Banco de Ações compatível com
   // o pilar do indicador, com evidência específica (nunca genérica).
   // Prioriza casamento por Competência em comum (Dicionário de Dados, Cap. 4)
   // antes de cair no casamento genérico por pilar.
@@ -529,8 +505,8 @@ function consolidarCiclo(cicloId){
   ciclo.pdiDesenvolvimento = pdiDesenvolvimento;
   ciclo.pdiAprovado = false;
 
-  // PDI Mentalidade — RN026, sempre gerado, independente da nota.
-  // RN014: se este colaborador é a mesma PESSOA em outro cargo (mesma conta
+  // PDI Mentalidade — RN020, sempre gerado, independente da nota.
+  // Regra interna (sem RN correspondente no PRD): se este colaborador é a mesma PESSOA em outro cargo (mesma conta
   // de login vinculada), reaproveita o PDI de Mentalidade mais recente dela,
   // porque a mentalidade é única por pessoa, não por cargo.
   const colaboradorAtual = state.colaboradores.find(c=>c.id===ciclo.colaboradorId);
@@ -594,7 +570,7 @@ function gerarResumoExecutivo(d){
   return frases.join(' ');
 }
 
-/* ---------- 4.10 — Evidência específica por ação (RN025) ----------
+/* ---------- 4.10 — Evidência específica por ação (RN023) ----------
    Nunca uma frase genérica: combina a ação do Banco de Ações com o
    indicador de origem, e adapta o tipo de evidência esperada à categoria
    da ação (uma certificação não se comprova do mesmo jeito que uma mentoria). */
@@ -613,10 +589,20 @@ function gerarEvidenciaEspecifica(acao, indicadorItem){
 
 function diagnosticoSummaryHTML(ciclo){
   const d = ciclo.diagnostico;
+  const DIMENSAO_LABEL = { Resultado:'Resultado', Comportamento:'Comportamento', Potencial:'Potencial' };
   return `
     <div style="margin:14px 0;">
       <span class="pill ${pillClass(d.geral)}" style="font-size:13px;padding:6px 14px;">Classificação geral: ${pillLabel(d.geral)}</span>
     </div>
+    <div class="grid3">
+      ${Object.entries(d.dimensaoSigla||{}).map(([dim,sig])=>sig?`
+        <div class="card" style="margin-bottom:0;padding:14px;">
+          <div style="font-family:var(--serif-display);font-size:14px;">${DIMENSAO_LABEL[dim]}</div>
+          <span class="pill ${pillClass(sig)}" style="margin-top:8px;">${pillLabel(sig)}</span>
+        </div>
+      `:'').join('')}
+    </div>
+    <div class="small-muted" style="margin:12px 0 4px;">Detalhamento por Pilar</div>
     <div class="grid3">
       ${Object.entries(d.pilarSigla).map(([p,sig])=>sig?`
         <div class="card" style="margin-bottom:0;padding:14px;">
@@ -728,6 +714,12 @@ function renderResultadoCiclo(ciclo, cargo, indicadores){
             <span class="pill ${pillClass(item.classificacao)}">${pillLabel(item.classificacao)}</span>
           </div>
           ${editavelPDI ? `
+            <div class="field"><label>Trocar por outra ação do Banco de Ações <small>(filtrado por pilar ${item.pilar})</small></label>
+              <select onchange="escolherAcaoDoBanco('${ciclo.id}',${idx},this.value)">
+                <option value="">— manter ação atual / personalizada —</option>
+                ${state.bancoAcoes.filter(a=>a.pilares.includes(item.pilar)).map(a=>`<option value="${a.id}">${a.titulo} (${a.categoria})</option>`).join('')}
+              </select>
+            </div>
             <div class="field"><label>Ação</label><input value="${item.acaoSugerida}" onchange="editarItemPDI('${ciclo.id}',${idx},'acaoSugerida',this.value)"></div>
             <div class="field"><label>Evidência esperada</label><input value="${item.evidenciaSugerida}" onchange="editarItemPDI('${ciclo.id}',${idx},'evidenciaSugerida',this.value)"></div>
             <div class="grid2">
@@ -751,7 +743,7 @@ function renderResultadoCiclo(ciclo, cargo, indicadores){
 
       ${editavelPDI ? `
         <div class="card" style="background:var(--surface-2);margin-top:14px;">
-          <h3 style="font-size:14px;">Adicionar ação personalizada ao PDI <small>Sempre vinculada a um indicador de origem (RN025) — nunca solta</small></h3>
+          <h3 style="font-size:14px;">Adicionar ação personalizada ao PDI <small>Sempre vinculada a um indicador de origem (RN019) — nunca solta</small></h3>
           ${elegiveisPDI.length ? `
             <div class="field"><label>Indicador de origem</label>
               <select id="novo_pdi_indicador_${ciclo.id}">
@@ -775,9 +767,10 @@ function renderResultadoCiclo(ciclo, cargo, indicadores){
     </div>
 
     <div class="card">
-      <h3>PDI de Mentalidade <small>Obrigatório para todo colaborador, todo ciclo, independentemente da nota (RN026)</small></h3>
-      ${ciclo.pdiMentalidadeCompartilhadoDe ? `<div class="notice">RN014: esta pessoa também está vinculada a outro cargo. Este PDI de Mentalidade começou com os valores mais recentes registrados no outro cargo (mentalidade é única por pessoa, não por cargo) — ajustes feitos aqui não sincronizam automaticamente de volta.</div>` : ''}
-      ${['Conhecimento','Ambiente','Relacoes'].map(eixo=>{
+      <h3>PDI de Mentalidade <small>Obrigatório para todo colaborador, todo ciclo, independentemente da nota (RN020)</small></h3>
+      <p class="small-muted" style="font-style:italic;margin:-4px 0 12px;">"Nível se constrói. Este PDI vale mesmo quando você está indo bem."</p>
+      ${ciclo.pdiMentalidadeCompartilhadoDe ? `<div class="notice">Esta pessoa também está vinculada a outro cargo. Este PDI de Mentalidade começou com os valores mais recentes registrados no outro cargo (mentalidade é única por pessoa, não por cargo) — ajustes feitos aqui não sincronizam automaticamente de volta.</div>` : ''}
+      ${/* RN021: PDI de Mentalidade cobre obrigatoriamente os 3 pilares */ ['Conhecimento','Ambiente','Relacoes'].map(eixo=>{
         const v = ciclo.pdiMentalidade[eixo];
         return `
         <div class="pdi-axis">
@@ -805,6 +798,13 @@ function renderResultadoCiclo(ciclo, cargo, indicadores){
         <p class="small-muted" style="margin-top:8px;">Aprovado em ${ciclo.dataAprovacaoPDI||''}. A construção está encerrada — o PDI agora só recebe atualizações de status/evidência em acompanhamento.</p>
       ` : `
         <p class="page-desc">Enquanto não for aprovado, Gestor e Colaborador ainda podem ajustar o PDI juntos.</p>
+        ${(()=>{
+          const { semPrazoDesenvolvimento, semPrazoMentalidade } = acoesPDISemPrazoOuResponsavel(ciclo);
+          if(!semPrazoDesenvolvimento.length && !semPrazoMentalidade.length) return '';
+          return `<div class="notice">RN022: toda ação precisa de responsável e prazo definidos antes da aprovação. Pendente em: ${
+            [...semPrazoDesenvolvimento.map(i=>i.indicador), ...semPrazoMentalidade].join(', ')
+          }.</div>`;
+        })()}
         ${podeAprovar ? `<button class="btn btn-primary" onclick="aprovarPDI('${ciclo.id}')">Aprovar PDI e encerrar construção</button>` : '<div class="small-muted">Só o Gestor (ou o Administrador) pode aprovar.</div>'}
       `}
     </div>
@@ -840,9 +840,10 @@ function renderAcompanhamentoItemPDI(ciclo, item, idx){
   }
   if(item.evidenciaRegistrada){
     const podeValidar = souGestorDoCiclo(ciclo) || meuPapelReal==='owner';
+    const nomeColaborador = state.colaboradores.find(c=>c.id===ciclo.colaboradorId)?.nome || 'colaborador';
     return `
       <div class="notice">
-        <b>Aguardando validação do Gestor</b>
+        <b>${podeValidar ? `Evidência recebida de ${nomeColaborador}. Validar agora?` : 'Aguardando validação do Gestor'}</b>
         <div class="small-muted" style="margin-top:6px;">Evidência registrada: ${item.evidenciaRegistrada}</div>
       </div>
       ${podeValidar ? `<button class="btn btn-primary btn-sm" onclick="validarEvidenciaPDI('${ciclo.id}',${idx})">Validar evidência</button>` : '<div class="small-muted">Aguardando o Gestor validar.</div>'}
@@ -864,7 +865,7 @@ function registrarEvidenciaPDI(cicloId, idx){
   ciclo.pdiDesenvolvimento[idx].evidenciaRegistrada = texto;
   ciclo.pdiDesenvolvimento[idx].status = 'aguardando validação';
   atualizarCarimbo(ciclo);
-  showToast('Evidência registrada — aguardando validação do Gestor.');
+  showToast('Evidência enviada. Aguardando validação do seu gestor.');
   render();
 }
 function validarEvidenciaPDI(cicloId, idx){
@@ -882,6 +883,20 @@ function editarItemPDI(cicloId, idx, campo, valor){
   const ciclo = state.ciclos.find(c=>c.id===cicloId);
   ciclo.pdiDesenvolvimento[idx][campo] = valor;
   atualizarCarimbo(ciclo);
+}
+function escolherAcaoDoBanco(cicloId, idx, acaoId){
+  if(!acaoId) return;
+  const ciclo = state.ciclos.find(c=>c.id===cicloId);
+  const acao = state.bancoAcoes.find(a=>a.id===acaoId);
+  if(!acao) return;
+  const item = ciclo.pdiDesenvolvimento[idx];
+  item.acaoSugerida = acao.titulo;
+  item.categoriaAcao = acao.categoria;
+  item.evidenciaSugerida = gerarEvidenciaEspecifica(acao, { nome: item.indicador, pilar: item.pilar });
+  item.prazo = acao.prazoSugerido;
+  atualizarCarimbo(ciclo);
+  showToast('Ação substituída pela escolhida no Banco de Ações.');
+  render();
 }
 function removerItemPDI(cicloId, idx){
   const ciclo = state.ciclos.find(c=>c.id===cicloId);
@@ -908,8 +923,28 @@ function adicionarItemPDI(cicloId){
   showToast('Ação personalizada adicionada ao PDI.');
   render();
 }
+function acoesPDISemPrazoOuResponsavel(ciclo){
+  // RN022: toda Ação do PDI precisa de responsável e prazo definidos para ser
+  // considerada "ativa". 'A combinar' é um placeholder, não um prazo real.
+  const semPrazoDesenvolvimento = (ciclo.pdiDesenvolvimento||[]).filter(item =>
+    !item.responsavel || !item.prazo || item.prazo === 'A combinar'
+  );
+  const eixosMentalidade = ['Conhecimento','Ambiente','Relacoes'];
+  const semPrazoMentalidade = ciclo.pdiMentalidade
+    ? eixosMentalidade.filter(eixo => {
+        const v = ciclo.pdiMentalidade[eixo];
+        return v && v.oQueVouFazer && (!v.responsavel || !v.prazo);
+      })
+    : [];
+  return { semPrazoDesenvolvimento, semPrazoMentalidade };
+}
 function aprovarPDI(cicloId){
   const ciclo = state.ciclos.find(c=>c.id===cicloId);
+  const { semPrazoDesenvolvimento, semPrazoMentalidade } = acoesPDISemPrazoOuResponsavel(ciclo);
+  if(semPrazoDesenvolvimento.length || semPrazoMentalidade.length){
+    showToast('Toda ação precisa de responsável e prazo (RN022). Complete os campos pendentes antes de aprovar.');
+    return;
+  }
   ciclo.pdiAprovado = true;
   ciclo.dataAprovacaoPDI = new Date().toISOString().slice(0,10);
   atualizarCarimbo(ciclo);
@@ -936,7 +971,7 @@ function iniciarAcompanhamento(cicloId){
 }
 function encerrarCiclo(cicloId){
   const ciclo = state.ciclos.find(c=>c.id===cicloId);
-  if(!ciclo.pdiMentalidade){ showToast('Não é possível encerrar: o PDI de Mentalidade precisa existir para todo ciclo (RN026).'); return; }
+  if(!ciclo.pdiMentalidade){ showToast('Não é possível encerrar: o PDI de Mentalidade precisa existir para todo ciclo (RN020).'); return; }
   ciclo.estado = 'Encerrado';
   emitirEvento('avaliacao.encerrada', { cicloId });
   showToast('Ciclo encerrado. Dados preservados no histórico — nunca apagados (regra de histórico).');

@@ -8,8 +8,8 @@ function podeEditarEtapa(ciclo){
 }
 function cicloVisivelParaMim(ciclo){
   if(meuPapelReal === 'owner' || meuPapelReal === 'rh') return true;
-  if(meuPapelReal === 'lider' && meuEscopoEstendido) return true; // RN029: exceção explícita do Administrador
-  if(meuPapelReal === 'lider' && ciclo.gestorAnteriorTransicao === meuPerfilId) return true; // RN006: nota de transição
+  if(meuPapelReal === 'lider' && meuEscopoEstendido) return true; // Escopo estendido: exceção explícita do Administrador (extensão de RBAC — PRD Cap. 3)
+  if(meuPapelReal === 'lider' && ciclo.gestorAnteriorTransicao === meuPerfilId) return true; // Nota de transição do gestor anterior (regra interna, sem RN correspondente no PRD)
   const colaborador = state.colaboradores.find(c=>c.id===ciclo.colaboradorId);
   if(meuPapelReal === 'lider') return colaborador?.gestorPerfilId === meuPerfilId;
   if(meuPapelReal === 'colaborador') return colaborador?.perfilId === meuPerfilId;

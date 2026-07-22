@@ -47,7 +47,7 @@ function pageInteligencia(){
 
     ${souAdminOuRh ? `
     <div class="card">
-      <h3>Adicionar ação customizada da empresa <small>Fica claramente sinalizada como extensão local, sem se misturar com a curadoria original da metodologia (RN027)</small></h3>
+      <h3>Adicionar ação customizada da empresa <small>Fica claramente sinalizada como extensão local, sem se misturar com a curadoria original da metodologia (regra interna, sem RN correspondente no PRD)</small></h3>
       <div class="grid2">
         <div class="field"><label>Título da ação</label><input id="na_titulo" placeholder="Ex: Job rotation de 1 semana na área comercial"></div>
         <div class="field"><label>Categoria</label>
@@ -101,7 +101,7 @@ function addAcaoCustomizada(){
   const competencias = document.getElementById('na_competencias').value.split(',').map(s=>s.trim()).filter(Boolean);
   const pilares = Array.from(document.querySelectorAll('.na_pilar:checked')).map(el=>el.value);
   if(!titulo){ showToast('Informe o título da ação.'); return; }
-  if(!pilares.length){ showToast('Selecione ao menos um pilar aplicável (RN027 — necessário para o matching automático do PDI).'); return; }
+  if(!pilares.length){ showToast('Selecione ao menos um pilar aplicável (necessário para o matching automático do PDI).'); return; }
   state.bancoAcoes.push({ id: uid(), categoria, titulo, pilares, competencias, prazoSugerido: prazo||'a combinar', origem:'empresa' });
   registrarAuditoria('banco_acoes.customizada_criada', { titulo, categoria });
   showToast('Ação customizada adicionada — já disponível para sugestão em novos PDIs.');

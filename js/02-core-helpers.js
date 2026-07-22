@@ -61,7 +61,7 @@ function pillClass(sig){ return sig==='I'?'pill-iniciar':sig==='D'?'pill-desenvo
 function pillLabel(sig){ return IDA_LABEL[sig]; }
 
 /* ---------- Estado inicial em branco (dados reais vêm do Supabase) ---------- */
-/* ---------- RN031: campos de auditoria padrão em toda entidade principal ----------
+/* ---------- RN026: campos de auditoria padrão em toda entidade principal ----------
    criado_por / criado_em / atualizado_por / atualizado_em + vínculo ao tenant. */
 function novoCarimbo(){
   const agora = new Date().toISOString();
@@ -112,8 +112,8 @@ function seed(){
   state.ciclos = [];
   state.configuracoes = {
     periodicidadeCiclo: 'Anual',
-    modoAvaliacaoRH: 'com_nota', // 'com_nota' (25%) | 'sem_nota' (RH só revisa)
-    multiplosAvaliadoresRH: false, // RN004 — permite mais de um RH avaliando (média simples entre eles)
+    // Pesos dos avaliadores travados em 25/50/25 (RN003, PRD Documento 04) —
+    // não é mais configurável (era uma extensão fora do PRD; removida por decisão de produto).
     notificacoes: { lembretesPrazo: true },
     identidadeVisual: { logoUrl:'', corPrimaria:'#0a2647', corSecundaria:'#e99610' },
     // RNF002 — permissões configuráveis pelo Administrador (exceções ao
@@ -128,5 +128,5 @@ function seed(){
 
 /* ---------- Banco de Inteligência — biblioteca de competências e
    indicadores sugeridos por família de cargo (Cap. 6 do doc. funcional).
-   RN028: estas sugestões nunca são aplicadas automaticamente — sempre
+   Cap. 11.5 (Governança de IA): estas sugestões nunca são aplicadas automaticamente — sempre
    apresentadas como rascunho editável, exigindo confirmação humana. ---------- */

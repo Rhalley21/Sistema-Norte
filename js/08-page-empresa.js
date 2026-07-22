@@ -100,7 +100,7 @@ function pageEmpresa(){
     <button class="btn btn-primary" onclick="salvarEmpresa()">Salvar e ativar empresa</button>
     <div id="erro_empresa"></div>
 
-    <div class="notice info">RN009 (PRD): nenhum ciclo de avaliação pode abrir sem empresa ativa, unidade cadastrada, Desenho de Cargo publicado e colaborador vinculado. O módulo Estrutura Organizacional só é liberado quando a empresa está em estado "Ativa".</div>
+    <div class="notice info">Pré-requisitos internos de abertura de ciclo (RN001 do PRD cobre a exigência de Desenho de Cargo publicado): nenhum ciclo de avaliação pode abrir sem empresa ativa, unidade cadastrada, Desenho de Cargo publicado e colaborador vinculado. O módulo Estrutura Organizacional só é liberado quando a empresa está em estado "Ativa".</div>
   `;
 }
 
@@ -143,7 +143,7 @@ async function salvarEmpresa(){
   const { error: erroCnpj } = await sb.from('empresas').update({ cnpj }).eq('id', empresaIdAtual);
   if(erroCnpj){
     if(erroCnpj.code === '23505' || /duplicate|unique/i.test(erroCnpj.message||'')){
-      erroEl.innerHTML = '<p class="small-muted" style="color:var(--iniciar);margin-top:8px;">Este CNPJ já está cadastrado no sistema por outra empresa. Se isso for um erro, entre em contato com o suporte.</p>';
+      erroEl.innerHTML = '<p class="small-muted" style="color:var(--iniciar);margin-top:8px;">CNPJ já cadastrado nesta instância. Se isso for um erro, entre em contato com o suporte.</p>';
     } else {
       erroEl.innerHTML = '<p class="small-muted" style="color:var(--iniciar);margin-top:8px;">Não foi possível salvar agora. Tente novamente.</p>';
     }
@@ -175,7 +175,7 @@ async function salvarEmpresa(){
 
   if(!jaEstavaAtiva){
     registrarAuditoria('empresa.criada', { razaoSocial: state.empresa.razaoSocial, cnpj });
-    showToast('Empresa ativada. Módulo Estrutura Organizacional liberado.');
+    showToast('Empresa cadastrada com sucesso. Módulo Estrutura Organizacional liberado.');
   } else {
     const camposComparar = ['razaoSocial','nomeFantasia','cnpj','segmento','porte','tipo','logotipo'];
     const alteracoes = camposComparar

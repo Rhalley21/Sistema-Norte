@@ -19,16 +19,7 @@ function pageConfiguracoes(){
           ${['Anual','Semestral','Trimestral'].map(v=>`<option value="${v}" ${c.periodicidadeCiclo===v?'selected':''}>${v}</option>`).join('')}
         </select>
       </div>
-      <div class="field"><label>Modo de avaliação do RH (RN004)</label>
-        <select id="cfg_modo_rh">
-          <option value="com_nota" ${c.modoAvaliacaoRH==='com_nota'?'selected':''}>RH avalia com nota (peso 25%)</option>
-          <option value="sem_nota" ${c.modoAvaliacaoRH==='sem_nota'?'selected':''}>RH só revisa, sem pontuar (peso redistribuído entre Colaborador e Líder)</option>
-        </select>
-      </div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 0;">
-        <input type="checkbox" id="cfg_multiplos_rh" ${c.multiplosAvaliadoresRH?'checked':''}>
-        Permitir mais de uma pessoa de RH avaliando (RN004) — o sistema calcula a média simples entre elas antes de ponderar os 25%
-      </label>
+      <div class="notice">Avaliadores e pesos: Colaborador 25% / Líder Direto 50% / RH 25% — fixo conforme RN003 do PRD (Documento 04), sem exceção configurável.</div>
     </div>
 
     <div class="card">
@@ -41,7 +32,7 @@ function pageConfiguracoes(){
           <tr><td><span class="pill pill-alavancar">Alavancar</span></td><td class="small-muted">0,67 a 1,00</td></tr>
         </tbody>
       </table>
-      <div class="notice">RN022 (PRD): estas faixas são configuráveis pela metodologia, não pelo cliente — por isso aparecem aqui só como consulta, sem opção de edição.</div>
+      <div class="notice">RN007/RN031 (PRD): estas faixas são definidas pela metodologia e a relação Pilar → Dimensão é fixa — não configuráveis pelo cliente — por isso aparecem aqui só como consulta, sem opção de edição.</div>
     </div>
 
     <div class="card">
@@ -86,8 +77,6 @@ function pageConfiguracoes(){
 function salvarConfiguracoes(){
   state.configuracoes = {
     periodicidadeCiclo: document.getElementById('cfg_periodicidade').value,
-    modoAvaliacaoRH: document.getElementById('cfg_modo_rh').value,
-    multiplosAvaliadoresRH: document.getElementById('cfg_multiplos_rh').checked,
     notificacoes: { lembretesPrazo: document.getElementById('cfg_lembretes').checked },
     identidadeVisual: {
       logoUrl: document.getElementById('cfg_logo').value,

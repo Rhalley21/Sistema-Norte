@@ -36,6 +36,11 @@ function renderPendenciasAdmin(){
       ${itens.map(i=>`<div class="pendencia-item"><span>${i.texto}</span><button class="btn btn-sm" onclick="goto('${i.rota}')">Resolver →</button></div>`).join('')}
     </div>`;
 }
+function diasDesdeAbertura(ciclo){
+  const hoje = new Date(new Date().toISOString().slice(0,10));
+  const abertura = new Date(ciclo.dataAbertura);
+  return Math.round((hoje - abertura) / (1000*60*60*24));
+}
 function renderPendenciasRH(){
   const aguardandoRH = state.ciclos.filter(c=>c.etapa==='rh' && (c.estado==='Aberto'||c.estado==='Em Consolidação'));
   const pendencias = state.ciclos.filter(c=>c.estado==='Pendência de Avaliador');
@@ -44,23 +49,50 @@ function renderPendenciasRH(){
     return cargo?.desenho.aprovado && !cargo.descontinuado && p.unidadeId && p.setorId && p.gestorPerfilId
       && !state.ciclos.some(c=>c.colaboradorId===p.id && c.estado!=='Encerrado');
   });
-  if(!aguardandoRH.length && !pendencias.length && !semCiclo.length) return '';
+  // Alerta: ciclos abertos há mais de 15 dias sem conclusão.
+  const ciclosAntigos = state.ciclos.filter(c=>
+    (c.estado==='Aberto'||c.estado==='Em Consolidação'||c.estado==='Pendência de Avaliador') && diasDesdeAbertura(c) > 15
+  );
+  // Ciclo extraordinário (pós-promoção) com prazo vencendo nos próximos 7 dias.
+  const promocaoVencendo = state.ciclos.filter(c=>{
+    if(!c.extraordinario || c.estado==='Encerrado') return false;
+    const dias = diasAteVencimento(c);
+    return dias !== null && dias >= 0 && dias <= 7;
+  });
+  if(!aguardandoRH.length && !pendencias.length && !semCiclo.length && !ciclosAntigos.length && !promocaoVencendo.length) return '';
   return `
     <div class="card" style="border-left:3px solid var(--gold);">
       <h3>Suas pendências agora</h3>
       ${aguardandoRH.length? `<div class="pendencia-item"><span>Você tem <b>${aguardandoRH.length}</b> avaliação(ões) aguardando sua etapa</span><button class="btn btn-sm" onclick="goto('ciclos')">Avaliar →</button></div>` : ''}
       ${pendencias.length? `<div class="pendencia-item"><span><b>${pendencias.length}</b> ciclo(s) com pendência de avaliador vencida</span><button class="btn btn-sm" onclick="goto('ciclos')">Resolver →</button></div>` : ''}
       ${semCiclo.length? `<div class="pendencia-item"><span><b>${semCiclo.length}</b> colaborador(es) elegível(is) ainda sem ciclo aberto</span><button class="btn btn-sm" onclick="goto('ciclos')">Abrir ciclo →</button></div>` : ''}
+      ${ciclosAntigos.length? `<div class="pendencia-item"><span><b>${ciclosAntigos.length}</b> colaborador(es) estão com Ciclo pendente há mais de 15 dias</span><button class="btn btn-sm" onclick="goto('ciclos')">Ver →</button></div>` : ''}
+      ${promocaoVencendo.length? `<div class="pendencia-item"><span><b>${promocaoVencendo.length}</b> ciclo(s) extraordinário(s) pós-promoção (RN016) vencendo nos próximos 7 dias</span><button class="btn btn-sm" onclick="goto('ciclos')">Ver →</button></div>` : ''}
     </div>`;
 }
 function renderPendenciasGestor(){
   const minhaEquipe = state.colaboradores.filter(p=>p.gestorPerfilId===meuPerfilId);
   const aguardandoMim = state.ciclos.filter(c=>c.etapa==='lider' && (c.estado==='Aberto'||c.estado==='Em Consolidação') && minhaEquipe.some(p=>p.id===c.colaboradorId));
   const semFeedback = state.ciclos.filter(c=>c.diagnostico && !c.reuniaoFeedback?.realizada && minhaEquipe.some(p=>p.id===c.colaboradorId));
-  if(!aguardandoMim.length && !semFeedback.length) return '';
+
+  // Progresso da avaliação da equipe nesta rodada (Fluxo de Navegação, Cap. 3.3).
+  const ciclosDaEquipe = state.ciclos.filter(c=>minhaEquipe.some(p=>p.id===c.colaboradorId) && c.estado!=='Encerrado');
+  let progressoEquipe = '';
+  if(ciclosDaEquipe.length){
+    // Já avaliado pelo Gestor quando o ciclo já passou da etapa 'lider' (está em 'rh') ou já tem diagnóstico.
+    const concluidosPorMim = ciclosDaEquipe.filter(c => c.etapa==='rh' || !!c.diagnostico).length;
+    const faltam = ciclosDaEquipe.length - concluidosPorMim;
+    const percentual = Math.round((concluidosPorMim / ciclosDaEquipe.length) * 100);
+    if(faltam > 0){
+      progressoEquipe = `<div class="pendencia-item"><span>Sua avaliação da equipe está <b>${percentual}%</b> concluída. Faltam <b>${faltam}</b> colaborador(es).</span><button class="btn btn-sm" onclick="goto('ciclos')">Continuar →</button></div>`;
+    }
+  }
+
+  if(!aguardandoMim.length && !semFeedback.length && !progressoEquipe) return '';
   return `
     <div class="card" style="border-left:3px solid var(--gold);">
       <h3>Você tem pendências</h3>
+      ${progressoEquipe}
       ${aguardandoMim.length? `<div class="pendencia-item"><span>Você tem <b>${aguardandoMim.length}</b> avaliação(ões) da equipe aguardando você</span><button class="btn btn-sm" onclick="goto('ciclos')">Avaliar →</button></div>` : ''}
       ${semFeedback.length? `<div class="pendencia-item"><span><b>${semFeedback.length}</b> reunião(ões) de feedback ainda não registrada(s)</span><button class="btn btn-sm" onclick="goto('ciclos')">Registrar →</button></div>` : ''}
     </div>`;
@@ -99,7 +131,7 @@ function pageDashboard(){
   } else if(state.role==='gestor' && !meuEscopoEstendido){
     body = renderPendenciasGestor() + renderDashboardGestor();
   } else if(state.role==='gestor' && meuEscopoEstendido){
-    body = `<div class="notice info">RN029: você tem uma exceção explícita concedida pelo Administrador para ver os dados consolidados de toda a empresa, além da sua própria equipe.</div>` + renderPendenciasGestor() + renderDashboardAdmin(abertos, pdisAtivos, encerrados);
+    body = `<div class="notice info">Escopo estendido: você tem uma exceção explícita concedida pelo Administrador para ver os dados consolidados de toda a empresa, além da sua própria equipe.</div>` + renderPendenciasGestor() + renderDashboardAdmin(abertos, pdisAtivos, encerrados);
   } else if(state.role==='rh'){
     body = renderPendenciasRH() + renderDashboardRH();
   } else {
@@ -286,6 +318,7 @@ function renderDashboardGestor(){
   const meusCiclos = state.ciclos.filter(c=>minhaEquipe.some(p=>p.id===c.colaboradorId));
   const abertosEquipe = meusCiclos.filter(c=>c.estado==='Aberto'||c.estado==='Em Consolidação').length;
   const pdisEquipe = meusCiclos.filter(c=>c.pdiDesenvolvimento?.length || c.pdiMentalidade);
+  const mentalidadePendentes = meusCiclos.filter(c=>c.diagnostico && pdiMentalidadeNaoIniciado(c) && c.estado!=='Encerrado').length;
 
   return `
     <div class="kpi-grid">
@@ -293,17 +326,28 @@ function renderDashboardGestor(){
       <div class="kpi"><div class="n">${abertosEquipe}</div><div class="l">Ciclos em andamento</div></div>
       <div class="kpi"><div class="n">${pdisEquipe.length}</div><div class="l">PDIs ativos na equipe</div></div>
     </div>
+    ${mentalidadePendentes ? `<div class="notice" style="border-left-color:var(--iniciar);">⚠ ${mentalidadePendentes} PDI(s) de Mentalidade pendente(s) — obrigatórios em todo ciclo (RN020).</div>` : ''}
     <div class="card">
-      <h3>Desempenho e evolução da equipe <small>Última classificação geral de cada colaborador</small></h3>
-      <table><thead><tr><th>Colaborador</th><th>Cargo</th><th>Última classificação</th><th>PDI</th></tr></thead><tbody>
+      <h3>Desempenho e evolução da equipe <small>Última classificação de cada colaborador, comparada com o ciclo anterior</small></h3>
+      <table><thead><tr><th>Colaborador</th><th>Cargo</th><th>Ciclo anterior</th><th>Ciclo atual</th><th>Evolução</th><th>PDI</th></tr></thead><tbody>
         ${minhaEquipe.map(p=>{
           const cargo = state.cargos.find(c=>c.id===p.cargoId);
-          const ultimo = state.ciclos.filter(c=>c.colaboradorId===p.id && c.diagnostico).slice().sort((a,b)=>a.dataAbertura.localeCompare(b.dataAbertura)).pop();
+          const historico = state.ciclos.filter(c=>c.colaboradorId===p.id && c.diagnostico).slice().sort((a,b)=>a.dataAbertura.localeCompare(b.dataAbertura));
+          const ultimo = historico[historico.length-1];
+          const anterior = historico[historico.length-2];
           const temPdi = ultimo && (ultimo.pdiDesenvolvimento?.length || ultimo.pdiMentalidade);
+          const ordemIDA = {I:0,D:1,A:2};
+          let evolucao = '<span class="small-muted">—</span>';
+          if(ultimo && anterior){
+            const diff = ordemIDA[ultimo.diagnostico.geral] - ordemIDA[anterior.diagnostico.geral];
+            evolucao = diff>0 ? '<span style="color:var(--alavancar);">↑ Melhorou</span>' : diff<0 ? '<span style="color:var(--iniciar);">↓ Piorou</span>' : '<span class="small-muted">→ Manteve</span>';
+          }
           return `<tr>
             <td><b>${p.nome}</b></td>
             <td class="small-muted">${cargo?cargo.nome:'—'}</td>
+            <td>${anterior ? `<span class="pill ${pillClass(anterior.diagnostico.geral)}">${pillLabel(anterior.diagnostico.geral)}</span>` : '<span class="small-muted">Sem ciclo anterior</span>'}</td>
             <td>${ultimo ? `<span class="pill ${pillClass(ultimo.diagnostico.geral)}">${pillLabel(ultimo.diagnostico.geral)}</span>` : '<span class="small-muted">Sem diagnóstico ainda</span>'}</td>
+            <td>${evolucao}</td>
             <td class="small-muted">${temPdi ? 'Ativo — acompanhar' : '—'}</td>
           </tr>`;
         }).join('')}
@@ -331,7 +375,7 @@ function renderDashboardColaborador(){
       <h3>${meuRegistro.nome} <small>${meuCargo?meuCargo.nome:'—'}</small></h3>
       ${cicloAtual ? `
         <p class="page-desc">Ciclo atual: <b>${cicloAtual.estado}</b></p>
-        ${cicloAtual.diagnostico? diagnosticoSummaryHTML(cicloAtual) : '<p class="small-muted">Aguardando consolidação das três notas para gerar o diagnóstico.</p>'}
+        ${cicloAtual.diagnostico? diagnosticoSummaryHTML(cicloAtual) : '<p class="small-muted">Sua primeira avaliação ainda não foi concluída.</p>'}
         ${cicloAtual.diagnostico ? `<button class="btn btn-sm" style="margin-top:10px;" onclick="abrirCiclo('${cicloAtual.id}')">Ver meu PDI completo →</button>` : ''}
       `: '<div class="empty">Nenhum ciclo de avaliação aberto no momento.</div>'}
     </div>

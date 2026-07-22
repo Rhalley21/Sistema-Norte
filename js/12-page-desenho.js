@@ -12,7 +12,7 @@ function pageDesenho(){
     <div class="page-head">
       <div class="eyebrow">Etapa 05 · Cargos</div>
       <h1>Desenho de Cargo</h1>
-      <p class="page-desc">Documento-mestre que sustenta a avaliação. Nenhum colaborador é avaliado sem um Desenho de Cargo publicado (RN018/RN019).</p>
+      <p class="page-desc">Documento-mestre que sustenta a avaliação. Nenhum colaborador é avaliado sem um Desenho de Cargo publicado (RN001), e toda alteração gera nova versão, nunca sobrescreve (RN024).</p>
     </div>
 
     <div class="card">
@@ -30,7 +30,7 @@ function pageDesenho(){
       <div class="field"><label>Atividades específicas (uma por linha)</label><textarea id="d_atividades">${d.atividadesEspecificas.join('\\n')}</textarea></div>
       <div class="field"><label>Categoria obrigatória: Cultura e Postura Institucional</label><textarea id="d_cultura">${d.culturaPostura}</textarea></div>
       <div class="field"><label>Requisitos mínimos</label><textarea id="d_requisitos">${d.requisitos}</textarea></div>
-      ${jaPublicadoAntes ? `<div class="field"><label>Motivo da alteração <small>(obrigatório — toda nova versão precisa registrar por que mudou, RN019)</small></label><textarea id="d_motivo" placeholder="Ex: Ajuste de indicadores após revisão do RH em conjunto com a liderança da área."></textarea></div>` : ''}
+      ${jaPublicadoAntes ? `<div class="field"><label>Motivo da alteração <small>(obrigatório — toda nova versão precisa registrar por que mudou, RN024)</small></label><textarea id="d_motivo" placeholder="Ex: Ajuste de indicadores após revisão do RH em conjunto com a liderança da área."></textarea></div>` : ''}
       <button class="btn" onclick="salvarRascunhoDesenho('${cargo.id}')">Salvar rascunho</button>
       <button class="btn btn-primary" onclick="publicarDesenho('${cargo.id}')" ${indicadoresOk(cargo)?'':'disabled'}>Publicar versão ${jaPublicadoAntes ? d.versao+1 : d.versao}</button>
       ${!indicadoresOk(cargo)?'<div class="small-muted" style="margin-top:8px;">É preciso ao menos um indicador em cada pilar (N, O, R) para publicar.</div>':''}
@@ -50,7 +50,7 @@ function pageDesenho(){
     </div>
 
     <div class="card">
-      <h3>Pilares herdados da empresa <small>T e E são universais — não editáveis por cargo (RN018)</small></h3>
+      <h3>Pilares herdados da empresa <small>T e E são universais — não editáveis por cargo (RN012)</small></h3>
       <div class="grid2">
         <div><b class="tag tag-t">T · Time</b><div class="chip-row">${state.cultura.indicadoresT.map(i=>`<div class="chip">${i.nome}</div>`).join('')||'<span class="small-muted">Configure em Cultura Organizacional</span>'}</div></div>
         <div><b class="tag tag-e">E · Evolução</b><div class="chip-row">${state.cultura.indicadoresE.map(i=>`<div class="chip">${i.nome}</div>`).join('')||'<span class="small-muted">Configure em Cultura Organizacional</span>'}</div></div>
@@ -64,7 +64,7 @@ function pageDesenho(){
 function renderHistoricoVersoes(cargo){
   return `
     <div class="card">
-      <h3>Histórico de versões <small>Versões anteriores nunca são apagadas (RN019)</small></h3>
+      <h3>Histórico de versões <small>Versões anteriores nunca são apagadas (RN024)</small></h3>
       <table>
         <thead><tr><th>Versão</th><th>Publicada em</th><th>Motivo</th></tr></thead>
         <tbody>
@@ -204,7 +204,7 @@ function publicarDesenho(cargoId){
   let motivo = 'Publicação inicial do Desenho de Cargo.';
   if(jaPublicadoAntes){
     motivo = document.getElementById('d_motivo').value.trim();
-    if(!motivo){ showToast('Informe o motivo da alteração para publicar uma nova versão (RN019).'); return; }
+    if(!motivo){ showToast('Informe o motivo da alteração para publicar uma nova versão (RN024).'); return; }
   }
 
   if(!indicadoresOk(cargo)){ showToast('É preciso ao menos um indicador em cada pilar (N, O, R) para publicar.'); return; }
@@ -212,7 +212,7 @@ function publicarDesenho(cargoId){
   const novaVersao = jaPublicadoAntes ? cargo.desenho.versao + 1 : cargo.desenho.versao;
   const dataPublicacao = new Date().toISOString().slice(0,10);
 
-  // RN019: guarda um retrato imutável desta versão no histórico — nunca é apagado.
+  // RN024: guarda um retrato imutável desta versão no histórico — nunca é apagado.
   cargo.versoes = cargo.versoes || [];
   cargo.versoes.push({
     versao: novaVersao,
@@ -233,7 +233,7 @@ function publicarDesenho(cargoId){
 
   registrarAuditoria('cargo.versao_publicada', { nome: cargo.nome, versao: novaVersao, motivo });
   emitirEvento('cargo.desenho_publicado', { cargoId: cargo.id, versao: novaVersao });
-  showToast(`Desenho de Cargo publicado (v${novaVersao}). Ciclos abertos a partir de agora usam esta versão — os que já estavam em andamento continuam na versão anterior (RN019).`);
+  showToast(`Desenho de Cargo publicado (v${novaVersao}). Ciclos abertos a partir de agora usam esta versão — os que já estavam em andamento continuam na versão anterior (RN024).`);
   render();
 }
 
