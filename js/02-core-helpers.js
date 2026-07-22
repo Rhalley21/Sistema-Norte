@@ -160,8 +160,16 @@ function logoUploadWidgetHTML(fieldId, valorAtual){
         <input type="file" accept="image/*" onchange="logoDefinirArquivo(event,'${fieldId}')">
       </div>
       <div id="preview_${fieldId}" style="margin-top:10px;">
-        ${valorAtual ? `<img src="${valorAtual}" style="max-height:60px;max-width:200px;border:1px solid var(--line);border-radius:6px;background:#fff;padding:4px;">` : '<span class="small-muted">Nenhum logotipo definido ainda.</span>'}
+        ${logoPreviewInternoHTML(fieldId, valorAtual)}
       </div>
+    </div>`;
+}
+function logoPreviewInternoHTML(fieldId, valor){
+  if(!valor) return '<span class="small-muted">Nenhum logotipo definido ainda.</span>';
+  return `
+    <div style="display:flex;align-items:center;gap:10px;">
+      <img src="${valor}" style="max-height:60px;max-width:200px;border:1px solid var(--line);border-radius:6px;background:#fff;padding:4px;">
+      <button type="button" class="btn btn-ghost btn-sm" onclick="logoRemover('${fieldId}')">Remover logotipo</button>
     </div>`;
 }
 function logoTrocarModo(fieldId, modo){
@@ -175,11 +183,17 @@ function logoAtualizarPreview(fieldId, valor){
   const campo = document.getElementById(fieldId);
   if(campo) campo.value = valor;
   const preview = document.getElementById(`preview_${fieldId}`);
-  if(preview){
-    preview.innerHTML = valor
-      ? `<img src="${valor}" style="max-height:60px;max-width:200px;border:1px solid var(--line);border-radius:6px;background:#fff;padding:4px;">`
-      : '<span class="small-muted">Nenhum logotipo definido ainda.</span>';
-  }
+  if(preview) preview.innerHTML = logoPreviewInternoHTML(fieldId, valor);
+}
+function logoRemover(fieldId){
+  logoAtualizarPreview(fieldId, '');
+  // Limpa também os controles de entrada, pra não ficar um valor "fantasma"
+  // parado neles (ex.: um link antigo ainda visível no campo de URL).
+  const inputUrl = document.querySelector(`#modo_url_${fieldId} input`);
+  if(inputUrl) inputUrl.value = '';
+  const inputArquivo = document.querySelector(`#modo_arquivo_${fieldId} input`);
+  if(inputArquivo) inputArquivo.value = '';
+  showToast('Logotipo removido.');
 }
 function logoDefinirURL(fieldId, url){ logoAtualizarPreview(fieldId, url.trim()); }
 function logoRedimensionarEConverter(file, callback){
@@ -205,11 +219,15 @@ function logoRedimensionarEConverter(file, callback){
 function logoDefinirArquivo(event, fieldId){
   const file = event.target.files[0];
   if(!file) return;
-  if(!file.type.startsWith('image/')){ showToast('Selecione um arquivo de imagem.'); return; }
+  if(!file.type.startsWith('image/')){ showToast('Selecione um arquivo de imagem.'); event.target.value = ''; return; }
   logoRedimensionarEConverter(file, (dataUrl) => {
     logoAtualizarPreview(fieldId, dataUrl);
     showToast('Logotipo carregado.');
   });
+  // Reseta o valor do <input type="file"> — sem isso, escolher o MESMO
+  // arquivo de novo (ex.: pra trocar de novo) não dispara o evento "change"
+  // uma segunda vez, dando a impressão de que nada aconteceu.
+  event.target.value = '';
 }
 function logoColarImagem(event, fieldId){
   const itens = (event.clipboardData || window.clipboardData)?.items || [];
@@ -227,4 +245,9 @@ function logoColarImagem(event, fieldId){
   }
   if(!achouImagem) showToast('Não encontrei nenhuma imagem na área de transferência — copie uma imagem (não um link de texto) antes de colar aqui.');
   event.preventDefault();
+  // Reseta o conteúdo da área de colar — sem isso, o texto/imagem colado
+  // pode ficar "grudado" ali dentro, e uma segunda tentativa de colar às
+  // vezes parece não fazer nada porque o navegador já vê aquele elemento
+  // como preenchido.
+  event.currentTarget.innerHTML = 'Clique aqui e cole (Ctrl+V) uma imagem copiada';
 }

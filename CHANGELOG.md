@@ -3,6 +3,19 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.12.2 — Remover logotipo + correção de bug ao trocar mais de uma vez
+- **Botão "Remover logotipo"**: aparece junto do preview sempre que há um
+  logotipo definido, nos dois lugares (Cadastro de Empresa e Configurações
+  → Identidade Visual). Limpa o valor e os campos de URL/arquivo.
+- **Corrigido: trocar o logotipo mais de uma vez não fazia nada.** Duas
+  causas encontradas e corrigidas em `js/02-core-helpers.js`:
+  - O `<input type="file">` não tinha seu valor resetado depois de ler o
+    arquivo — navegadores não disparam o evento de novo ao escolher o
+    mesmo arquivo (ou às vezes nem outro) sem esse reset.
+  - A área de "Colar imagem" não limpava o próprio conteúdo depois de cada
+    colagem, deixando o elemento num estado que atrapalhava a tentativa
+    seguinte.
+
 ## v0.12.1 — Removida a adaptação automática de cor
 - Removida a extração automática de cor do logotipo introduzida na v0.12.0
   (funções `extrairCorDominante`, `aplicarTemaCores`, `adaptarCoresAoLogo`,
