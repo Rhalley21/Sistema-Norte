@@ -3,6 +3,16 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.12.1 — Removida a adaptação automática de cor
+- Removida a extração automática de cor do logotipo introduzida na v0.12.0
+  (funções `extrairCorDominante`, `aplicarTemaCores`, `adaptarCoresAoLogo`,
+  `rgbParaHex`, `corMaisClara`) — por decisão de produto, as cores do tema
+  voltam a ser só as escolhidas manualmente em Configurações → Identidade
+  Visual (como já era antes da v0.12.0).
+- **Mantido**: o logotipo da empresa no canto superior esquerdo do menu
+  (substituindo o símbolo do Instituto INETRIS quando definido), introduzido
+  também na v0.12.0.
+
 ## v0.12.0 — Adaptação de cor ao logotipo + logo da empresa no menu
 - **Cores do sistema adaptadas ao logotipo**: ao definir um logotipo (em
   Cadastro de Empresa ou em Configurações → Identidade Visual, pelos 3
