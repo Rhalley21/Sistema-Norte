@@ -34,15 +34,17 @@ function pageRelatorios(){
         ${[
           ['avaliacao','Avaliação individual (PDF)'],
           ['pdi','PDI individual (PDF)'],
+          ['dossie','Dossiê completo — Desenho + Avaliação + PDI (PDF)'],
           ['consolidado','Consolidado por Unidade/Setor (Excel)'],
           ['comparativo','Comparativo histórico do colaborador (Excel)'],
         ].map(([v,l])=>`<button class="filtro-pill ${_tipoRelatorio===v?'active':''}" onclick="_tipoRelatorio='${v}'; render();">${l}</button>`).join('')}
       </div>
     </div>
 
-    ${_tipoRelatorio==='avaliacao' || _tipoRelatorio==='pdi' ? `
+    ${_tipoRelatorio==='avaliacao' || _tipoRelatorio==='pdi' || _tipoRelatorio==='dossie' ? `
       <div class="card">
-        <h3>${_tipoRelatorio==='avaliacao' ? 'Avaliação individual' : 'PDI individual'}</h3>
+        <h3>${_tipoRelatorio==='avaliacao' ? 'Avaliação individual' : _tipoRelatorio==='pdi' ? 'PDI individual' : 'Dossiê completo do Colaborador'}</h3>
+        ${_tipoRelatorio==='dossie' ? '<p class="page-desc">Um único PDF com Desenho de Cargo, Avaliação e PDI — pronto para arquivo formal e reuniões de feedback.</p>' : ''}
         ${ciclosComDiagnostico.length ? `
           <div class="field"><label>Ciclo (colaborador)</label>
             <select id="rel_ciclo">
@@ -52,7 +54,7 @@ function pageRelatorios(){
               }).join('')}
             </select>
           </div>
-          <button class="btn btn-primary" onclick="${_tipoRelatorio==='avaliacao' ? 'exportarAvaliacaoPDF' : 'exportarPDIPDF'}(document.getElementById('rel_ciclo').value)">Exportar PDF</button>
+          <button class="btn btn-primary" onclick="${_tipoRelatorio==='avaliacao' ? 'exportarAvaliacaoPDF' : _tipoRelatorio==='pdi' ? 'exportarPDIPDF' : 'exportarDossiePDF'}(document.getElementById('rel_ciclo').value)">Exportar PDF</button>
         ` : '<div class="empty">Nenhum ciclo com diagnóstico gerado ainda.</div>'}
       </div>
     ` : ''}
@@ -165,6 +167,111 @@ function exportarPDIPDF(cicloId){
   doc.save(`pdi_${p.nome.replace(/\s+/g,'_')}_${ciclo.dataAbertura}.pdf`);
   registrarAuditoria('relatorio.exportado', { tipo:'pdi_individual', cicloId });
   showToast('PDF do PDI exportado.');
+}
+
+function exportarDossiePDF(cicloId){
+  const ciclo = state.ciclos.find(c=>c.id===cicloId);
+  const p = state.colaboradores.find(x=>x.id===ciclo.colaboradorId);
+  const cargo = state.cargos.find(c=>c.id===ciclo.cargoId);
+  const d = ciclo.diagnostico;
+  const desenho = cargo.desenho;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const corPrimaria = hexParaRgb(state.configuracoes?.identidadeVisual?.corPrimaria);
+  const corSecundaria = hexParaRgb(state.configuracoes?.identidadeVisual?.corSecundaria);
+
+  function tituloSecao(texto, y){
+    doc.setFontSize(13); doc.setTextColor(...corPrimaria);
+    doc.text(texto, 14, y);
+    doc.setTextColor(0);
+    return y + 6;
+  }
+
+  // Capa
+  doc.setFontSize(17); doc.text('Dossiê do Colaborador — Metodologia NORTE', 14, 18);
+  doc.setFontSize(10); doc.setTextColor(120);
+  doc.text(state.empresa?.nomeFantasia || '', 14, 24);
+  doc.setTextColor(0); doc.setFontSize(11);
+  doc.text(`Colaborador: ${p.nome}`, 14, 34);
+  doc.text(`Cargo: ${cargo.nome} (${cargo.natureza})`, 14, 40);
+  doc.text(`Ciclo aberto em: ${ciclo.dataAbertura}    Estado: ${ciclo.estado}`, 14, 46);
+  doc.setFontSize(9); doc.setTextColor(120);
+  doc.text('Este documento reúne Desenho de Cargo, Avaliação de Desempenho e PDI — arquivo formal para reuniões de feedback.', 14, 52);
+  doc.setTextColor(0);
+
+  // 1) Desenho de Cargo
+  let y = tituloSecao('1. Desenho de Cargo (versão ' + (desenho.versao||1) + (desenho.aprovado?', aprovado':', rascunho') + ')', 62);
+  doc.setFontSize(9.5);
+  const linhasSumario = doc.splitTextToSize(`Sumário: ${desenho.sumario || '—'}`, 180);
+  doc.text(linhasSumario, 14, y);
+  y += linhasSumario.length*5 + 4;
+  const linhasRequisitos = doc.splitTextToSize(`Requisitos mínimos: ${desenho.requisitos || '—'}`, 180);
+  doc.text(linhasRequisitos, 14, y);
+  y += linhasRequisitos.length*5 + 4;
+  const linhasCultura = doc.splitTextToSize(`Cultura e Postura Institucional: ${desenho.culturaPostura || '—'}`, 180);
+  doc.text(linhasCultura, 14, y);
+  y += linhasCultura.length*5 + 6;
+  if((desenho.atividadesEspecificas||[]).length){
+    doc.autoTable({
+      startY: y,
+      head: [['Atividades específicas do cargo']],
+      body: desenho.atividadesEspecificas.map(a=>[a]),
+      styles:{ fontSize:8.5 }, headStyles:{ fillColor: corPrimaria },
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  }
+
+  // 2) Avaliação / Diagnóstico
+  if(y > 250){ doc.addPage(); y = 20; }
+  y = tituloSecao('2. Avaliação de Desempenho — Diagnóstico', y);
+  doc.setFontSize(10);
+  doc.text(`Classificação geral: ${pillLabel(d.geral)}`, 14, y); y += 6;
+  if(d.dimensaoSigla){
+    doc.text(`Resultado: ${d.dimensaoSigla.Resultado?pillLabel(d.dimensaoSigla.Resultado):'—'}   Comportamento: ${d.dimensaoSigla.Comportamento?pillLabel(d.dimensaoSigla.Comportamento):'—'}   Potencial: ${d.dimensaoSigla.Potencial?pillLabel(d.dimensaoSigla.Potencial):'—'}`, 14, y);
+    y += 8;
+  }
+  doc.autoTable({
+    startY: y,
+    head: [['Indicador','Pilar','Classificação']],
+    body: Object.values(d.porIndicador).map(i=>[i.nome, i.pilar, i.sigla?pillLabel(i.sigla):'—']),
+    styles:{ fontSize:9 }, headStyles:{ fillColor: corPrimaria },
+  });
+  y = doc.lastAutoTable.finalY + 10;
+
+  // 3) PDI de Desenvolvimento
+  if(y > 240){ doc.addPage(); y = 20; }
+  y = tituloSecao('3. PDI de Desenvolvimento', y);
+  if(ciclo.pdiDesenvolvimento && ciclo.pdiDesenvolvimento.length){
+    doc.autoTable({
+      startY: y,
+      head: [['Indicador','Ação sugerida','Evidência esperada','Prazo','Status']],
+      body: ciclo.pdiDesenvolvimento.map(i=>[i.indicador, i.acaoSugerida, i.evidenciaSugerida, i.prazo, i.status]),
+      styles:{ fontSize:8 }, headStyles:{ fillColor: corPrimaria },
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  } else {
+    doc.setFontSize(10); doc.text('Todos os indicadores em Alavancar — nenhuma ação necessária.', 14, y);
+    y += 10;
+  }
+
+  // 4) PDI de Mentalidade
+  if(y > 240){ doc.addPage(); y = 20; }
+  y = tituloSecao('4. PDI de Mentalidade', y);
+  if(ciclo.pdiMentalidade){
+    doc.autoTable({
+      startY: y,
+      head: [['Eixo','Onde estou hoje','Onde quero chegar','O que vou fazer','Prazo']],
+      body: ['Conhecimento','Ambiente','Relacoes'].map(eixo=>{
+        const v = ciclo.pdiMentalidade[eixo];
+        return [eixo==='Relacoes'?'Relações':eixo, v.ondeEstou||'—', v.ondeQueroChegar||'—', v.oQueVouFazer||'—', v.prazo||'—'];
+      }),
+      styles:{ fontSize:8 }, headStyles:{ fillColor: corSecundaria },
+    });
+  }
+
+  doc.save(`dossie_${p.nome.replace(/\s+/g,'_')}_${ciclo.dataAbertura}.pdf`);
+  registrarAuditoria('relatorio.exportado', { tipo:'dossie_completo', cicloId });
+  showToast('Dossiê completo (Desenho + Avaliação + PDI) exportado em PDF.');
 }
 
 function exportarConsolidadoExcel(){

@@ -267,6 +267,10 @@ function renderDashboardRH(){
       <div class="kpi"><div class="n">${pdisAtivos.length}</div><div class="l">PDIs ativos</div></div>
       <div class="kpi"><div class="n">${criticasOrdenadas.length}</div><div class="l">Competências críticas distintas</div></div>
     </div>
+    <div class="card">
+      <h3>Distribuição por classificação IDA <small>% de colaboradores por classificação — consolidado de todos os ciclos com diagnóstico</small></h3>
+      ${renderDistribuicaoIDA()}
+    </div>
     ${pendentes.length ? `
     <div class="card" style="border-left:3px solid var(--iniciar);">
       <h3>Requer sua ação — Pendências de avaliador</h3>
@@ -402,7 +406,7 @@ function renderDistribuicaoIDA(){
   <div style="display:flex;gap:10px;">
     ${[['Iniciar',I,'iniciar'],['Desenvolver',D,'desenvolver'],['Alavancar',A,'alavancar']].map(([l,n,cls])=>`
       <div style="flex:1;background:var(--${cls}-soft);border:1px solid var(--${cls});border-radius:8px;padding:14px;text-align:center;">
-        <div style="font-family:var(--serif-display);font-size:22px;color:var(--${cls});font-weight:700;">${n}</div>
+        <div style="font-family:var(--serif-display);font-size:22px;color:var(--${cls});font-weight:700;">${n} <span style="font-size:14px;font-weight:400;">(${total?Math.round((n/total)*100):0}%)</span></div>
         <div class="small-muted">${l}</div>
       </div>
     `).join('')}

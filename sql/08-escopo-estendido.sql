@@ -1,5 +1,5 @@
 -- =========================================================================
--- NORTE — RN029: permissão de escopo estendido para Gestores
+-- NORTE — Escopo estendido para Gestores (extensão de RBAC — PRD Cap. 3, sem RN própria)
 -- =========================================================================
 -- Por padrão, um Gestor só vê dados agregados da própria equipe. Esta coluna
 -- permite ao Administrador conceder, caso a caso, uma exceção explícita para

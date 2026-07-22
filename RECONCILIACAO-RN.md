@@ -84,3 +84,22 @@ fato avaliou").
 Todo o resto listado acima foi correção de **rótulo/comentário** — a regra
 de negócio em si já estava implementada corretamente, só a citação do
 código RN é que apontava para o número errado.
+
+## Limitação de arquitetura conhecida: e-mail único é global, não por Empresa
+
+O Backlog (Documento 07, Épico 1.3) pede "e-mail único **por Empresa**".
+O sistema usa o Supabase Auth para autenticação, que garante e-mail único
+**em toda a plataforma** (uma linha em `auth.users` por e-mail) — mais
+restritivo do que "por Empresa": uma mesma pessoa não consegue usar o
+mesmo e-mail para acessar duas Empresas (tenants) diferentes, por exemplo
+um consultor que atende dois clientes NORTE ao mesmo tempo.
+
+Isso **não foi corrigido** nesta versão porque não é um bug — é uma
+característica da forma como a autenticação está desenhada hoje, e mudar
+isso exigiria uma arquitetura de auth multi-tenant mais complexa (ex.:
+permitir múltiplos vínculos empresa↔pessoa para o mesmo e-mail, com troca
+de contexto após login). Na v0.11.0, a mensagem de erro de cadastro foi
+melhorada (`js/19-auth.js`) para explicar essa limitação com clareza em vez
+de mostrar o erro genérico do Supabase — mas a decisão de arquitetura em
+si segue pendente, para ser avaliada se aparecer um caso de uso real que
+precise disso.

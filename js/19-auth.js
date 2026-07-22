@@ -149,7 +149,19 @@ async function cadastrarLogin(){
     options: { data: { nome, nome_empresa: nomeEmpresa, codigo_convite: codigo } }
   });
   carregandoLogin = false;
-  if(error){ erroLogin = error.message; renderLogin(); }
+  if(error){
+    // A unicidade de e-mail do Supabase Auth é global na plataforma (um e-mail
+    // = uma conta em toda a instância), não "por Empresa" como o PRD descreve.
+    // Isso é mais restritivo do que o esperado: uma pessoa que precisasse
+    // acessar duas Empresas diferentes (ex.: consultor) não pode reusar o
+    // mesmo e-mail na segunda. É uma limitação de arquitetura conhecida,
+    // não um bug — ver RECONCILIACAO-RN.md.
+    const jaExiste = /already registered|already exists|user already/i.test(error.message||'');
+    erroLogin = jaExiste
+      ? 'Este e-mail já tem uma conta nesta plataforma. Cada e-mail só pode estar vinculado a uma Empresa por vez — se você precisa de acesso a outra Empresa, peça um convite para um e-mail diferente ou fale com o suporte.'
+      : error.message;
+    renderLogin();
+  }
   // se der certo, o listener onAuthStateChange cuida de iniciar o app
 }
 function sair(){ sb.auth.signOut().then(()=>location.reload()); }

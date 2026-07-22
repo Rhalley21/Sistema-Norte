@@ -35,7 +35,7 @@ Rode isso sempre que mexer em permissões ou nas regras de segurança do banco (
 - [ ] Com a conta de RH, tente gerar um convite de papel "RH" — confirme que
       é bloqueado (só o Dono pode).
 
-## 4) Escopo estendido (RN029)
+## 4) Escopo estendido (extensão de RBAC — PRD Cap. 3, sem RN própria)
 
 - [ ] Sem conceder escopo estendido, confirme que o Gestor só vê a própria equipe.
 - [ ] Conceda escopo estendido a esse Gestor (Usuários & Acesso) e confirme que
