@@ -174,7 +174,7 @@ function renderDashboardAdmin(abertos, pdisAtivos, encerrados){
 
   // Evolução organizacional consolidada: média geral por mês de abertura do ciclo.
   const porMes = {};
-  state.ciclos.filter(c=>c.diagnostico).forEach(c=>{
+  state.ciclos.filter(c=>c.diagnostico && c.diagnostico.geralMedia!==null).forEach(c=>{
     const mes = c.dataAbertura.slice(0,7);
     porMes[mes] = porMes[mes] || [];
     porMes[mes].push(c.diagnostico.geralMedia);
@@ -394,12 +394,12 @@ function renderDashboardColaborador(){
 }
 
 function renderDistribuicaoIDA(){
-  const comDiag = state.ciclos.filter(c=>c.diagnostico);
+  const comDiag = state.ciclos.filter(c=>c.diagnostico && c.diagnostico.geral); // BUG CORRIGIDO: exclui geral null/undefined em vez de somar como Alavancar
   if(!comDiag.length) return '<div class="empty">Ainda não há diagnósticos gerados para consolidar.</div>';
   let I=0,D=0,A=0;
   comDiag.forEach(c=>{
     const g = c.diagnostico.geral;
-    if(g==='I')I++; else if(g==='D')D++; else A++;
+    if(g==='I')I++; else if(g==='D')D++; else if(g==='A')A++;
   });
   const total = I+D+A;
   return `

@@ -449,7 +449,14 @@ function consolidarCiclo(cicloId){
     pilarMedia[p] = arr.length? arr.reduce((a,b)=>a+b,0)/arr.length : null;
   });
   const mediasValidas = Object.values(pilarMedia).filter(v=>v!==null);
-  const geralMedia = mediasValidas.reduce((a,b)=>a+b,0)/mediasValidas.length;
+  // BUG CORRIGIDO: se por algum motivo nenhum pilar tiver média válida
+  // (ex.: cargo sem nenhum indicador respondido), a divisão por
+  // mediasValidas.length (0) resultava em NaN — e classificar(NaN) caía
+  // silenciosamente em "Alavancar" (a MELHOR classificação possível),
+  // por acaso da comparação `NaN <= x` sempre ser falsa. Agora fica null
+  // explicitamente, e a classificação também fica null (nunca inventa
+  // uma nota boa por falta de dado).
+  const geralMedia = mediasValidas.length ? mediasValidas.reduce((a,b)=>a+b,0)/mediasValidas.length : null;
 
   const diagnostico = {
     porIndicador, pilarMedia,
@@ -464,7 +471,7 @@ function consolidarCiclo(cicloId){
         Potencial: pilarMedia.E,
       };
     })(),
-    geral: classificar(geralMedia),
+    geral: geralMedia!==null ? classificar(geralMedia) : null,
     geralMedia,
     pontosFortes: Object.values(porIndicador).filter(i=>i.sigla==='A').map(i=>i.nome),
     oportunidades: Object.values(porIndicador).filter(i=>i.sigla && i.sigla!=='A').map(i=>i.nome),

@@ -57,8 +57,12 @@ function classificar(media){
   if(media <= 0.66) return 'D';
   return 'A';
 }
-function pillClass(sig){ return sig==='I'?'pill-iniciar':sig==='D'?'pill-desenvolver':'pill-alavancar'; }
-function pillLabel(sig){ return IDA_LABEL[sig]; }
+// BUG CORRIGIDO: antes, qualquer valor que não fosse exatamente 'I' ou 'D'
+// caía no `else` final e virava 'pill-alavancar' — incluindo null/undefined
+// (sem dado). Um diagnóstico incompleto podia aparecer visualmente como
+// "Alavancar" (a melhor nota possível) em vez de mostrar que não há dado.
+function pillClass(sig){ return sig==='I'?'pill-iniciar':sig==='D'?'pill-desenvolver':sig==='A'?'pill-alavancar':'pill-neutral'; }
+function pillLabel(sig){ return IDA_LABEL[sig] || 'Sem dado'; }
 
 /* ---------- Estado inicial em branco (dados reais vêm do Supabase) ---------- */
 /* ---------- RN026: campos de auditoria padrão em toda entidade principal ----------

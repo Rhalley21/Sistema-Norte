@@ -3,6 +3,15 @@ let modoLogin = 'entrar'; // entrar | cadastrar
 let temConviteLogin = false;
 let erroLogin = null;
 let carregandoLogin = false;
+// BUG CORRIGIDO: o formulário de login não preservava o que a pessoa já
+// tinha digitado quando a tela re-renderizava (ex.: depois de um erro de
+// senha, ou ao ficar bloqueada) — os campos de e-mail e senha voltavam
+// vazios, obrigando a redigitar tudo de novo a cada tentativa.
+let valorEmailLogin = '';
+let valorSenhaLogin = '';
+let valorNomeLogin = '';
+let valorEmpresaLogin = '';
+let valorCodigoLogin = '';
 
 /* ---------- Bloqueio de login após 5 tentativas falhas (Fluxo de Navegação, Cap. 1.2) ----------
    Camada de UX no cliente, com persistência em localStorage (por e-mail) para
@@ -44,8 +53,7 @@ function registrarTentativaFalha(email){
 function limparTentativasLogin(email){ salvarTentativasLogin(email, { count:0, bloqueadoAte:null }); }
 
 function renderLogin(){
-  const emailAtual = (document.getElementById && document.getElementById('li-email')?.value || '').trim();
-  const statusAtual = emailAtual ? statusBloqueioLogin(emailAtual) : { bloqueado:false };
+  const statusAtual = valorEmailLogin ? statusBloqueioLogin(valorEmailLogin) : { bloqueado:false };
   const app = document.getElementById('app');
   app.innerHTML = `
     <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;width:100%;">
@@ -63,18 +71,18 @@ function renderLogin(){
 
         <form id="form-login" onsubmit="return false;">
           ${modoLogin==='cadastrar' ? `
-            <div class="field"><label>Seu nome</label><input id="li-nome" type="text" required></div>
+            <div class="field"><label>Seu nome</label><input id="li-nome" type="text" required value="${valorNomeLogin}" oninput="valorNomeLogin=this.value;"></div>
             <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-dim);margin-bottom:12px;">
               <input type="checkbox" id="li-tem-convite" ${temConviteLogin?'checked':''} onchange="temConviteLogin=this.checked;renderLogin();">
               Tenho um código de convite de uma empresa
             </label>
             ${temConviteLogin
-              ? `<div class="field"><label>Código de convite</label><input id="li-codigo" type="text" required></div>`
-              : `<div class="field"><label>Nome da empresa</label><input id="li-empresa" type="text" required></div>`
+              ? `<div class="field"><label>Código de convite</label><input id="li-codigo" type="text" required value="${valorCodigoLogin}" oninput="valorCodigoLogin=this.value;"></div>`
+              : `<div class="field"><label>Nome da empresa</label><input id="li-empresa" type="text" required value="${valorEmpresaLogin}" oninput="valorEmpresaLogin=this.value;"></div>`
             }
           ` : ''}
-          <div class="field"><label>E-mail</label><input id="li-email" type="email" required></div>
-          <div class="field"><label>Senha</label><input id="li-senha" type="password" minlength="6" required></div>
+          <div class="field"><label>E-mail</label><input id="li-email" type="email" required value="${valorEmailLogin}" oninput="valorEmailLogin=this.value;"></div>
+          <div class="field"><label>Senha</label><input id="li-senha" type="password" minlength="6" required value="${valorSenhaLogin}" oninput="valorSenhaLogin=this.value;"></div>
           ${modoLogin==='entrar' ? `<p style="text-align:right;margin:-6px 0 12px;"><a href="#" style="font-size:12.5px;color:var(--ink-dim);" onclick="esqueciSenhaLogin();return false;">Esqueci minha senha</a></p>` : ''}
           ${erroLogin ? `<p style="color:var(--iniciar);font-size:12.5px;margin:-4px 0 12px;">${erroLogin}</p>` : ''}
           <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="${modoLogin==='entrar'?'entrarLogin()':'cadastrarLogin()'}" ${carregandoLogin||statusAtual.bloqueado?'disabled':''}>
@@ -93,7 +101,7 @@ function compassSVGEstatico(){
 function mudarModoLogin(m){ modoLogin = m; erroLogin = null; renderLogin(); }
 
 async function esqueciSenhaLogin(){
-  const email = document.getElementById('li-email').value.trim();
+  const email = valorEmailLogin.trim();
   if(!email){ erroLogin = 'Preencha o e-mail para receber o link de redefinição de senha.'; renderLogin(); return; }
   carregandoLogin = true; erroLogin = null; renderLogin();
   const { error } = await sb.auth.resetPasswordForEmail(email);
@@ -103,8 +111,8 @@ async function esqueciSenhaLogin(){
 }
 
 async function entrarLogin(){
-  const email = document.getElementById('li-email').value.trim();
-  const senha = document.getElementById('li-senha').value;
+  const email = valorEmailLogin.trim();
+  const senha = valorSenhaLogin;
   if(!email || !senha){ erroLogin = 'Preencha e-mail e senha.'; renderLogin(); return; }
 
   const status = statusBloqueioLogin(email);
@@ -127,15 +135,16 @@ async function entrarLogin(){
     return;
   }
   limparTentativasLogin(email);
+  valorSenhaLogin = ''; // não deixa a senha digitada residindo em memória além do necessário
   // se der certo, o listener onAuthStateChange cuida de iniciar o app
 }
 async function cadastrarLogin(){
-  const nome = document.getElementById('li-nome').value.trim();
-  const email = document.getElementById('li-email').value.trim();
-  const senha = document.getElementById('li-senha').value;
+  const nome = valorNomeLogin.trim();
+  const email = valorEmailLogin.trim();
+  const senha = valorSenhaLogin;
   const temConvite = document.getElementById('li-tem-convite').checked;
-  const codigo = temConvite ? document.getElementById('li-codigo').value.trim() : null;
-  const nomeEmpresa = temConvite ? null : document.getElementById('li-empresa').value.trim();
+  const codigo = temConvite ? valorCodigoLogin.trim() : null;
+  const nomeEmpresa = temConvite ? null : valorEmpresaLogin.trim();
 
   if(!nome){ erroLogin = 'Preencha seu nome.'; renderLogin(); return; }
   if(temConvite && !codigo){ erroLogin = 'Preencha o código de convite, ou desmarque a opção.'; renderLogin(); return; }

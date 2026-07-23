@@ -3,6 +3,82 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.12.5 — Bug corrigido: campos de login/cadastro se apagavam sozinhos
+Bug pré-existente (não introduzido nesta conversa) em `js/19-auth.js`: os
+campos de e-mail e senha do formulário de login não guardavam o que a
+pessoa tinha digitado. Toda vez que a tela re-renderizava — o que acontece
+em qualquer erro de login, ao ficar bloqueada, ou ao clicar em "Esqueci
+minha senha" — os dois campos voltavam vazios, obrigando a redigitar tudo
+de novo a cada tentativa. O mesmo acontecia no formulário de cadastro
+(nome, empresa, código de convite): marcar/desmarcar "Tenho um código de
+convite" apagava o nome já digitado.
+
+- Todos os campos do formulário (e-mail, senha, nome, empresa, código de
+  convite) agora preservam o valor digitado através de qualquer
+  re-renderização da tela.
+- A senha digitada é limpa da memória assim que o login tem sucesso (não
+  fica residindo em uma variável além do necessário).
+
+Esta correção veio de uma segunda revisão geral do código, a pedido do
+usuário, procurando especificamente por esse tipo de problema (formulário
+que perde o que foi digitado por causa de uma re-renderização). Não
+encontrei o mesmo padrão em nenhuma outra tela do sistema — as demais só
+re-renderizam ao abrir/fechar painéis que não têm campo de texto ao lado
+ainda não salvo.
+
+## v0.12.4 — Bug corrigido: logotipo não aparecia nos PDFs exportados
+A seção "Identidade visual em relatórios exportados" (Configurações) salvava
+o logotipo desde a v0.11.1, mas nenhum dos 3 PDFs gerados (`js/20-page-relatorios.js`
+— Avaliação individual, PDI individual, Dossiê completo) de fato desenhava a
+imagem no documento — só as cores (`corPrimaria`/`corSecundaria`) eram
+aplicadas nos cabeçalhos de tabela. O nome da seção prometia um efeito que
+não existia.
+
+- Nova função `desenharLogoNoPDF()`, que embute o logotipo no topo de cada
+  PDF quando ele veio de **Colar imagem** ou **Enviar arquivo** (base64).
+- Logotipos definidos por **link (URL)** externo continuam aparecendo
+  normalmente na tela, mas não são embutidos no PDF — o navegador não
+  consegue ler os pixels de uma URL remota de forma síncrona (mesma
+  limitação de CORS já documentada na tentativa de extração de cor da
+  v0.12.0, removida na v0.12.1). Isso agora está explicado na própria tela
+  de Configurações, em vez de falhar silenciosamente.
+- Falha ao desenhar uma imagem corrompida/inesperada não derruba mais a
+  exportação inteira do PDF (blindado com try/catch).
+
+## v0.12.3 — Revisão de bugs
+Revisão completa do código: toda chamada de função foi cruzada com sua
+definição (nenhuma referência quebrada encontrada), e os cálculos de
+diagnóstico/classificação foram testados isoladamente. Encontrados e
+corrigidos 4 bugs reais, todos da mesma família — um "else" genérico que,
+na ausência de dado, acabava afirmando a MELHOR classificação possível
+(Alavancar) em vez de admitir que não havia dado:
+
+1. `consolidarCiclo` (`js/15-page-ciclos-avaliacao.js`): se um diagnóstico
+   fosse gerado sem nenhum pilar com média válida (caso extremo, hoje
+   bloqueado pela validação do Desenho de Cargo, mas não pelo cálculo em
+   si), a divisão virava `NaN` e `classificar(NaN)` retornava `'A'` por
+   acaso — `NaN <= x` é sempre falso, então a comparação caía no último
+   `return`. Agora fica `null` explicitamente.
+2. `pillClass`/`pillLabel` (`js/02-core-helpers.js`): mesmo problema, um
+   nível abaixo — qualquer valor que não fosse `'I'` nem `'D'` (incluindo
+   `null`/`undefined`) virava visualmente "Alavancar". Agora existe uma
+   checagem explícita para `'A'`, e o caso sem dado usa o estilo neutro
+   (`pill-neutral`) com o texto "Sem dado".
+3. `renderDistribuicaoIDA` (`js/07-router-dashboard.js`, dashboards do RH
+   e Administrador): a contagem "% por classificação" somava qualquer
+   diagnóstico sem `geral` reconhecido como Alavancar. Agora exclui esses
+   casos da contagem.
+4. Consolidado mensal "Evolução organizacional" (mesmo arquivo): um
+   diagnóstico com `geralMedia` nula (mesmo caso extremo do item 1) entraria
+   na média do mês como `0` (coerção de `null` em soma), puxando a média
+   pra baixo silenciosamente. Agora é excluído do cálculo.
+
+Nenhum desses bugs muda o comportamento em uso normal — em todos os casos
+reais (cargo com Desenho aprovado, indicadores respondidos) o resultado
+antes e depois é idêntico. O problema só aparecia num cenário praticamente
+inatingível pela interface hoje; ainda assim, o sistema não deveria inventar
+uma nota boa por falta de dado, então valia corrigir.
+
 ## v0.12.2 — Remover logotipo + correção de bug ao trocar mais de uma vez
 - **Botão "Remover logotipo"**: aparece junto do preview sempre que há um
   logotipo definido, nos dois lugares (Cadastro de Empresa e Configurações

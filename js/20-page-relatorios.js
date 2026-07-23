@@ -16,6 +16,30 @@
 
 let _tipoRelatorio = 'avaliacao';
 
+// BUG CORRIGIDO: a seção "Identidade visual em relatórios exportados"
+// (Configurações) salvava o logotipo, mas nenhum PDF gerado aqui de fato
+// usava a imagem — só as cores (corPrimaria/corSecundaria) eram aplicadas.
+// Esta função tenta desenhar o logotipo no topo do PDF, no canto superior
+// direito, ao lado do título.
+function desenharLogoNoPDF(doc, x, y, larguraMax, alturaMax){
+  const logo = state.configuracoes?.identidadeVisual?.logoUrl || state.empresa?.logotipo || '';
+  if(!logo) return;
+  const m = /^data:image\/(png|jpe?g);base64,/i.exec(logo);
+  if(!m){
+    // Logotipo veio de um link (URL) externo, não de upload/colagem — o
+    // jsPDF não consegue embutir uma URL remota de forma síncrona (o mesmo
+    // tipo de limitação de CORS que já existia na extração de cor). Nesse
+    // caso, o PDF sai sem o logotipo em vez de quebrar a exportação inteira.
+    return;
+  }
+  const formato = m[1].toLowerCase().startsWith('jp') ? 'JPEG' : 'PNG';
+  try{
+    doc.addImage(logo, formato, x, y, larguraMax, alturaMax);
+  }catch(e){
+    // Imagem corrompida/formato inesperado — não deixa a exportação inteira falhar por causa do logotipo.
+  }
+}
+
 function pageRelatorios(){
   const ciclosComDiagnostico = state.ciclos.filter(c=>c.diagnostico && cicloVisivelParaMim(c));
   const unidades = state.estrutura.filter(n=>n.tipo==='unidade');
@@ -102,6 +126,7 @@ function exportarAvaliacaoPDF(cicloId){
   doc.setFontSize(10); doc.setTextColor(120);
   doc.text(state.empresa?.nomeFantasia || '', 14, 24);
   doc.setTextColor(0); doc.setFontSize(11);
+  desenharLogoNoPDF(doc, 165, 10, 30, 18);
   doc.text(`Colaborador: ${p.nome}`, 14, 34);
   doc.text(`Cargo: ${cargo.nome} (versão ${p.versaoCargoVinculada||ciclo.cargoId})`, 14, 40);
   doc.text(`Ciclo aberto em: ${ciclo.dataAbertura}    Estado: ${ciclo.estado}`, 14, 46);
@@ -134,6 +159,7 @@ function exportarPDIPDF(cicloId){
 
   doc.setFontSize(16); doc.text('Plano de Desenvolvimento Individual (PDI)', 14, 18);
   doc.setFontSize(11);
+  desenharLogoNoPDF(doc, 165, 8, 30, 18);
   doc.text(`Colaborador: ${p.nome}    Cargo: ${cargo.nome}`, 14, 28);
   doc.text(`Ciclo: ${ciclo.dataAbertura} — ${ciclo.estado}`, 14, 34);
 
@@ -192,6 +218,7 @@ function exportarDossiePDF(cicloId){
   doc.setFontSize(10); doc.setTextColor(120);
   doc.text(state.empresa?.nomeFantasia || '', 14, 24);
   doc.setTextColor(0); doc.setFontSize(11);
+  desenharLogoNoPDF(doc, 160, 8, 35, 20);
   doc.text(`Colaborador: ${p.nome}`, 14, 34);
   doc.text(`Cargo: ${cargo.nome} (${cargo.natureza})`, 14, 40);
   doc.text(`Ciclo aberto em: ${ciclo.dataAbertura}    Estado: ${ciclo.estado}`, 14, 46);

@@ -47,6 +47,7 @@ function pageConfiguracoes(){
     <div class="card">
       <h3>Identidade visual em relatórios exportados</h3>
       <div class="field"><label>Logotipo</label>${logoUploadWidgetHTML('cfg_logo', iv.logoUrl||'')}</div>
+      <p class="small-muted" style="margin-top:4px;">O logotipo aparece no topo dos PDFs exportados quando definido por <b>Colar imagem</b> ou <b>Enviar arquivo</b>. Um link (URL) externo funciona para exibição na tela, mas o navegador não consegue embuti-lo no PDF de forma confiável (limitação de CORS) — nesse caso o PDF sai sem o logotipo.</p>
       <div class="grid2" style="margin-top:12px;">
         <div class="field"><label>Cor primária</label><input id="cfg_cor1" type="color" value="${iv.corPrimaria||'#0a2647'}"></div>
         <div class="field"><label>Cor secundária</label><input id="cfg_cor2" type="color" value="${iv.corSecundaria||'#e99610'}"></div>
