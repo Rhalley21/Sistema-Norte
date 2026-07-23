@@ -188,16 +188,37 @@ function logoAtualizarPreview(fieldId, valor){
   if(campo) campo.value = valor;
   const preview = document.getElementById(`preview_${fieldId}`);
   if(preview) preview.innerHTML = logoPreviewInternoHTML(fieldId, valor);
+  // BUG CORRIGIDO: antes, o logotipo só passava a valer no menu lateral
+  // depois de clicar no botão "Salvar" da tela (Empresa ou Configurações) —
+  // e remover o logotipo não tinha efeito nenhum ali, porque a função só
+  // mexia no campo escondido do formulário, nunca no estado de verdade.
+  // Agora toda mudança de logotipo (definir ou remover) grava direto no
+  // estado, atualiza o menu lateral na hora, e salva em segundo plano —
+  // sem depender do botão "Salvar" do resto do formulário.
+  if(fieldId === 'f_logo'){
+    state.empresa = state.empresa || {};
+    state.empresa.logotipo = valor;
+  } else if(fieldId === 'cfg_logo'){
+    state.configuracoes = state.configuracoes || {};
+    state.configuracoes.identidadeVisual = { ...(state.configuracoes.identidadeVisual||{}), logoUrl: valor };
+  }
+  if(typeof atualizarLogoSidebarAoVivo === 'function') atualizarLogoSidebarAoVivo();
+  if(typeof agendarSalvamento === 'function') agendarSalvamento();
 }
 function logoRemover(fieldId){
-  logoAtualizarPreview(fieldId, '');
-  // Limpa também os controles de entrada, pra não ficar um valor "fantasma"
-  // parado neles (ex.: um link antigo ainda visível no campo de URL).
-  const inputUrl = document.querySelector(`#modo_url_${fieldId} input`);
-  if(inputUrl) inputUrl.value = '';
-  const inputArquivo = document.querySelector(`#modo_arquivo_${fieldId} input`);
-  if(inputArquivo) inputArquivo.value = '';
-  showToast('Logotipo removido.');
+  // Remove dos DOIS campos possíveis (Cadastro de Empresa e Identidade
+  // Visual) — os dois alimentam o mesmo logo do menu lateral (um serve de
+  // reserva pro outro), então remover só um deles deixava o outro
+  // aparecendo, dando a falsa impressão de que "remover" não funcionava.
+  logoAtualizarPreview('f_logo', '');
+  logoAtualizarPreview('cfg_logo', '');
+  ['f_logo','cfg_logo'].forEach(fid=>{
+    const inputUrl = document.querySelector(`#modo_url_${fid} input`);
+    if(inputUrl) inputUrl.value = '';
+    const inputArquivo = document.querySelector(`#modo_arquivo_${fid} input`);
+    if(inputArquivo) inputArquivo.value = '';
+  });
+  showToast('Logotipo removido — voltou ao símbolo padrão do sistema.');
 }
 function logoDefinirURL(fieldId, url){ logoAtualizarPreview(fieldId, url.trim()); }
 function logoRedimensionarEConverter(file, callback){

@@ -3,6 +3,25 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.12.6 — Bug corrigido: remover o logotipo não voltava ao padrão
+Duas causas encontradas e corrigidas em `js/02-core-helpers.js` e
+`js/05-navigation.js`:
+
+1. **Duas fontes de logo, um só botão de remover.** O logo do menu lateral
+   podia vir de dois campos diferentes (Cadastro de Empresa ou
+   Configurações → Identidade Visual — um servindo de reserva do outro).
+   Remover em um lugar só não limpava o outro, então se os dois estivessem
+   preenchidos, o logo "sobrevivia" à remoção. Agora o botão "Remover
+   logotipo" limpa os dois de uma vez, em qualquer uma das duas telas.
+2. **Definir/remover só valia depois de clicar em "Salvar".** Nenhuma das
+   duas ações realmente escrevia no estado do sistema — só no campo
+   escondido do formulário — então o menu lateral só refletia a mudança se
+   a pessoa depois clicasse no botão "Salvar" geral da tela (que atualiza
+   várias coisas de uma vez). Agora definir ou remover o logotipo grava no
+   estado, atualiza o menu lateral na hora (sem re-renderizar a tela
+   inteira, pra não apagar outros campos do formulário ainda não salvos) e
+   salva em segundo plano — nenhum dos dois depende mais do botão "Salvar".
+
 ## v0.12.5 — Bug corrigido: campos de login/cadastro se apagavam sozinhos
 Bug pré-existente (não introduzido nesta conversa) em `js/19-auth.js`: os
 campos de e-mail e senha do formulário de login não guardavam o que a

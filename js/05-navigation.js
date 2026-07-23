@@ -60,6 +60,19 @@ function render(){
 function logoEmpresaAtual(){
   return state.configuracoes?.identidadeVisual?.logoUrl || state.empresa?.logotipo || '';
 }
+// Atualiza o logo/nome do menu lateral na hora, sem precisar de um render()
+// completo da página (que apagaria campos ainda não salvos em outros
+// formulários abertos ao mesmo tempo). Chamada sempre que o logotipo muda
+// (definido ou removido), em qualquer uma das duas telas que o editam.
+function atualizarLogoSidebarAoVivo(){
+  const img = document.getElementById('sidebar-logo-img');
+  const nome = document.getElementById('sidebar-brand-name');
+  const sub = document.getElementById('sidebar-brand-sub');
+  const logo = logoEmpresaAtual();
+  if(img) img.src = logo || `data:image/png;base64,${LOGO_INETRIS_B64}`;
+  if(nome) nome.textContent = (logo && state.empresa?.nomeFantasia) ? state.empresa.nomeFantasia : 'NORTE';
+  if(sub) sub.textContent = logo ? 'Metodologia NORTE' : 'Instituto INETRIS';
+}
 function compassSVG(){
   const stageIdx = STEPS.findIndex(s=>s.id===state.route);
   const total = STEPS.length || 1;
@@ -68,12 +81,12 @@ function compassSVG(){
   if(logoEmpresa){
     return `
     <div class="compass-wrap" title="Ciclo NORTE — ${progresso}% navegado">
-      <img src="${logoEmpresa}" alt="Logotipo da empresa" style="width:100%;height:100%;object-fit:contain;background:#fff;border-radius:6px;" />
+      <img id="sidebar-logo-img" src="${logoEmpresa}" alt="Logotipo da empresa" style="width:100%;height:100%;object-fit:contain;background:#fff;border-radius:6px;" />
     </div>`;
   }
   return `
   <div class="compass-wrap" title="Ciclo NORTE — ${progresso}% navegado">
-    <img src="data:image/png;base64,${LOGO_INETRIS_B64}" alt="Instituto INETRIS" style="width:100%;height:100%;object-fit:contain;" />
+    <img id="sidebar-logo-img" src="data:image/png;base64,${LOGO_INETRIS_B64}" alt="Instituto INETRIS" style="width:100%;height:100%;object-fit:contain;" />
   </div>`;
 }
 
@@ -93,8 +106,8 @@ function renderSidebar(){
     <div class="brand">
       ${compassSVG()}
       <div>
-        <div class="brand-name">${logoEmpresaAtual() && state.empresa?.nomeFantasia ? state.empresa.nomeFantasia : 'NORTE'}</div>
-        <div class="brand-sub">${logoEmpresaAtual() ? 'Metodologia NORTE' : 'Instituto INETRIS'}</div>
+        <div class="brand-name" id="sidebar-brand-name">${logoEmpresaAtual() && state.empresa?.nomeFantasia ? state.empresa.nomeFantasia : 'NORTE'}</div>
+        <div class="brand-sub" id="sidebar-brand-sub">${logoEmpresaAtual() ? 'Metodologia NORTE' : 'Instituto INETRIS'}</div>
       </div>
       <button class="menu-hamburguer" onclick="_menuMobileAberto=!_menuMobileAberto; render();" aria-label="Abrir menu">
         ${_menuMobileAberto ? '✕' : '☰'}
