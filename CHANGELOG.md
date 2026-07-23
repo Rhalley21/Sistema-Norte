@@ -3,6 +3,19 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.13.0 — Novo logo padrão do sistema
+- Substituído o logo padrão exibido no canto superior esquerdo do menu (e
+  na tela de login) quando nenhuma empresa definiu um logotipo próprio —
+  agora usa a nova marca fornecida (fundo azul, ícone de conexões em branco
+  e dourado), redimensionada para 200×200 e otimizada em PNG (~11KB, contra
+  ~64KB do logo anterior).
+- A cor de fundo da nova imagem (~#072444) é praticamente idêntica à cor de
+  fundo do menu lateral (`--surface: #0a2647`), então ela se funde sem
+  parecer uma caixa recortada.
+- `js/00-logo-asset.js` — mesma constante `LOGO_INETRIS_B64`, conteúdo
+  trocado (não renomeei a constante para não precisar alterar todas as
+  referências em `js/05-navigation.js` e `js/19-auth.js` sem necessidade).
+
 ## v0.12.6 — Bug corrigido: remover o logotipo não voltava ao padrão
 Duas causas encontradas e corrigidas em `js/02-core-helpers.js` e
 `js/05-navigation.js`:
