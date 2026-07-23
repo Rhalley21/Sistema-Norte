@@ -25,6 +25,7 @@ function pageCiclos(){
       <div class="eyebrow">Etapa 07 · Ciclo NORTE</div>
       <h1>Ciclos de Avaliação</h1>
       <p class="page-desc">Fluxo sequencial: o Colaborador faz a autoavaliação e envia para o Líder Direto; o Líder avalia e envia para o RH; o RH avalia e consolida o veredito final. Pesos: Colaborador 25%, Líder 50%, RH 25%.</p>
+      <button class="btn btn-ghost btn-sm" onclick="atualizarDadosAoVivo()">↻ Atualizar</button>
     </div>
 
     ${souAdminOuRh ? `
@@ -357,12 +358,13 @@ function renderEtapaSequencial(ciclo, p, cargo, indicadores){
       <h1>${p.nome} <span style="color:var(--ink-faint);font-weight:400;font-size:18px;">— ${cargo.nome}</span></h1>
       ${lembretePrazo}
       <button class="btn btn-ghost btn-sm" onclick="state.cicloAtivo=null; render();">← Voltar para lista de ciclos</button>
+      <button class="btn btn-ghost btn-sm" onclick="atualizarDadosAoVivo()" style="margin-left:8px;">↻ Atualizar</button>
     </div>
     ${renderFlowCiclo(ciclo)}
 
     <div class="notice info">${info.titulo} <small style="display:block;margin-top:2px;">Peso desta etapa no cálculo final: ${info.peso}</small></div>
 
-    ${!editavel ? `<div class="notice">Esta etapa ainda não é sua — você pode acompanhar, mas só quem está com a etapa atual consegue preencher.</div>` : ''}
+    ${!editavel ? `<div class="notice">Esta etapa ainda não é sua — você pode acompanhar, mas só quem está com a etapa atual consegue preencher. Se acha que já deveria ser a sua vez, clique em "↻ Atualizar" acima — os dados podem ter mudado desde que você abriu esta tela.</div>` : ''}
 
     ${resumosAnteriores}
 

@@ -3,6 +3,63 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.13.4 — Bug corrigido: qualquer clique jogava a página pro topo
+`js/05-navigation.js` tinha um `window.scrollTo(0,0)` incondicional dentro
+de `render()` — e como praticamente toda ação do sistema (marcar uma nota
+Iniciar/Desenvolver/Alavancar, editar um campo, abrir um painel) chama
+`render()`, a página voltava pro topo a cada clique. Ficava especialmente
+incômodo em telas longas, como preencher uma avaliação com muitos
+indicadores — cada nota marcada jogava a pessoa de volta pro topo, tendo
+que rolar tudo de novo pra continuar.
+
+Corrigido: `render()` agora só rola pro topo quando a pessoa realmente
+muda de tela (rota) ou abre/fecha um ciclo específico — nunca por causa
+de uma interação dentro da mesma tela. Testei a sequência real (carregar
+→ navegar → abrir ciclo → marcar várias notas → voltar pra lista) e só
+rola nos momentos que fazem sentido como "nova tela".
+
+## v0.13.3 — Bug corrigido: RH via a etapa desatualizada (dados não sincronizavam entre pessoas)
+Cenário relatado: o Líder já tinha enviado a avaliação (sua própria tela
+mostrava "Etapa 3 de 3 — RH"), mas a tela do RH continuava mostrando
+"Etapa 2 de 3 — Líder", como se a etapa ainda não tivesse mudado. Não era
+um problema de permissão (o papel do RH estava certo) — era sincronização:
+o sistema carrega os dados uma única vez, no login, e não busca atualização
+depois disso. Se o RH já estava com a tela aberta antes do Líder enviar,
+ficava vendo a versão antiga do ciclo indefinidamente, sem nenhum jeito de
+perceber isso a não ser dando F5 na página inteira.
+
+Corrigido:
+- Nova função `atualizarDadosAoVivo()` (`js/05-navigation.js`), que busca
+  os dados mais recentes do servidor e atualiza a tela sem precisar
+  recarregar a página inteira (não perde o lugar onde a pessoa estava).
+- Chamada automaticamente sempre que alguém entra na tela de **Ciclos de
+  Avaliação**.
+- Botão "↻ Atualizar" visível tanto na lista de Ciclos quanto dentro de um
+  ciclo específico, para quem já está com a tela aberta esperando a vez.
+- A mensagem "Esta etapa ainda não é sua" agora sugere clicar em
+  "↻ Atualizar" como primeiro passo, já que essa costuma ser a causa real.
+
+Limitação que continua existindo (não é bug, é característica da
+arquitetura atual): o sistema não tem sincronização em tempo real — a
+atualização só acontece quando alguém pede (ao entrar na tela ou clicar em
+"Atualizar"), não automaticamente enquanto a tela está parada. Para tempo
+real de verdade, seria necessário usar Realtime do Supabase — fora do
+escopo atual.
+
+## v0.13.2 — Bug corrigido: Administrador não conseguia concluir a etapa do RH
+Mesma família do bug da v0.13.1, agora na última etapa do ciclo (RH). A
+etapa só liberava para quem tinha o papel de sistema `rh` exato — se o
+Administrador estava fazendo esse papel na prática (comum em empresas sem
+RH separado), a tela mostrava "Esta etapa ainda não é sua".
+
+Corrigido em `js/14-permissions.js` (`podeEditarEtapa`): a etapa do RH
+agora libera também para o Administrador. Diferente da etapa do Líder
+(vinculada a um colaborador específico via `gestorPerfilId`), a etapa do
+RH é uma função de empresa toda — e o Administrador já tinha acesso
+irrestrito para ver todos os ciclos, construir e aprovar PDI (RN
+`cicloVisivelParaMim`, `podeConstruirPDI`, `podeAprovarPDI`); faltava só
+essa etapa específica de preenchimento seguir a mesma regra.
+
 ## v0.13.1 — Bug corrigido: Administrador que também é gestor direto não conseguia avaliar
 Cenário relatado: Colaborador concluiu a autoavaliação, o ciclo passou para
 a etapa do Líder Direto — mas a pessoa logada, apesar de estar cadastrada

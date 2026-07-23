@@ -11,7 +11,15 @@ function podeEditarEtapa(ciclo){
   // vínculo de gestor já cadastrado no organograma, seja qual for o papel
   // de sistema de quem está logado.
   if(etapa === 'lider') return (meuPapelReal === 'lider' || meuPapelReal === 'owner') && colaborador?.gestorPerfilId === meuPerfilId;
-  if(etapa === 'rh') return meuPapelReal === 'rh';
+  // BUG CORRIGIDO: a etapa do RH só liberava para quem tinha o papel de
+  // sistema "rh" exato. Diferente da etapa do líder (que é vinculada a um
+  // colaborador específico via gestorPerfilId), a etapa do RH é uma função
+  // de empresa toda — e o Administrador já tem visibilidade total sobre
+  // todos os ciclos (ver cicloVisivelParaMim) e já pode construir/aprovar o
+  // PDI sem restrição (ver podeConstruirPDI/podeAprovarPDI). Faltava só
+  // essa etapa específica de preenchimento acompanhar a mesma regra — comum
+  // em empresas pequenas onde o dono também faz o papel de RH.
+  if(etapa === 'rh') return meuPapelReal === 'rh' || meuPapelReal === 'owner';
   return false;
 }
 function cicloVisivelParaMim(ciclo){

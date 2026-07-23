@@ -47,13 +47,24 @@ function stepUnlocked(id){
 }
 
 /* ---------- Render root ---------- */
+let _ultimaRotaRenderizada = null;
+let _ultimoCicloAtivoRenderizado = undefined;
 function render(){
   const app = document.getElementById('app');
   app.innerHTML = `
     ${renderSidebar()}
     <main>${renderRoute()}</main>
   `;
-  window.scrollTo(0,0);
+  // BUG CORRIGIDO: antes, TODA chamada de render() forçava a rolagem pro
+  // topo da página — inclusive ações simples dentro da mesma tela (ex.:
+  // marcar uma nota Iniciar/Desenvolver/Alavancar numa avaliação longa),
+  // fazendo a pessoa perder a posição e ter que rolar de novo a cada clique.
+  // Agora só rola pro topo quando a pessoa realmente muda de tela (rota) ou
+  // abre/fecha um ciclo — nunca por causa de uma interação dentro da mesma tela.
+  const mudouDeTela = state.route !== _ultimaRotaRenderizada || state.cicloAtivo !== _ultimoCicloAtivoRenderizado;
+  if(mudouDeTela) window.scrollTo(0,0);
+  _ultimaRotaRenderizada = state.route;
+  _ultimoCicloAtivoRenderizado = state.cicloAtivo;
   agendarSalvamento();
 }
 
@@ -155,11 +166,22 @@ function renderSidebar(){
 }
 
 function setRole(r){ state.role = r; _menuMobileAberto = false; render(); }
+async function atualizarDadosAoVivo(silencioso){
+  // BUG CORRIGIDO: o sistema carregava os dados uma única vez, no login, e
+  // nunca mais buscava atualização — sem sincronização em tempo real entre
+  // usuários diferentes. Se o Líder enviasse a avaliação enquanto o RH já
+  // estava com a tela aberta, o RH continuava vendo a versão antiga do
+  // ciclo (ainda na etapa do Líder) até dar um F5 na página inteira.
+  if(!silencioso) showToast('Atualizando dados…');
+  await carregarEstado();
+  render();
+}
 function goto(id){
   if(!STEPS.find(s=>s.id===id)){ showToast('Você não tem acesso a essa área.'); return; }
   state.route = id;
   _menuMobileAberto = false;
   if(id === 'usuarios') carregarUsuarios();
+  if(id === 'ciclos') atualizarDadosAoVivo(true); // busca o estado mais recente sempre que entra na tela de Ciclos
   render();
 }
 
