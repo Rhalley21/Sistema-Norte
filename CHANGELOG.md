@@ -3,6 +3,32 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.13.1 — Bug corrigido: Administrador que também é gestor direto não conseguia avaliar
+Cenário relatado: Colaborador concluiu a autoavaliação, o ciclo passou para
+a etapa do Líder Direto — mas a pessoa logada, apesar de estar cadastrada
+como gestor direto daquele colaborador, tinha o papel de sistema
+"Administrador" (`owner`), não "Gestor" (`lider`). A tela mostrava "Esta
+etapa ainda não é sua" e os botões de avaliação apareciam desabilitados.
+
+Corrigido em `js/14-permissions.js` (`podeEditarEtapa`) e
+`js/15-page-ciclos-avaliacao.js` (`souGestorDoCiclo`): agora a etapa do
+Líder Direto é liberada tanto para quem tem o papel `lider` quanto para o
+Administrador, **desde que** o vínculo de gestor já esteja cadastrado no
+organograma daquele colaborador especificamente (`gestorPerfilId` apontando
+para essa pessoa). Isso é diferente de liberar avaliação para qualquer
+Administrador em qualquer ciclo — só vale quando a própria empresa já
+cadastrou essa pessoa como gestor direto de alguém, um cenário comum em
+empresas pequenas onde o dono também lidera parte da equipe diretamente.
+
+Nota técnica: encontrei e corrigi de passagem uma duplicação perigosa —
+existiam duas funções `souGestorDoCiclo` diferentes (uma em
+`js/14-permissions.js`, outra em `js/15-page-ciclos-avaliacao.js`); a
+segunda, por carregar depois, sempre sobrescrevia silenciosamente a
+primeira. Consolidado em uma única definição.
+
+A etapa do RH e a construção/aprovação do PDI não foram alteradas nesta
+correção — o Administrador já podia atuar nelas sem restrição.
+
 ## v0.13.0 — Novo logo padrão do sistema
 - Substituído o logo padrão exibido no canto superior esquerdo do menu (e
   na tela de login) quando nenhuma empresa definiu um logotipo próprio —

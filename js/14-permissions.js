@@ -2,7 +2,15 @@ function podeEditarEtapa(ciclo){
   const etapa = ciclo.etapa || 'colaborador';
   const colaborador = state.colaboradores.find(c=>c.id===ciclo.colaboradorId);
   if(etapa === 'colaborador') return meuPapelReal === 'colaborador' && colaborador?.perfilId === meuPerfilId;
-  if(etapa === 'lider') return meuPapelReal === 'lider' && colaborador?.gestorPerfilId === meuPerfilId;
+  // BUG CORRIGIDO: se o Administrador está registrado como gestor direto de
+  // alguém (colaborador.gestorPerfilId === o próprio Administrador — um
+  // cenário comum em empresas pequenas, onde o dono também lidera parte da
+  // equipe), a etapa "líder" ficava travada, mesmo sendo literalmente essa
+  // pessoa quem precisa avaliar. Isso não é "Administrador virando avaliador
+  // de todo mundo" (o que a RN002/Cap. 2.1 do PRD não permite) — é honrar o
+  // vínculo de gestor já cadastrado no organograma, seja qual for o papel
+  // de sistema de quem está logado.
+  if(etapa === 'lider') return (meuPapelReal === 'lider' || meuPapelReal === 'owner') && colaborador?.gestorPerfilId === meuPerfilId;
   if(etapa === 'rh') return meuPapelReal === 'rh';
   return false;
 }

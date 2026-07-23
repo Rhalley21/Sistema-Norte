@@ -834,7 +834,10 @@ function souColaboradorDoCiclo(ciclo){
 }
 function souGestorDoCiclo(ciclo){
   const p = state.colaboradores.find(c=>c.id===ciclo.colaboradorId);
-  return meuPapelReal==='lider' && p?.gestorPerfilId===meuPerfilId;
+  // Mesma correção de podeEditarEtapa (js/14-permissions.js): honra o
+  // vínculo de gestor cadastrado no organograma, independente do papel de
+  // sistema (lider ou owner) de quem está logado.
+  return (meuPapelReal==='lider' || meuPapelReal==='owner') && p?.gestorPerfilId===meuPerfilId;
 }
 
 function renderAcompanhamentoItemPDI(ciclo, item, idx){
