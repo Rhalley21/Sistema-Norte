@@ -3,6 +3,30 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.13.7 — Bug corrigido (de vez, esperamos): link de recuperação continuava não mostrando a tela de nova senha
+A correção da v0.13.6 não foi suficiente — o link continuava abrindo o
+sistema normal em vez da tela de nova senha, mesmo em aba anônima com link
+recém-gerado. Causa provável: o projeto Supabase pode estar usando o fluxo
+"PKCE" para o link de recuperação (`?code=...`), que — diferente do fluxo
+"implícito" mais antigo (`#access_token=...`) — não gera uma sessão
+sozinho: o app precisa trocar esse código manualmente por uma sessão
+(`exchangeCodeForSession`). Sem isso, o Supabase às vezes dispara um evento
+genérico (`SIGNED_IN`) em vez de `PASSWORD_RECOVERY`, e o app só via "tem
+uma sessão válida" e entrava direto no dashboard.
+
+Reescrito em `js/19-auth.js`:
+- Detecção do link de recuperação agora acontece de forma síncrona e
+  explícita ao carregar a página (não depende só do evento do Supabase).
+- Cobre os dois formatos possíveis: PKCE (`?code=...&type=recovery`, com
+  troca manual via `exchangeCodeForSession`) e implícito
+  (`#access_token=...&type=recovery`).
+- Uma trava (`_tratandoLinkDeRecuperacao`) impede que qualquer outro evento
+  de autenticação (como `SIGNED_IN`) atropele a tela de nova senha depois
+  que ela já foi decidida.
+- Se nenhum dos dois formatos funcionar (link expirado ou já usado — os
+  links de recuperação só funcionam uma vez), mostra uma mensagem de erro
+  clara em vez de simplesmente cair no login sem explicação.
+
 ## v0.13.6 — Bug corrigido: link de redefinição de senha entrava direto no site
 Mesmo com o link do e-mail chegando certo (v0.13.5), clicar nele levava
 direto pro dashboard normal em vez de mostrar a tela "Defina sua nova

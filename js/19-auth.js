@@ -213,16 +213,26 @@ async function iniciarComSessao(sessao){
   render();
 }
 
+// BUG CORRIGIDO (de vez): o evento PASSWORD_RECOVERY não estava disparando
+// de um jeito confiável neste projeto — o link de recuperação também pode
+// vir no formato "PKCE" (?code=...), que o Supabase não converte sozinho
+// em sessão; é preciso trocar esse código manualmente por uma sessão via
+// exchangeCodeForSession(). Sem isso, o app só via "ah, tem uma sessão" e
+// entrava direto no dashboard, nunca mostrando a tela de nova senha.
+let _tratandoLinkDeRecuperacao = false;
+
+function linkAtualEhDeRecuperacaoSenha(){
+  return /type=recovery/.test(window.location.hash) || /type=recovery/.test(window.location.search);
+}
+
 sb.auth.onAuthStateChange((evento, sessao) => {
-  // BUG CORRIGIDO: mesmo com o link do e-mail chegando certinho, o app não
-  // tinha NENHUMA tela pra realmente trocar a senha — o evento de
-  // recuperação (PASSWORD_RECOVERY) caía direto no fluxo normal de login e
-  // abria o dashboard, sem dar chance de definir uma senha nova.
   if(evento === 'PASSWORD_RECOVERY'){
+    _tratandoLinkDeRecuperacao = true;
     sessaoAtual = sessao;
     renderRedefinirSenha();
     return;
   }
+  if(_tratandoLinkDeRecuperacao) return; // já está na tela de nova senha — não deixa outro evento (ex.: SIGNED_IN) atropelar
   if(sessao){
     sessaoAtual = sessao;
     // Só reinicia o app (recarrega dados e volta pro Dashboard) no primeiro login
@@ -233,6 +243,42 @@ sb.auth.onAuthStateChange((evento, sessao) => {
     sessaoAtual = null; empresaIdAtual = null; renderLogin();
   }
 });
+
+(async function iniciarApp(){
+  if(linkAtualEhDeRecuperacaoSenha()){
+    _tratandoLinkDeRecuperacao = true;
+    // Formato PKCE (?code=...): precisa trocar o código manualmente por uma sessão.
+    const code = new URLSearchParams(window.location.search).get('code');
+    if(code){
+      const { data, error } = await sb.auth.exchangeCodeForSession(code);
+      if(!error && data?.session){
+        sessaoAtual = data.session;
+        renderRedefinirSenha();
+        window.history.replaceState({}, document.title, window.location.pathname); // limpa o código da URL
+        return;
+      }
+    }
+    // Formato implícito (#access_token=...&type=recovery): o supabase-js
+    // costuma processar isso sozinho ao carregar a página — só falta
+    // pegar a sessão resultante.
+    const { data } = await sb.auth.getSession();
+    if(data?.session){
+      sessaoAtual = data.session;
+      renderRedefinirSenha();
+      return;
+    }
+    // Não conseguiu de nenhum jeito — mostra um erro claro em vez de
+    // simplesmente cair no login sem explicação.
+    erroLogin = 'Este link de redefinição de senha expirou ou já foi usado. Peça um novo em "Esqueci minha senha".';
+    _tratandoLinkDeRecuperacao = false;
+    renderLogin();
+    return;
+  }
+
+  const { data } = await sb.auth.getSession();
+  if(data.session){ iniciarComSessao(data.session); }
+  else { renderLogin(); }
+})();
 
 let erroRedefinirSenha = null;
 let carregandoRedefinirSenha = false;
@@ -270,25 +316,3 @@ async function confirmarNovaSenha(){
   showToast('Senha redefinida com sucesso!');
   await iniciarComSessao(sessaoAtual);
 }
-
-// BUG CORRIGIDO: quando o link de recuperação de senha é aberto, o Supabase
-// cria uma sessão temporária válida — e esse `getSession()` inicial estava
-// vendo essa sessão e chamando `iniciarComSessao`, entrando direto no site
-// (dashboard normal) ANTES do evento PASSWORD_RECOVERY ter chance de mostrar
-// a tela de nova senha. Ambos disparavam ao mesmo tempo, e o `getSession()`
-// geralmente "ganhava a corrida". Agora ele primeiro confere se a própria
-// URL indica um link de recuperação (type=recovery) e, se for o caso, não
-// entra direto — deixa a tela de nova senha assumir.
-function estaEmFluxoDeRecuperacaoSenha(){
-  return /type=recovery/.test(window.location.hash) || /type=recovery/.test(window.location.search);
-}
-sb.auth.getSession().then(({ data }) => {
-  if(estaEmFluxoDeRecuperacaoSenha()){
-    // Garante a tela de nova senha mesmo se o evento PASSWORD_RECOVERY,
-    // por algum motivo de timing, ainda não tiver dado conta disso sozinho.
-    if(data.session){ sessaoAtual = data.session; renderRedefinirSenha(); }
-    return;
-  }
-  if(data.session){ iniciarComSessao(data.session); }
-  else { renderLogin(); }
-});
