@@ -3,6 +3,19 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.14.1 — Bug corrigido: tela de Super Admin travava em "Carregando…"
+A condição que decidia buscar os dados verificava se as listas de empresas
+e códigos estavam vazias — mas lista vazia também é o estado normal antes
+de existir qualquer empresa ou código gerado (como é o caso logo depois de
+configurar o Super Admin pela primeira vez). Isso fazia a tela recarregar
+os dados a cada render, pra sempre, sem nunca aceitar "zero resultados"
+como uma resposta válida — travando em "Carregando…" eternamente.
+
+Corrigido em `js/23-page-super-admin.js`: agora existe uma flag separada
+(`_superAdminJaCarregou`) que só controla "já tentei carregar uma vez",
+independente de quantos resultados vieram. Também adicionado aviso de erro
+explícito caso a consulta ao Supabase falhe (antes falhava em silêncio).
+
 ## v0.14.0 — Licenciamento de Empresas (controle do dono da plataforma)
 Até aqui, qualquer pessoa que chegasse na tela de cadastro e escolhesse
 "não tenho convite" conseguia criar uma Empresa nova sozinha, sem nenhum

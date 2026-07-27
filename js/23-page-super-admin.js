@@ -8,19 +8,22 @@
    Supabase, sem passar pelo blob de estado de uma Empresa específica.
    ========================================================= */
 let _superAdminCarregando = false;
+let _superAdminJaCarregou = false; // BUG CORRIGIDO abaixo (ver pageSuperAdmin)
 let _superAdminEmpresas = [];
 let _superAdminCodigos = [];
 let _superAdminNovoRotulo = '';
 
 async function carregarDadosSuperAdmin(){
   _superAdminCarregando = true; render();
-  const [{ data: empresas }, { data: codigos }] = await Promise.all([
+  const [{ data: empresas, error: erroEmpresas }, { data: codigos, error: erroCodigos }] = await Promise.all([
     sb.from('empresas').select('id, nome_fantasia, cnpj, estado, criado_em').order('criado_em', { ascending:false }),
     sb.from('codigos_licenca_empresa').select('id, codigo, nome_empresa_sugerido, usado, empresa_id, criado_em, usado_em').order('criado_em', { ascending:false }),
   ]);
+  if(erroEmpresas || erroCodigos) showToast('Não foi possível carregar os dados: ' + (erroEmpresas?.message || erroCodigos?.message));
   _superAdminEmpresas = empresas || [];
   _superAdminCodigos = codigos || [];
   _superAdminCarregando = false;
+  _superAdminJaCarregou = true;
   render();
 }
 
@@ -61,7 +64,13 @@ async function revogarCodigoLicenca(id){
 }
 
 function pageSuperAdmin(){
-  if(!_superAdminEmpresas.length && !_superAdminCodigos.length && !_superAdminCarregando){
+  // BUG CORRIGIDO: antes, a condição pra buscar os dados era "os arrays
+  // estão vazios" — mas arrays vazios também é o estado normal quando
+  // ainda não existe nenhuma empresa ou código gerado! Isso fazia a tela
+  // tentar carregar de novo a cada render, pra sempre, sem nunca "aceitar"
+  // que zero resultados é uma resposta válida — travando em "Carregando…"
+  // eternamente. Agora só carrega uma vez (`_superAdminJaCarregou`).
+  if(!_superAdminJaCarregou && !_superAdminCarregando){
     carregarDadosSuperAdmin();
   }
   const codigosDisponiveis = _superAdminCodigos.filter(c=>!c.usado);
