@@ -3,6 +3,17 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.14.3 — Correção retroativa: colaboradores desligados antes da v0.14.2
+A correção da v0.14.2 (Desligar também remove o login) só vale para
+desligamentos feitos depois dela — quem já tinha sido desligado antes
+ficou com o cadastro inativo, mas o login continuava ativo, sem nenhum
+jeito automático de perceber isso.
+
+Adicionado em `js/13-page-colaboradores.js`: a tela de Colaboradores agora
+detecta automaticamente esses casos (desligado + login ainda ativo) e
+mostra um alerta com botão "Desativar login agora" pra cada um — corrige
+com um clique, sem precisar ir em Usuários & Acesso manualmente.
+
 ## v0.14.2 — Desligar colaborador agora remove o acesso de login também
 Gap de segurança real corrigido em `js/13-page-colaboradores.js`: clicar em
 "Desligar" só marcava o registro de RH do colaborador como inativo — a

@@ -186,6 +186,7 @@ function goto(id){
   state.route = id;
   _menuMobileAberto = false;
   if(id === 'usuarios') carregarUsuarios();
+  if(id === 'colaboradores') carregarUsuarios(); // usado pra detectar inconsistências (ver banner de "desligado mas com login ativo")
   if(id === 'ciclos') atualizarDadosAoVivo(true); // busca o estado mais recente sempre que entra na tela de Ciclos
   render();
 }

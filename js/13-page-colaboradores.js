@@ -170,12 +170,32 @@ function pageColaboradores(){
 
   const podeCadastrar = cargosAprovados.length && unidades.length && setores.length && contasGestor.length;
 
+  // BUG DE DADOS DETECTADO (não é mais possível criar esse estado, mas
+  // colaboradores desligados ANTES da correção que fez "Desligar" também
+  // remover o login ficaram com o cadastro inativo e o login ainda ativo).
+  // Detecta esses casos automaticamente e oferece corrigir com 1 clique.
+  const dessincronizados = state.colaboradores.filter(p=>{
+    if(!p.inativo || !p.perfilId) return false;
+    const perfil = _perfisEmpresa.find(pf=>pf.id===p.perfilId);
+    return perfil && !perfil.desativado;
+  });
+
   return `
     <div class="page-head">
       <div class="eyebrow">Etapa 06 · Pessoas</div>
       <h1>Colaboradores</h1>
       <p class="page-desc">Vínculo obrigatório (critério de aceite do módulo Colaboradores — PRD Cap. 5): unidade, setor, gestor direto, cargo e versão do Desenho de Cargo. Sem todos esses campos preenchidos, o colaborador não pode participar de um ciclo de avaliação.</p>
     </div>
+
+    ${dessincronizados.length ? `
+    <div class="card" style="border-left:3px solid var(--iniciar);">
+      <h3>⚠ ${dessincronizados.length} colaborador(es) desligado(s) com login ainda ativo</h3>
+      <p class="page-desc">Foram desligados antes de uma correção do sistema — o cadastro está inativo, mas a conta ainda consegue entrar. Corrige com um clique:</p>
+      ${dessincronizados.map(p=>`
+        <div class="pendencia-item"><span><b>${p.nome}</b></span><button class="btn btn-sm" onclick="sincronizarAcessoDesligado('${p.id}')">Desativar login agora</button></div>
+      `).join('')}
+    </div>
+    ` : ''}
 
     <div class="card">
       <h3>Cadastrar colaborador</h3>
@@ -478,6 +498,16 @@ function agendarCicloExtraordinarioPromocao(p){
    pessoais identificáveis (nome) de um colaborador já desligado,
    preservando o histórico estatístico/estrutural (ciclos, diagnósticos,
    indicadores) para fins de auditoria e comparação histórica. */
+async function sincronizarAcessoDesligado(colabId){
+  const p = state.colaboradores.find(c=>c.id===colabId);
+  if(!p?.perfilId) return;
+  const { error } = await sb.from('perfis').update({ desativado: true }).eq('id', p.perfilId);
+  if(error){ showToast('Não foi possível desativar o login — tente em Usuários & Acesso.'); return; }
+  registrarAuditoria('colaborador.acesso_sincronizado', { colaboradorId: colabId });
+  showToast(`Login de ${p.nome} desativado.`);
+  await carregarUsuarios();
+  render();
+}
 async function desligarColaborador(colabId){
   const p = state.colaboradores.find(c=>c.id===colabId);
   if(!confirm(`Desligar ${p.nome}? Isso também remove o acesso de login dela ao sistema imediatamente — só volta a funcionar se você usar "Religar" depois.`)) return;
