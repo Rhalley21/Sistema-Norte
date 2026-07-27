@@ -3,6 +3,23 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.14.2 — Desligar colaborador agora remove o acesso de login também
+Gap de segurança real corrigido em `js/13-page-colaboradores.js`: clicar em
+"Desligar" só marcava o registro de RH do colaborador como inativo — a
+conta de login dela continuava funcionando normalmente, ela ainda
+conseguia entrar no sistema depois de desligada.
+
+- `desligarColaborador` agora, além de marcar o colaborador como desligado,
+  desativa também a conta de login vinculada (se houver uma) — a pessoa
+  perde o acesso ao sistema imediatamente. Pede confirmação antes de agir.
+- Novo botão **"Religar"**, ao lado de "Anonimizar (LGPD)", pra quando o
+  colaborador é recontratado pela mesma Empresa: reativa o cadastro dele e
+  reativa o acesso de login junto (se havia um vinculado).
+- Se o colaborador for "religado" numa **outra** Empresa (não a mesma),
+  isso continua exigindo uma conta nova com um e-mail diferente — é a
+  mesma limitação de e-mail único por conta em toda a plataforma já
+  documentada em `RECONCILIACAO-RN.md`, não algo resolvido nesta versão.
+
 ## v0.14.1 — Bug corrigido: tela de Super Admin travava em "Carregando…"
 A condição que decidia buscar os dados verificava se as listas de empresas
 e códigos estavam vazias — mas lista vazia também é o estado normal antes

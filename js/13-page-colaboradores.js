@@ -229,7 +229,10 @@ function pageColaboradores(){
               ${!p.anonimizado ? `
                 <button class="btn btn-ghost btn-sm" onclick="_movimentarColabId='${emMovimento?'':p.id}'; render();">${emMovimento?'Cancelar':'Movimentar'}</button>
                 ${p.movimentacoes && p.movimentacoes.length ? `<button class="btn btn-ghost btn-sm" onclick="_verHistoricoColabId = _verHistoricoColabId==='${p.id}'?null:'${p.id}'; render();">Histórico (${p.movimentacoes.length})</button>` : ''}
-                ${!p.inativo ? `<button class="btn btn-ghost btn-sm" onclick="desligarColaborador('${p.id}')">Desligar</button>` : `<button class="btn btn-ghost btn-sm" style="color:var(--iniciar);" onclick="confirmarAnonimizacao('${p.id}')">Anonimizar (LGPD)</button>`}
+                ${!p.inativo ? `<button class="btn btn-ghost btn-sm" onclick="desligarColaborador('${p.id}')">Desligar</button>` : `
+                  <button class="btn btn-ghost btn-sm" style="color:var(--alavancar);" onclick="religarColaborador('${p.id}')">Religar</button>
+                  <button class="btn btn-ghost btn-sm" style="color:var(--iniciar);" onclick="confirmarAnonimizacao('${p.id}')">Anonimizar (LGPD)</button>
+                `}
               ` : '<span class="small-muted">Dados pessoais removidos — histórico estatístico preservado</span>'}
             </td>
           </tr>
@@ -475,14 +478,38 @@ function agendarCicloExtraordinarioPromocao(p){
    pessoais identificáveis (nome) de um colaborador já desligado,
    preservando o histórico estatístico/estrutural (ciclos, diagnósticos,
    indicadores) para fins de auditoria e comparação histórica. */
-function desligarColaborador(colabId){
+async function desligarColaborador(colabId){
   const p = state.colaboradores.find(c=>c.id===colabId);
+  if(!confirm(`Desligar ${p.nome}? Isso também remove o acesso de login dela ao sistema imediatamente — só volta a funcionar se você usar "Religar" depois.`)) return;
   p.inativo = true;
   atualizarCarimbo(p);
   p.movimentacoes = p.movimentacoes || [];
-  p.movimentacoes.push({ id: uid(), data: new Date().toISOString().slice(0,10), tipo:'Desligamento', detalhes:'Colaborador marcado como desligado (inativo).' });
+  p.movimentacoes.push({ id: uid(), data: new Date().toISOString().slice(0,10), tipo:'Desligamento', detalhes:'Colaborador marcado como desligado (inativo) — acesso de login também removido.' });
   registrarAuditoria('colaborador.desligado', { colaboradorId: colabId });
-  showToast('Colaborador marcado como desligado. Para solicitações de exclusão de dados (LGPD), use "Anonimizar".');
+  // BUG CORRIGIDO: desligar um colaborador aqui não desativava o acesso de
+  // login dele (perfis.desativado) — a pessoa continuava conseguindo entrar
+  // no sistema normalmente mesmo depois de desligada. Agora, se o
+  // colaborador tinha uma conta de login vinculada, ela é desativada junto.
+  if(p.perfilId){
+    const { error } = await sb.from('perfis').update({ desativado: true }).eq('id', p.perfilId);
+    if(error){ showToast('Colaborador desligado, mas não foi possível desativar o login dela — desative manualmente em Usuários & Acesso.'); render(); return; }
+  }
+  showToast(p.perfilId ? 'Colaborador desligado e acesso de login removido. Para excluir dados (LGPD), use "Anonimizar".' : 'Colaborador marcado como desligado. Para solicitações de exclusão de dados (LGPD), use "Anonimizar".');
+  render();
+}
+async function religarColaborador(colabId){
+  const p = state.colaboradores.find(c=>c.id===colabId);
+  if(!confirm(`Religar ${p.nome} à empresa? Isso reativa o cadastro dela como colaborador e, se ela tinha login, reativa o acesso também.`)) return;
+  p.inativo = false;
+  atualizarCarimbo(p);
+  p.movimentacoes = p.movimentacoes || [];
+  p.movimentacoes.push({ id: uid(), data: new Date().toISOString().slice(0,10), tipo:'Religação', detalhes:'Colaborador religado à empresa — acesso de login reativado (se havia um vinculado).' });
+  registrarAuditoria('colaborador.religado', { colaboradorId: colabId });
+  if(p.perfilId){
+    const { error } = await sb.from('perfis').update({ desativado: false }).eq('id', p.perfilId);
+    if(error){ showToast('Colaborador religado, mas não foi possível reativar o login dela — reative manualmente em Usuários & Acesso.'); render(); return; }
+  }
+  showToast('Colaborador religado à empresa. Acesso de login reativado, se havia um vinculado.');
   render();
 }
 function confirmarAnonimizacao(colabId){
