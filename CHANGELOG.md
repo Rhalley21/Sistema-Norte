@@ -3,6 +3,30 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.13.5 — Bug corrigido: "Esqueci minha senha" não completava a troca
+Duas causas, as duas em `js/19-auth.js`:
+
+1. **Link do e-mail sem destino explícito.** `resetPasswordForEmail` estava
+   sendo chamado sem `redirectTo` — nesse caso o Supabase usa a "Site URL"
+   configurada no painel do projeto como destino do link. Se esse endereço
+   estiver desatualizado (ex.: ainda apontando pra `localhost` ou uma URL
+   antiga), o link do e-mail leva a um endereço que não existe — exatamente
+   o erro relatado ("não é possível acessar o site"). Agora o link é gerado
+   sempre com `redirectTo` = o endereço de onde o site está rodando no
+   momento, então nunca aponta pra um lugar errado.
+2. **Faltava a tela para completar a troca.** Mesmo que o link chegasse
+   certo, o app não tinha nenhuma tela de "defina sua nova senha" — o
+   evento de recuperação de senha do Supabase caía direto no fluxo normal
+   de login. Agora existe `renderRedefinirSenha()`, com validação de senha
+   mínima e confirmação, que aparece automaticamente quando alguém chega
+   pelo link do e-mail.
+
+**Ação manual necessária no painel do Supabase** (não dá pra fazer isso
+pelo código): em Authentication → URL Configuration, confirme que a "Site
+URL" e a lista de "Redirect URLs" incluem o endereço real onde o site está
+hospedado (ex.: a URL do GitHub Pages) — o Supabase só aceita redirecionar
+para endereços que estejam nessa lista.
+
 ## v0.13.4 — Bug corrigido: qualquer clique jogava a página pro topo
 `js/05-navigation.js` tinha um `window.scrollTo(0,0)` incondicional dentro
 de `render()` — e como praticamente toda ação do sistema (marcar uma nota

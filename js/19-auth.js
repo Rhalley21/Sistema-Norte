@@ -104,7 +104,15 @@ async function esqueciSenhaLogin(){
   const email = valorEmailLogin.trim();
   if(!email){ erroLogin = 'Preencha o e-mail para receber o link de redefinição de senha.'; renderLogin(); return; }
   carregandoLogin = true; erroLogin = null; renderLogin();
-  const { error } = await sb.auth.resetPasswordForEmail(email);
+  // BUG CORRIGIDO: sem `redirectTo`, o Supabase usa a "Site URL" configurada
+  // no painel do projeto como destino do link do e-mail — se esse endereço
+  // estiver desatualizado ou for diferente de onde o site está hospedado de
+  // fato (ex.: GitHub Pages), o link do e-mail leva a um endereço que não
+  // existe ("não é possível acessar o site"). Forçando explicitamente o
+  // endereço atual da página, o link sempre aponta pro lugar certo.
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname,
+  });
   carregandoLogin = false;
   erroLogin = error ? 'Não foi possível enviar o link agora. Tente novamente.' : 'Se este e-mail estiver cadastrado, enviamos um link de redefinição de senha.';
   renderLogin();
@@ -206,6 +214,15 @@ async function iniciarComSessao(sessao){
 }
 
 sb.auth.onAuthStateChange((evento, sessao) => {
+  // BUG CORRIGIDO: mesmo com o link do e-mail chegando certinho, o app não
+  // tinha NENHUMA tela pra realmente trocar a senha — o evento de
+  // recuperação (PASSWORD_RECOVERY) caía direto no fluxo normal de login e
+  // abria o dashboard, sem dar chance de definir uma senha nova.
+  if(evento === 'PASSWORD_RECOVERY'){
+    sessaoAtual = sessao;
+    renderRedefinirSenha();
+    return;
+  }
   if(sessao){
     sessaoAtual = sessao;
     // Só reinicia o app (recarrega dados e volta pro Dashboard) no primeiro login
@@ -216,6 +233,43 @@ sb.auth.onAuthStateChange((evento, sessao) => {
     sessaoAtual = null; empresaIdAtual = null; renderLogin();
   }
 });
+
+let erroRedefinirSenha = null;
+let carregandoRedefinirSenha = false;
+function renderRedefinirSenha(){
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;width:100%;">
+      <div class="card" style="max-width:380px;width:100%;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+          ${compassSVG ? compassSVG() : ''}
+          <div>
+            <div class="brand-name">NORTE</div>
+            <div class="brand-sub">Redefinir senha</div>
+          </div>
+        </div>
+        <p class="page-desc">Digite a nova senha para a sua conta.</p>
+        <div class="field"><label>Nova senha</label><input id="rs-senha" type="password" minlength="6" required></div>
+        <div class="field"><label>Confirmar nova senha</label><input id="rs-senha-confirma" type="password" minlength="6" required></div>
+        ${erroRedefinirSenha ? `<p style="color:var(--iniciar);font-size:12.5px;margin:-4px 0 12px;">${erroRedefinirSenha}</p>` : ''}
+        <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="confirmarNovaSenha()" ${carregandoRedefinirSenha?'disabled':''}>
+          ${carregandoRedefinirSenha ? 'Salvando…' : 'Salvar nova senha'}
+        </button>
+      </div>
+    </div>`;
+}
+async function confirmarNovaSenha(){
+  const senha = document.getElementById('rs-senha').value;
+  const confirma = document.getElementById('rs-senha-confirma').value;
+  if(!senha || senha.length < 6){ erroRedefinirSenha = 'A senha precisa ter pelo menos 6 caracteres.'; renderRedefinirSenha(); return; }
+  if(senha !== confirma){ erroRedefinirSenha = 'As duas senhas digitadas são diferentes.'; renderRedefinirSenha(); return; }
+  carregandoRedefinirSenha = true; erroRedefinirSenha = null; renderRedefinirSenha();
+  const { error } = await sb.auth.updateUser({ password: senha });
+  carregandoRedefinirSenha = false;
+  if(error){ erroRedefinirSenha = 'Não foi possível salvar a nova senha. Tente pedir um novo link de redefinição.'; renderRedefinirSenha(); return; }
+  showToast('Senha redefinida com sucesso!');
+  await iniciarComSessao(sessaoAtual);
+}
 
 sb.auth.getSession().then(({ data }) => {
   if(data.session){ iniciarComSessao(data.session); }
