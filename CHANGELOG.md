@@ -3,6 +3,19 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.14.4 — Mudar o papel de uma conta já existente
+Até aqui, o papel (RH/Gestor/Colaborador) só podia ser definido no momento
+do convite — não existia jeito de promover ou rebaixar alguém que já
+tivesse conta criada, sem desativar e recriar do zero.
+
+- Nova opção **"Mudar papel para…"** em Usuários & Acesso, ao lado de cada
+  pessoa (exceto o próprio Administrador da empresa, que não muda).
+- Mesma regra do convite: só o Administrador pode promover alguém a RH —
+  RH pode promover/rebaixar entre Gestor e Colaborador livremente.
+- Não precisou de mudança no banco — a política de segurança que já
+  permite Dono/RH administrarem qualquer perfil da empresa (criada na
+  correção `07-fix-desativar-usuario.sql`) já cobre esse caso.
+
 ## v0.14.3 — Correção retroativa: colaboradores desligados antes da v0.14.2
 A correção da v0.14.2 (Desligar também remove o login) só vale para
 desligamentos feitos depois dela — quem já tinha sido desligado antes

@@ -59,6 +59,24 @@ async function alternarAtivoPerfil(perfilId, desativarAgora){
   showToast(desativarAgora ? 'Conta desativada. Todo o histórico de avaliações dessa pessoa continua preservado.' : 'Conta reativada.');
   await carregarUsuarios();
 }
+async function mudarPapelPerfil(perfilId, novoPapel){
+  if(!novoPapel) return;
+  const p = _perfisEmpresa.find(pf=>pf.id===perfilId);
+  if(!p) return;
+  // Mesma regra do convite: só o Administrador pode promover alguém a RH.
+  if(novoPapel === 'rh' && meuPapelReal !== 'owner'){
+    showToast('Só o Administrador pode promover alguém a RH.');
+    render();
+    return;
+  }
+  if(!confirm(`Mudar o papel de ${p.nome||'esta pessoa'} de ${PAPEL_LABEL_UI[p.papel]||p.papel} para ${PAPEL_LABEL_UI[novoPapel]}?`)) { render(); return; }
+  const { error } = await sb.from('perfis').update({ papel: novoPapel }).eq('id', perfilId);
+  if(error){ showToast('Não foi possível mudar o papel.'); return; }
+  registrarAuditoria('usuario.papel_alterado', { perfilId, papelAnterior: p.papel, papelNovo: novoPapel });
+  showToast(`${p.nome||'Pessoa'} agora é ${PAPEL_LABEL_UI[novoPapel]}.`);
+  await carregarUsuarios();
+  render();
+}
 async function alternarEscopoEstendido(perfilId, concederAgora){
   const { error } = await sb.from('perfis').update({ escopo_estendido: concederAgora }).eq('id', perfilId);
   if(error){ showToast('Não foi possível atualizar a permissão.'); return; }
@@ -95,6 +113,12 @@ function pageUsuarios(){
                 ${p.id !== meuPerfilId ? `
                   <button class="btn btn-ghost btn-sm" onclick="alternarAtivoPerfil('${p.id}', ${!p.desativado})">${p.desativado?'Reativar':'Desativar'}</button>
                   ${souOwner && p.papel==='lider' ? `<button class="btn btn-ghost btn-sm" onclick="alternarEscopoEstendido('${p.id}', ${!p.escopo_estendido})">${p.escopo_estendido?'Revogar escopo estendido':'Conceder escopo estendido'}</button>` : ''}
+                  ${p.papel !== 'owner' ? `
+                    <select onchange="mudarPapelPerfil('${p.id}', this.value)" style="padding:4px 8px;font-size:12px;">
+                      <option value="">Mudar papel para…</option>
+                      ${['rh','lider','colaborador'].filter(papel=>papel!==p.papel && (souOwner || papel!=='rh')).map(papel=>`<option value="${papel}">${PAPEL_LABEL_UI[papel]}</option>`).join('')}
+                    </select>
+                  ` : ''}
                 ` : ''}
               </td>
             </tr>
