@@ -3,6 +3,21 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.13.6 — Bug corrigido: link de redefinição de senha entrava direto no site
+Mesmo com o link do e-mail chegando certo (v0.13.5), clicar nele levava
+direto pro dashboard normal em vez de mostrar a tela "Defina sua nova
+senha". Causa: o link de recuperação já cria uma sessão temporária válida
+no Supabase — e o código tinha duas verificações rodando em paralelo no
+carregamento da página (`onAuthStateChange` com o evento
+`PASSWORD_RECOVERY`, e um `getSession()` inicial): o `getSession()` via
+essa sessão temporária e entrava direto no site, ganhando a corrida contra
+a tela de nova senha.
+
+Corrigido em `js/19-auth.js`: antes de decidir entrar direto no site, o
+código agora confere se a própria URL indica um link de recuperação
+(`type=recovery`, nos dois formatos que o Supabase pode usar) e, se for o
+caso, mostra a tela de nova senha em vez de pular direto pro dashboard.
+
 ## v0.13.5 — Bug corrigido: "Esqueci minha senha" não completava a troca
 Duas causas, as duas em `js/19-auth.js`:
 

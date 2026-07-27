@@ -271,7 +271,24 @@ async function confirmarNovaSenha(){
   await iniciarComSessao(sessaoAtual);
 }
 
+// BUG CORRIGIDO: quando o link de recuperação de senha é aberto, o Supabase
+// cria uma sessão temporária válida — e esse `getSession()` inicial estava
+// vendo essa sessão e chamando `iniciarComSessao`, entrando direto no site
+// (dashboard normal) ANTES do evento PASSWORD_RECOVERY ter chance de mostrar
+// a tela de nova senha. Ambos disparavam ao mesmo tempo, e o `getSession()`
+// geralmente "ganhava a corrida". Agora ele primeiro confere se a própria
+// URL indica um link de recuperação (type=recovery) e, se for o caso, não
+// entra direto — deixa a tela de nova senha assumir.
+function estaEmFluxoDeRecuperacaoSenha(){
+  return /type=recovery/.test(window.location.hash) || /type=recovery/.test(window.location.search);
+}
 sb.auth.getSession().then(({ data }) => {
+  if(estaEmFluxoDeRecuperacaoSenha()){
+    // Garante a tela de nova senha mesmo se o evento PASSWORD_RECOVERY,
+    // por algum motivo de timing, ainda não tiver dado conta disso sozinho.
+    if(data.session){ sessaoAtual = data.session; renderRedefinirSenha(); }
+    return;
+  }
   if(data.session){ iniciarComSessao(data.session); }
   else { renderLogin(); }
 });
