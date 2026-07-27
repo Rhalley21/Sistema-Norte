@@ -13,6 +13,7 @@ function renderRoute(){
     case 'relatorios': return pageRelatorios();
     case 'configuracoes': return pageConfiguracoes();
     case 'dashboard_role': return pageDashboard();
+    case 'super_admin': return souSuperAdmin ? pageSuperAdmin() : pageDashboard();
     default: return pageDashboard();
   }
 }

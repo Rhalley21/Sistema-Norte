@@ -12,6 +12,7 @@ let valorSenhaLogin = '';
 let valorNomeLogin = '';
 let valorEmpresaLogin = '';
 let valorCodigoLogin = '';
+let valorCodigoLicencaLogin = ''; // Código de licença — obrigatório pra criar uma Empresa nova (controle do dono do NORTE)
 
 /* ---------- Bloqueio de login após 5 tentativas falhas (Fluxo de Navegação, Cap. 1.2) ----------
    Camada de UX no cliente, com persistência em localStorage (por e-mail) para
@@ -78,7 +79,8 @@ function renderLogin(){
             </label>
             ${temConviteLogin
               ? `<div class="field"><label>Código de convite</label><input id="li-codigo" type="text" required value="${valorCodigoLogin}" oninput="valorCodigoLogin=this.value;"></div>`
-              : `<div class="field"><label>Nome da empresa</label><input id="li-empresa" type="text" required value="${valorEmpresaLogin}" oninput="valorEmpresaLogin=this.value;"></div>`
+              : `<div class="field"><label>Nome da empresa</label><input id="li-empresa" type="text" required value="${valorEmpresaLogin}" oninput="valorEmpresaLogin=this.value;"></div>
+                 <div class="field"><label>Código de licença <small>(fornecido pelo Instituto INETRIS)</small></label><input id="li-codigo-licenca" type="text" required value="${valorCodigoLicencaLogin}" oninput="valorCodigoLicencaLogin=this.value;"></div>`
             }
           ` : ''}
           <div class="field"><label>E-mail</label><input id="li-email" type="email" required value="${valorEmailLogin}" oninput="valorEmailLogin=this.value;"></div>
@@ -153,17 +155,22 @@ async function cadastrarLogin(){
   const temConvite = document.getElementById('li-tem-convite').checked;
   const codigo = temConvite ? valorCodigoLogin.trim() : null;
   const nomeEmpresa = temConvite ? null : valorEmpresaLogin.trim();
+  // Código de licença: obrigatório apenas quando NÃO há convite (ou seja,
+  // quando a pessoa está tentando criar uma Empresa nova) — controle do
+  // dono da plataforma (Instituto INETRIS), ver sql/11-licenciamento-empresas.sql.
+  const codigoLicenca = temConvite ? null : valorCodigoLicencaLogin.trim();
 
   if(!nome){ erroLogin = 'Preencha seu nome.'; renderLogin(); return; }
   if(temConvite && !codigo){ erroLogin = 'Preencha o código de convite, ou desmarque a opção.'; renderLogin(); return; }
   if(!temConvite && !nomeEmpresa){ erroLogin = 'Preencha o nome da empresa, ou marque que tem um código de convite.'; renderLogin(); return; }
+  if(!temConvite && !codigoLicenca){ erroLogin = 'Preencha o código de licença fornecido pelo Instituto INETRIS.'; renderLogin(); return; }
   if(!email){ erroLogin = 'Preencha o e-mail.'; renderLogin(); return; }
   if(!senha || senha.length < 6){ erroLogin = 'A senha precisa ter pelo menos 6 caracteres.'; renderLogin(); return; }
 
   carregandoLogin = true; erroLogin = null; renderLogin();
   const { error } = await sb.auth.signUp({
     email, password: senha,
-    options: { data: { nome, nome_empresa: nomeEmpresa, codigo_convite: codigo } }
+    options: { data: { nome, nome_empresa: nomeEmpresa, codigo_convite: codigo, codigo_licenca: codigoLicenca } }
   });
   carregandoLogin = false;
   if(error){
@@ -176,7 +183,7 @@ async function cadastrarLogin(){
     const jaExiste = /already registered|already exists|user already/i.test(error.message||'');
     erroLogin = jaExiste
       ? 'Este e-mail já tem uma conta nesta plataforma. Cada e-mail só pode estar vinculado a uma Empresa por vez — se você precisa de acesso a outra Empresa, peça um convite para um e-mail diferente ou fale com o suporte.'
-      : error.message;
+      : error.message; // aqui aparece, por exemplo, "Código de licença inválido ou já utilizado."
     renderLogin();
   }
   // se der certo, o listener onAuthStateChange cuida de iniciar o app
@@ -202,6 +209,13 @@ async function iniciarComSessao(sessao){
   empresaIdAtual = perfil.empresa_id;
   meuPapelReal = perfil.papel;
   meuEscopoEstendido = !!perfil.escopo_estendido;
+
+  // Super Admin da plataforma (dono do NORTE — Instituto INETRIS) é um nível
+  // ACIMA do papel dentro da Empresa (owner/rh/lider/colaborador). Uma mesma
+  // pessoa pode ser "owner" da própria Empresa E também Super Admin da
+  // plataforma inteira — são coisas independentes. Ver sql/11-licenciamento-empresas.sql.
+  const { data: superAdminRow } = await sb.from('super_admins').select('id').eq('id', sessao.user.id).maybeSingle();
+  souSuperAdmin = !!superAdminRow;
 
   registrarAuditoria('usuario.login', { papel: meuPapelReal });
 

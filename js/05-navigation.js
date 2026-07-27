@@ -12,10 +12,14 @@ const STEPS_BASE = [
   {id:'relatorios', label:'Relatórios', group:'Base', papeis:['owner','rh']},
   {id:'configuracoes', label:'Configurações', group:'Base', papeis:['owner']},
   {id:'dashboard_role', label:'Dashboards', group:'Base'},
+  // Só visível pra quem é Super Admin da PLATAFORMA (dono do NORTE) — não
+  // tem relação com o papel dentro de uma Empresa (owner/rh/lider/colaborador).
+  {id:'super_admin', label:'Super Admin — Empresas', group:'Plataforma', apenasSuperAdmin:true},
 ];
 function stepsVisiveis(){
   const perm = state.configuracoes?.permissoesExtras || {};
   return STEPS_BASE.filter(s => {
+    if(s.apenasSuperAdmin) return souSuperAdmin;
     if(!s.papeis) return true;
     if(s.papeis.includes(meuPapelReal)) return true;
     // RNF002 — exceções configuráveis pelo Administrador
@@ -42,6 +46,7 @@ function stepUnlocked(id){
     case 'relatorios': return true;
     case 'configuracoes': return true;
     case 'dashboard_role': return true;
+    case 'super_admin': return true;
     default: return true;
   }
 }

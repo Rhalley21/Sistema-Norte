@@ -3,6 +3,39 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.14.0 — Licenciamento de Empresas (controle do dono da plataforma)
+Até aqui, qualquer pessoa que chegasse na tela de cadastro e escolhesse
+"não tenho convite" conseguia criar uma Empresa nova sozinha, sem nenhum
+controle — qualquer um tinha acesso à plataforma. Agora isso exige
+aprovação prévia do Instituto INETRIS (dono da Metodologia NORTE).
+
+- **Novo conceito: Super Admin da plataforma** — um nível acima do
+  Administrador de cada Empresa. O Administrador só enxerga a própria
+  Empresa; o Super Admin enxerga e gerencia todas.
+- **`sql/11-licenciamento-empresas.sql`** (rodar no SQL Editor do Supabase,
+  depois de todos os scripts anteriores): cria as tabelas `super_admins` e
+  `codigos_licenca_empresa`, e atualiza a trigger de cadastro — criar uma
+  Empresa nova (sem convite) agora exige um código de licença válido e
+  ainda não usado; sem isso, o cadastro é recusado com uma mensagem clara.
+- **Tela nova "Super Admin — Empresas"** (`js/23-page-super-admin.js`),
+  visível só pra quem está na tabela `super_admins`: gera códigos de
+  licença (formato legível, tipo `NORTE-XXXX-XXXX`, fácil de ditar por
+  telefone/WhatsApp), lista todas as Empresas cadastradas na plataforma,
+  mostra quais códigos já foram usados e por qual Empresa, e permite
+  revogar um código ainda não usado.
+- Tela de cadastro atualizada: quem for criar uma Empresa nova agora
+  também precisa preencher o código de licença, além do nome da empresa.
+
+**Ação manual obrigatória, uma única vez**, depois de rodar o script SQL:
+insira a própria conta (a do Instituto INETRIS) na tabela `super_admins`
+rodando, no SQL Editor do Supabase:
+```sql
+insert into super_admins (id, nome) values ('SEU-USER-ID-AQUI', 'Seu nome');
+```
+O ID do usuário fica visível em Authentication → Users, no painel do
+Supabase. Sem essa linha, ninguém tem acesso de Super Admin — nem o dono
+da conta.
+
 ## v0.13.7 — Bug corrigido (de vez, esperamos): link de recuperação continuava não mostrando a tela de nova senha
 A correção da v0.13.6 não foi suficiente — o link continuava abrindo o
 sistema normal em vez da tela de nova senha, mesmo em aba anônima com link
