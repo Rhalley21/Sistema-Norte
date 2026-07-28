@@ -3,6 +3,22 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.14.7 — Corrigido de vez: tela de nova senha aparecia e sumia em 1 segundo
+A v0.14.6 eliminou a disputa entre duas rotinas, mas sobrou uma disputa de
+**ordem** dentro da própria rotina: a trava que impede outros eventos de
+assumir a tela (`_tratandoLinkDeRecuperacao`) só era ligada DEPOIS de trocar
+o token pela sessão — mas essa troca em si (`setSession`/
+`exchangeCodeForSession`) já dispara o evento de "sessão mudou" NO MEIO do
+processo, antes da trava existir. Resultado exato relatado: a tela de nova
+senha chegava a aparecer por um instante, e o app normal (que já tinha sido
+disparado por baixo dos panos, sem trava nenhuma barrando) tomava conta da
+tela logo em seguida.
+
+Corrigido em `js/19-auth.js`: a trava agora liga de forma síncrona, lendo a
+URL diretamente, **antes** de qualquer troca de token começar — nunca mais
+depois. Simulei o cenário exato (evento disparando no meio do processo) e
+confirmei que agora fica bloqueado corretamente.
+
 ## v0.14.6 — Disputa de tempo no link de recuperação eliminada de vez
 As correções anteriores (v0.13.6, v0.13.7) reduziram a disputa, mas não
 eliminaram — o link ainda funcionava só às vezes, porque duas rotinas

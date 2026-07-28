@@ -276,6 +276,18 @@ sb.auth.onAuthStateChange((evento, sessao) => {
 });
 
 (async function iniciarApp(){
+  // BUG CORRIGIDO: a trava (_tratandoLinkDeRecuperacao) só era ligada DEPOIS
+  // de processar o token — mas trocar o token (setSession/exchangeCodeForSession)
+  // já dispara o onAuthStateChange NO MEIO do processo, antes da trava
+  // existir. Resultado: a tela de nova senha chegava a aparecer por um
+  // instante, e logo em seguida o app "normal" (que já tinha sido disparado
+  // por baixo dos panos) tomava conta da tela. Agora a trava liga ANTES de
+  // qualquer troca de token acontecer, checando a URL de forma síncrona.
+  const hashInicial = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const searchInicial = new URLSearchParams(window.location.search);
+  const tipoDetectadoNaUrl = hashInicial.get('type') || searchInicial.get('type');
+  if(tipoDetectadoNaUrl === 'recovery') _tratandoLinkDeRecuperacao = true;
+
   const { session: sessaoDoLink, tipo } = await processarTokensDaUrlSeHouver();
 
   if(tipo === 'recovery'){
