@@ -227,26 +227,43 @@ async function iniciarComSessao(sessao){
   render();
 }
 
-// BUG CORRIGIDO (de vez): o evento PASSWORD_RECOVERY não estava disparando
-// de um jeito confiável neste projeto — o link de recuperação também pode
-// vir no formato "PKCE" (?code=...), que o Supabase não converte sozinho
-// em sessão; é preciso trocar esse código manualmente por uma sessão via
-// exchangeCodeForSession(). Sem isso, o app só via "ah, tem uma sessão" e
-// entrava direto no dashboard, nunca mostrando a tela de nova senha.
+// BUG CORRIGIDO (de vez, sem disputa de tempo): antes, duas rotinas
+// competiam pra processar o mesmo link — a detecção automática do próprio
+// supabase-js (agora desligada, ver js/01-supabase-client.js) e o nosso
+// código abaixo. Dependendo de qual "ganhasse" primeiro, às vezes
+// funcionava, às vezes abria o sistema direto. Agora só existe UM caminho:
+// processamos a URL manualmente, uma única vez, de forma sequencial, antes
+// de qualquer outra decisão.
 let _tratandoLinkDeRecuperacao = false;
 
-function linkAtualEhDeRecuperacaoSenha(){
-  return /type=recovery/.test(window.location.hash) || /type=recovery/.test(window.location.search);
+async function processarTokensDaUrlSeHouver(){
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const searchParams = new URLSearchParams(window.location.search);
+  const tipo = hashParams.get('type') || searchParams.get('type');
+
+  // Formato PKCE (?code=...)
+  const code = searchParams.get('code');
+  if(code){
+    const { data, error } = await sb.auth.exchangeCodeForSession(code);
+    window.history.replaceState({}, document.title, window.location.pathname); // limpa a URL
+    return { session: !error ? data?.session : null, tipo };
+  }
+
+  // Formato implícito (#access_token=...&refresh_token=...&type=recovery) —
+  // com a detecção automática desligada, precisamos aplicar isso na mão.
+  const accessToken = hashParams.get('access_token');
+  const refreshToken = hashParams.get('refresh_token');
+  if(accessToken && refreshToken){
+    const { data, error } = await sb.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+    window.history.replaceState({}, document.title, window.location.pathname);
+    return { session: !error ? data?.session : null, tipo };
+  }
+
+  return { session: null, tipo: null };
 }
 
 sb.auth.onAuthStateChange((evento, sessao) => {
-  if(evento === 'PASSWORD_RECOVERY'){
-    _tratandoLinkDeRecuperacao = true;
-    sessaoAtual = sessao;
-    renderRedefinirSenha();
-    return;
-  }
-  if(_tratandoLinkDeRecuperacao) return; // já está na tela de nova senha — não deixa outro evento (ex.: SIGNED_IN) atropelar
+  if(_tratandoLinkDeRecuperacao) return; // já está na tela de nova senha — não deixa nenhum outro evento atropelar
   if(sessao){
     sessaoAtual = sessao;
     // Só reinicia o app (recarrega dados e volta pro Dashboard) no primeiro login
@@ -259,36 +276,29 @@ sb.auth.onAuthStateChange((evento, sessao) => {
 });
 
 (async function iniciarApp(){
-  if(linkAtualEhDeRecuperacaoSenha()){
+  const { session: sessaoDoLink, tipo } = await processarTokensDaUrlSeHouver();
+
+  if(tipo === 'recovery'){
     _tratandoLinkDeRecuperacao = true;
-    // Formato PKCE (?code=...): precisa trocar o código manualmente por uma sessão.
-    const code = new URLSearchParams(window.location.search).get('code');
-    if(code){
-      const { data, error } = await sb.auth.exchangeCodeForSession(code);
-      if(!error && data?.session){
-        sessaoAtual = data.session;
-        renderRedefinirSenha();
-        window.history.replaceState({}, document.title, window.location.pathname); // limpa o código da URL
-        return;
-      }
-    }
-    // Formato implícito (#access_token=...&type=recovery): o supabase-js
-    // costuma processar isso sozinho ao carregar a página — só falta
-    // pegar a sessão resultante.
-    const { data } = await sb.auth.getSession();
-    if(data?.session){
-      sessaoAtual = data.session;
+    if(sessaoDoLink){
+      sessaoAtual = sessaoDoLink;
       renderRedefinirSenha();
-      return;
+    } else {
+      // Link expirado ou já usado (links de recuperação só funcionam uma vez).
+      erroLogin = 'Este link de redefinição de senha expirou ou já foi usado. Peça um novo em "Esqueci minha senha".';
+      _tratandoLinkDeRecuperacao = false;
+      renderLogin();
     }
-    // Não conseguiu de nenhum jeito — mostra um erro claro em vez de
-    // simplesmente cair no login sem explicação.
-    erroLogin = 'Este link de redefinição de senha expirou ou já foi usado. Peça um novo em "Esqueci minha senha".';
-    _tratandoLinkDeRecuperacao = false;
-    renderLogin();
     return;
   }
 
+  if(sessaoDoLink){
+    // Outro tipo de link com token na URL (ex.: confirmação de cadastro) — entra normal.
+    iniciarComSessao(sessaoDoLink);
+    return;
+  }
+
+  // Sem nenhum token na URL — fluxo normal de quem já tinha sessão salva.
   const { data } = await sb.auth.getSession();
   if(data.session){ iniciarComSessao(data.session); }
   else { renderLogin(); }

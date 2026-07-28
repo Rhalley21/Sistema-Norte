@@ -6,7 +6,17 @@
    ========================================================= */
 const SUPABASE_URL = 'https://mgkmvrgfmuexgxkuslur.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_uOz0hehVdqv_7Q2LBzVbzg_J6ZH40fh';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// BUG CORRIGIDO (disputa de "quem chega primeiro"): por padrão, o próprio
+// supabase-js já tenta detectar e processar sozinho qualquer token de sessão
+// presente na URL (detectSessionInUrl: true), ao mesmo tempo em que nosso
+// código (js/19-auth.js) também tenta fazer a mesma coisa explicitamente.
+// Duas rotinas competindo pra processar o mesmo link é exatamente o tipo de
+// corrida que fazia o link de recuperação às vezes funcionar, às vezes não
+// — dependendo de qual das duas "ganhava" primeiro. Desligando a detecção
+// automática, só o nosso código decide o que fazer com o link.
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { detectSessionInUrl: false },
+});
 
 let sessaoAtual = null;
 let empresaIdAtual = null;

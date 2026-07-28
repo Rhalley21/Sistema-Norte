@@ -3,6 +3,27 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.14.6 — Disputa de tempo no link de recuperação eliminada de vez
+As correções anteriores (v0.13.6, v0.13.7) reduziram a disputa, mas não
+eliminaram — o link ainda funcionava só às vezes, porque duas rotinas
+diferentes competiam pra processar o mesmo link ao mesmo tempo: a detecção
+automática do próprio supabase-js (ligada por padrão) e o código específico
+que escrevemos pra tratar o link de recuperação. Dependendo de qual
+"ganhasse a corrida" primeiro, ora funcionava, ora abria o sistema direto.
+
+Corrigido de raiz em `js/01-supabase-client.js` e `js/19-auth.js`:
+- **Desligada a detecção automática do supabase-js** (`detectSessionInUrl:
+  false`) — agora só existe UM caminho processando qualquer link recebido
+  por e-mail, nunca dois ao mesmo tempo.
+- O app passou a processar os tokens da URL manualmente e sequencialmente
+  (`processarTokensDaUrlSeHouver`), cobrindo os dois formatos possíveis
+  (PKCE `?code=...` e implícito `#access_token=...`), antes de qualquer
+  outra decisão ser tomada.
+- Como efeito colateral necessário: qualquer outro tipo de link com token
+  na URL (ex.: confirmação de cadastro por e-mail, se algum dia for
+  ativada) também passou a ser tratado explicitamente pelo mesmo código —
+  antes dependia da mesma detecção automática que foi desligada.
+
 ## v0.14.5 — Mensagem de e-mail duplicado cobre mais variações
 A garantia em si já existia (o Supabase impede, no nível do banco, duas
 contas com o mesmo e-mail — isso nunca dependeu do código do front-end).
