@@ -11,6 +11,7 @@ const STEPS_BASE = [
   {id:'inteligencia', label:'Banco de Inteligência', group:'Base', papeis:['owner','rh']},
   {id:'relatorios', label:'Relatórios', group:'Base', papeis:['owner','rh']},
   {id:'configuracoes', label:'Configurações', group:'Base', papeis:['owner']},
+  {id:'auditoria', label:'Auditoria', group:'Base', papeis:['owner','rh']},
   {id:'dashboard_role', label:'Dashboards', group:'Base'},
   // Só visível pra quem é Super Admin da PLATAFORMA (dono do NORTE) — não
   // tem relação com o papel dentro de uma Empresa (owner/rh/lider/colaborador).
@@ -47,6 +48,7 @@ function stepUnlocked(id){
     case 'configuracoes': return true;
     case 'dashboard_role': return true;
     case 'super_admin': return true;
+    case 'auditoria': return true;
     default: return true;
   }
 }
@@ -187,6 +189,7 @@ function goto(id){
   _menuMobileAberto = false;
   if(id === 'usuarios') carregarUsuarios();
   if(id === 'colaboradores') carregarUsuarios(); // usado pra detectar inconsistências (ver banner de "desligado mas com login ativo")
+  if(id === 'auditoria') carregarUsuarios(); // usado pra resolver nome de quem fez cada evento
   if(id === 'ciclos') atualizarDadosAoVivo(true); // busca o estado mais recente sempre que entra na tela de Ciclos
   render();
 }

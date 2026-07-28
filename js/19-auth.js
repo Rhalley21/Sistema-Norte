@@ -205,6 +205,16 @@ async function iniciarComSessao(sessao){
     return;
   }
 
+  // Acesso da Empresa como um todo pode ter sido suspenso pelo Super Admin
+  // da plataforma (dono do NORTE) — ver sql/12-suspensao-empresas.sql.
+  const { data: empresaCheck } = await sb.from('empresas').select('acesso_suspenso').eq('id', perfil.empresa_id).maybeSingle();
+  if(empresaCheck?.acesso_suspenso){
+    await sb.auth.signOut();
+    erroLogin = 'O acesso da sua Empresa a esta plataforma está temporariamente suspenso. Entre em contato com o Instituto INETRIS para regularizar.';
+    renderLogin();
+    return;
+  }
+
   meuPerfilId = perfil.id;
   empresaIdAtual = perfil.empresa_id;
   meuPapelReal = perfil.papel;

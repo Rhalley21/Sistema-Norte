@@ -3,6 +3,30 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.15.0 — Tela de Auditoria + Suspender empresas (Super Admin)
+
+**1) Tela de Auditoria** (`js/24-page-auditoria.js`, visível pra
+Administrador e RH): o sistema já registrava mais de 40 tipos de evento
+diferentes (login, desligamento, mudança de papel, aprovação de PDI,
+exportação de relatório etc.) numa tabela append-only desde o início —
+só não existia nenhuma tela pra ver isso. Agora tem, com filtro por tipo
+de evento e por pessoa, mostrando os últimos 500 registros com data/hora,
+quem fez e detalhes técnicos de cada um.
+
+**2) Suspender acesso de Empresas ativas** (Super Admin): até aqui, o
+Super Admin só controlava a criação de Empresas novas (código de
+licença) — não existia jeito de suspender uma Empresa já ativa (ex.:
+parou de pagar, contrato encerrado). Agora existe um botão
+"Suspender"/"Reativar" na lista de Empresas, e ninguém daquela Empresa
+consegue entrar no sistema enquanto estiver suspensa.
+
+- **`sql/12-suspensao-empresas.sql`** (rodar no SQL Editor, depois do
+  `11-licenciamento-empresas.sql`): adiciona as colunas de suspensão em
+  `empresas` e a permissão do Super Admin pra atualizá-las.
+- Bug corrigido de passagem: a consulta de empresas na tela de Super
+  Admin usava um nome de coluna que não existe (`criado_em` — o certo é
+  `created_at`), então a lista de empresas nunca aparecia direito.
+
 ## v0.14.7 — Corrigido de vez: tela de nova senha aparecia e sumia em 1 segundo
 A v0.14.6 eliminou a disputa entre duas rotinas, mas sobrou uma disputa de
 **ordem** dentro da própria rotina: a trava que impede outros eventos de

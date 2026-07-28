@@ -12,6 +12,7 @@ function renderRoute(){
     case 'inteligencia': return pageInteligencia();
     case 'relatorios': return pageRelatorios();
     case 'configuracoes': return pageConfiguracoes();
+    case 'auditoria': return pageAuditoria();
     case 'dashboard_role': return pageDashboard();
     case 'super_admin': return souSuperAdmin ? pageSuperAdmin() : pageDashboard();
     default: return pageDashboard();

@@ -16,7 +16,7 @@ let _superAdminNovoRotulo = '';
 async function carregarDadosSuperAdmin(){
   _superAdminCarregando = true; render();
   const [{ data: empresas, error: erroEmpresas }, { data: codigos, error: erroCodigos }] = await Promise.all([
-    sb.from('empresas').select('id, nome_fantasia, cnpj, estado, criado_em').order('criado_em', { ascending:false }),
+    sb.from('empresas').select('id, nome_fantasia, cnpj, acesso_suspenso, suspensa_em, created_at').order('created_at', { ascending:false }),
     sb.from('codigos_licenca_empresa').select('id, codigo, nome_empresa_sugerido, usado, empresa_id, criado_em, usado_em').order('criado_em', { ascending:false }),
   ]);
   if(erroEmpresas || erroCodigos) showToast('Não foi possível carregar os dados: ' + (erroEmpresas?.message || erroCodigos?.message));
@@ -47,6 +47,25 @@ async function gerarNovoCodigoLicenca(){
   if(error){ showToast('Não foi possível gerar o código: ' + error.message); return; }
   _superAdminNovoRotulo = '';
   showToast('Código de licença gerado.');
+  await carregarDadosSuperAdmin();
+}
+
+async function suspenderEmpresa(empresaId, nomeEmpresa){
+  if(!confirm(`Suspender o acesso de "${nomeEmpresa}"? Ninguém dessa empresa consegue entrar no sistema até você reativar.`)) return;
+  const { error } = await sb.from('empresas').update({
+    acesso_suspenso: true, suspensa_em: new Date().toISOString(), suspensa_por: meuPerfilId,
+  }).eq('id', empresaId);
+  if(error){ showToast('Não foi possível suspender: ' + error.message); return; }
+  showToast(`Acesso de "${nomeEmpresa}" suspenso.`);
+  await carregarDadosSuperAdmin();
+}
+async function reativarEmpresa(empresaId, nomeEmpresa){
+  if(!confirm(`Reativar o acesso de "${nomeEmpresa}"?`)) return;
+  const { error } = await sb.from('empresas').update({
+    acesso_suspenso: false, suspensa_em: null, suspensa_por: null,
+  }).eq('id', empresaId);
+  if(error){ showToast('Não foi possível reativar: ' + error.message); return; }
+  showToast(`Acesso de "${nomeEmpresa}" reativado.`);
   await carregarDadosSuperAdmin();
 }
 
@@ -115,12 +134,16 @@ function pageSuperAdmin(){
     <div class="card">
       <h3>Empresas cadastradas na plataforma <small>${_superAdminEmpresas.length} no total</small></h3>
       ${_superAdminEmpresas.length ? `
-        <table><thead><tr><th>Empresa</th><th>CNPJ</th><th>Estado</th><th>Cadastrada em</th></tr></thead><tbody>
+        <table><thead><tr><th>Empresa</th><th>CNPJ</th><th>Status</th><th>Cadastrada em</th><th></th></tr></thead><tbody>
           ${_superAdminEmpresas.map(e=>`<tr>
             <td><b>${e.nome_fantasia||'(sem nome ainda)'}</b></td>
             <td class="small-muted">${e.cnpj||'—'}</td>
-            <td><span class="pill pill-neutral">${e.estado||'—'}</span></td>
-            <td class="small-muted">${new Date(e.criado_em).toLocaleDateString('pt-BR')}</td>
+            <td>${e.acesso_suspenso ? '<span class="pill pill-iniciar">Suspensa</span>' : '<span class="pill pill-alavancar">Ativa</span>'}</td>
+            <td class="small-muted">${e.created_at ? new Date(e.created_at).toLocaleDateString('pt-BR') : '—'}</td>
+            <td>${e.acesso_suspenso
+              ? `<button class="btn btn-sm btn-ghost" onclick="reativarEmpresa('${e.id}','${(e.nome_fantasia||'').replace(/'/g,"\\'")}')">Reativar</button>`
+              : `<button class="btn btn-sm btn-ghost" style="color:var(--iniciar);" onclick="suspenderEmpresa('${e.id}','${(e.nome_fantasia||'').replace(/'/g,"\\'")}')">Suspender</button>`
+            }</td>
           </tr>`).join('')}
         </tbody></table>
       ` : '<div class="empty">Nenhuma empresa cadastrada ainda.</div>'}
