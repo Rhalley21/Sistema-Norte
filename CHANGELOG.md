@@ -3,6 +3,16 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.14.5 — Mensagem de e-mail duplicado cobre mais variações
+A garantia em si já existia (o Supabase impede, no nível do banco, duas
+contas com o mesmo e-mail — isso nunca dependeu do código do front-end).
+O que foi ajustado foi só a detecção da mensagem de erro para mostrar o
+aviso amigável: o texto exato que o Supabase retorna varia um pouco
+("User already registered", "already been registered", "already in use"),
+e a checagem só cobria uma dessas variações — nas outras, a pessoa via o
+erro técnico em inglês em vez da explicação em português. Agora cobre
+todas as variações conhecidas.
+
 ## v0.14.4 — Mudar o papel de uma conta já existente
 Até aqui, o papel (RH/Gestor/Colaborador) só podia ser definido no momento
 do convite — não existia jeito de promover ou rebaixar alguém que já

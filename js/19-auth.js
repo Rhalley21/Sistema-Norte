@@ -180,7 +180,7 @@ async function cadastrarLogin(){
     // acessar duas Empresas diferentes (ex.: consultor) não pode reusar o
     // mesmo e-mail na segunda. É uma limitação de arquitetura conhecida,
     // não um bug — ver RECONCILIACAO-RN.md.
-    const jaExiste = /already registered|already exists|user already/i.test(error.message||'');
+    const jaExiste = /already registered|already been registered|already exists|already in use|user already/i.test(error.message||'');
     erroLogin = jaExiste
       ? 'Este e-mail já tem uma conta nesta plataforma. Cada e-mail só pode estar vinculado a uma Empresa por vez — se você precisa de acesso a outra Empresa, peça um convite para um e-mail diferente ou fale com o suporte.'
       : error.message; // aqui aparece, por exemplo, "Código de licença inválido ou já utilizado."
