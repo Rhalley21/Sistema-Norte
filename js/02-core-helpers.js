@@ -276,3 +276,37 @@ function logoColarImagem(event, fieldId){
   // como preenchido.
   event.currentTarget.innerHTML = 'Clique aqui e cole (Ctrl+V) uma imagem copiada';
 }
+
+/* =========================================================
+   NOTIFICAÇÕES POR E-MAIL
+   -----------------------------------------------------------
+   Chama a Edge Function "enviar-email" (supabase/functions/enviar-email),
+   que manda pro Resend mantendo a chave de API em segredo no servidor.
+   Nunca falha "alto" — se o e-mail não sair, a ação principal (aprovar
+   PDI, avançar etapa etc.) continua funcionando normalmente; só mostra um
+   aviso discreto no console.
+   ========================================================= */
+async function enviarEmailNotificacao(destinatario, assunto, corpoHtml){
+  if(!destinatario) return false;
+  try{
+    const { data, error } = await sb.functions.invoke('enviar-email', {
+      body: { destinatario, assunto, corpoHtml },
+    });
+    if(error){ console.error('Falha ao enviar e-mail de notificação:', error); return false; }
+    return true;
+  }catch(e){
+    console.error('Falha ao enviar e-mail de notificação:', e);
+    return false;
+  }
+}
+function emailWrapperHTML(tituloInterno, corpoTexto, botaoTexto, botaoUrl){
+  // Template simples e consistente pra todos os e-mails da plataforma.
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0a2647;color:#e9edf3;border-radius:8px;">
+      <div style="font-size:20px;font-weight:700;margin-bottom:4px;">NORTE</div>
+      <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#9fb0c7;margin-bottom:20px;">Metodologia NORTE · Instituto INETRIS</div>
+      <h2 style="font-size:17px;margin:0 0 12px;">${tituloInterno}</h2>
+      <p style="font-size:14px;line-height:1.5;color:#e9edf3;">${corpoTexto}</p>
+      ${botaoUrl ? `<a href="${botaoUrl}" style="display:inline-block;margin-top:16px;padding:10px 18px;background:#e99610;color:#0a2647;text-decoration:none;border-radius:6px;font-weight:700;font-size:13px;">${botaoTexto||'Acessar'}</a>` : ''}
+    </div>`;
+}

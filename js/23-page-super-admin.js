@@ -11,17 +11,33 @@ let _superAdminCarregando = false;
 let _superAdminJaCarregou = false; // BUG CORRIGIDO abaixo (ver pageSuperAdmin)
 let _superAdminEmpresas = [];
 let _superAdminCodigos = [];
+let _superAdminMetricas = null;
 let _superAdminNovoRotulo = '';
 
 async function carregarDadosSuperAdmin(){
   _superAdminCarregando = true; render();
-  const [{ data: empresas, error: erroEmpresas }, { data: codigos, error: erroCodigos }] = await Promise.all([
+  const [{ data: empresas, error: erroEmpresas }, { data: codigos, error: erroCodigos }, { data: payloads, error: erroPayloads }] = await Promise.all([
     sb.from('empresas').select('id, nome_fantasia, cnpj, acesso_suspenso, suspensa_em, created_at').order('created_at', { ascending:false }),
     sb.from('codigos_licenca_empresa').select('id, codigo, nome_empresa_sugerido, usado, empresa_id, criado_em, usado_em').order('criado_em', { ascending:false }),
+    // Métricas agregadas: os dados operacionais de cada Empresa vivem dentro
+    // do "payload" (blob JSON), não em tabelas separadas — por isso a
+    // consulta é direto em dados_sistema. Precisa da política de leitura
+    // nova (ver sql/13-metricas-super-admin.sql).
+    sb.from('dados_sistema').select('empresa_id, payload'),
   ]);
-  if(erroEmpresas || erroCodigos) showToast('Não foi possível carregar os dados: ' + (erroEmpresas?.message || erroCodigos?.message));
+  if(erroEmpresas || erroCodigos || erroPayloads) showToast('Não foi possível carregar os dados: ' + (erroEmpresas?.message || erroCodigos?.message || erroPayloads?.message));
   _superAdminEmpresas = empresas || [];
   _superAdminCodigos = codigos || [];
+
+  const listaPayloads = payloads || [];
+  _superAdminMetricas = {
+    empresasAtivas: _superAdminEmpresas.filter(e=>!e.acesso_suspenso).length,
+    empresasSuspensas: _superAdminEmpresas.filter(e=>e.acesso_suspenso).length,
+    totalColaboradores: listaPayloads.reduce((soma,d)=> soma + (d.payload?.colaboradores?.length || 0), 0),
+    totalCiclosAbertos: listaPayloads.reduce((soma,d)=> soma + (d.payload?.ciclos?.filter(c=>c.estado!=='Encerrado').length || 0), 0),
+    totalCiclosEncerrados: listaPayloads.reduce((soma,d)=> soma + (d.payload?.ciclos?.filter(c=>c.estado==='Encerrado').length || 0), 0),
+  };
+
   _superAdminCarregando = false;
   _superAdminJaCarregou = true;
   render();
@@ -104,6 +120,14 @@ function pageSuperAdmin(){
     </div>
 
     ${_superAdminCarregando ? '<div class="empty">Carregando…</div>' : `
+
+    <div class="kpi-grid">
+      <div class="kpi"><div class="n">${_superAdminMetricas?.empresasAtivas ?? 0}</div><div class="l">Empresas ativas</div></div>
+      <div class="kpi"><div class="n">${_superAdminMetricas?.empresasSuspensas ?? 0}</div><div class="l">Empresas suspensas</div></div>
+      <div class="kpi"><div class="n">${_superAdminMetricas?.totalColaboradores ?? 0}</div><div class="l">Colaboradores na plataforma</div></div>
+      <div class="kpi"><div class="n">${_superAdminMetricas?.totalCiclosAbertos ?? 0}</div><div class="l">Ciclos em andamento</div></div>
+      <div class="kpi"><div class="n">${_superAdminMetricas?.totalCiclosEncerrados ?? 0}</div><div class="l">Ciclos encerrados (histórico)</div></div>
+    </div>
 
     <div class="card">
       <h3>Gerar novo código de licença</h3>

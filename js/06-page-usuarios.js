@@ -3,6 +3,7 @@ let _perfisEmpresa = [];
 let _convitesEmpresa = [];
 let _papelNovoConvite = 'colaborador';
 let _estruturaNovoConvite = '';
+let _emailNovoConvite = '';
 let _erroConvite = null;
 let _gerandoConvite = false;
 
@@ -38,14 +39,28 @@ async function gerarConvite(){
   _gerandoConvite = true; _erroConvite = null; render();
   const codigo = gerarCodigoConvite();
   const nodeEstrutura = state.estrutura.find(n=>n.id===_estruturaNovoConvite);
+  const emailDestino = _emailNovoConvite.trim() || null;
   const { error } = await sb.from('convites').insert({
     empresa_id: empresaIdAtual, codigo, papel: _papelNovoConvite, criado_por: meuPerfilId,
     estrutura_id: nodeEstrutura ? nodeEstrutura.id : null,
     estrutura_nome: nodeEstrutura ? nodeEstrutura.nome : null,
+    email_destino: emailDestino,
   });
   _gerandoConvite = false;
-  if(error){ _erroConvite = 'Não foi possível gerar o convite. Tente novamente.'; render(); }
-  else { await carregarUsuarios(); }
+  if(error){ _erroConvite = 'Não foi possível gerar o convite. Tente novamente.'; render(); return; }
+  if(emailDestino){
+    const enviado = await enviarEmailNotificacao(
+      emailDestino,
+      `Você foi convidado para a Plataforma NORTE — ${state.empresa?.nomeFantasia||''}`,
+      emailWrapperHTML(
+        'Você recebeu um convite',
+        `Você foi convidado para acessar a Plataforma NORTE como <b>${PAPEL_LABEL_UI[_papelNovoConvite]}</b>${nodeEstrutura?` (${nodeEstrutura.nome})`:''}. Use o código abaixo na tela de cadastro:<br><br><span style="font-family:monospace;font-size:18px;letter-spacing:2px;">${codigo}</span>`
+      )
+    );
+    showToast(enviado ? `Convite gerado e enviado para ${emailDestino}.` : 'Convite gerado, mas não foi possível enviar o e-mail — copie o código manualmente.');
+  }
+  _emailNovoConvite = '';
+  await carregarUsuarios();
 }
 function copiarCodigo(codigo){
   navigator.clipboard?.writeText(codigo);
@@ -144,7 +159,7 @@ function pageUsuarios(){
     </div>` : ''}
 
     <div class="card">
-      <h3>Convidar nova pessoa <small>Gere um código e compartilhe por WhatsApp/e-mail. A pessoa usa esse código na tela de cadastro.</small></h3>
+      <h3>Convidar nova pessoa <small>Gere um código e compartilhe por WhatsApp/e-mail — ou preencha o e-mail abaixo e o sistema manda pra pessoa automaticamente.</small></h3>
       <div class="grid3" style="align-items:end;">
         <div class="field" style="margin:0;"><label>Papel</label>
           <select onchange="_papelNovoConvite=this.value;">
@@ -157,8 +172,11 @@ function pageUsuarios(){
             ${state.estrutura.map(n=>`<option value="${n.id}" ${_estruturaNovoConvite===n.id?'selected':''}>${n.nome} (${NIVEL_LABEL[n.tipo]})</option>`).join('')}
           </select>
         </div>
-        <button class="btn btn-primary" onclick="gerarConvite()" ${_gerandoConvite?'disabled':''}>Gerar convite</button>
+        <div class="field" style="margin:0;"><label>E-mail da pessoa <small>(opcional — envia o código automaticamente)</small></label>
+          <input type="email" id="email_novo_convite" placeholder="pessoa@empresa.com" oninput="_emailNovoConvite=this.value;">
+        </div>
       </div>
+      <button class="btn btn-primary" style="margin-top:12px;" onclick="gerarConvite()" ${_gerandoConvite?'disabled':''}>Gerar convite</button>
       ${_erroConvite ? `<p style="color:var(--iniciar);font-size:12.5px;margin-top:8px;">${_erroConvite}</p>` : ''}
       ${_convitesEmpresa.length ? `
         <table style="margin-top:14px;">

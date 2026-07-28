@@ -87,7 +87,7 @@ function registrarAusenciaCiclo(cicloId){
   // sem as notas do avaliador ausente. O cálculo da média ponderada (RN003) já lida
   // com notas faltantes redistribuindo o peso entre quem avaliou de fato.
   const info = ETAPA_INFO[ciclo.etapa];
-  if(info.proxima){ ciclo.etapa = info.proxima; ciclo.estado = 'Em Consolidação'; }
+  if(info.proxima){ ciclo.etapa = info.proxima; ciclo.estado = 'Em Consolidação'; notificarProximaEtapaCiclo(ciclo); }
   else { ciclo.estado = 'Em Consolidação'; }
   registrarAuditoria('ciclo.ausencia_registrada', { cicloId, etapa: ciclo.etapa, motivo });
   showToast('Ausência registrada formalmente. O ciclo pode avançar.');
@@ -141,6 +141,32 @@ function renderCiclosTableInteractive(lista){
     }).join('')}
   </tbody></table>`;
 }
+async function notificarProximaEtapaCiclo(ciclo){
+  // Notificação por e-mail (opcional — precisa da Edge Function "enviar-email"
+  // configurada, ver supabase/functions/enviar-email). Nunca bloqueia a ação
+  // principal: se o e-mail falhar, o ciclo continua avançando normalmente.
+  const colaborador = state.colaboradores.find(c=>c.id===ciclo.colaboradorId);
+  if(!colaborador) return;
+  const etapa = ciclo.etapa || 'colaborador';
+  let perfilIdsAlvo = [];
+  if(etapa === 'colaborador') perfilIdsAlvo = [colaborador.perfilId].filter(Boolean);
+  else if(etapa === 'lider') perfilIdsAlvo = [colaborador.gestorPerfilId].filter(Boolean);
+  else if(etapa === 'rh'){
+    const { data: rhs } = await sb.from('perfis').select('id').eq('empresa_id', empresaIdAtual).eq('papel','rh').eq('desativado', false);
+    perfilIdsAlvo = (rhs||[]).map(r=>r.id);
+  }
+  if(!perfilIdsAlvo.length) return;
+  const { data: perfisAlvo } = await sb.from('perfis').select('id,email').in('id', perfilIdsAlvo);
+  for(const p of (perfisAlvo||[])){
+    if(!p.email) continue;
+    enviarEmailNotificacao(
+      p.email,
+      `Avaliação pendente — ${colaborador.nome}`,
+      emailWrapperHTML('Sua avaliação está pendente', `Há uma avaliação de <b>${colaborador.nome}</b> aguardando você na Plataforma NORTE.`)
+    );
+  }
+}
+
 function abrirCiclo(id){ state.cicloAtivo = id; state.route='ciclos'; render(); }
 function abrirNovoCiclo(){
   const colabId = document.getElementById('cy_colab').value;
@@ -163,6 +189,7 @@ function abrirNovoCiclo(){
   state.ciclos.push(ciclo);
   state.cicloAtivo = ciclo.id;
   emitirEvento('ciclo.aberto', { cicloId: ciclo.id, colaboradorId: p.id });
+  notificarProximaEtapaCiclo(ciclo);
   showToast('Ciclo aberto. O colaborador já pode iniciar a autoavaliação.');
   render();
 }
@@ -406,6 +433,7 @@ function avancarEtapa(cicloId){
   if(info.proxima){
     ciclo.etapa = info.proxima;
     ciclo.estado = 'Em Consolidação';
+    notificarProximaEtapaCiclo(ciclo);
     showToast(info.msg);
     render();
   } else {
@@ -962,8 +990,20 @@ function aprovarPDI(cicloId){
   atualizarCarimbo(ciclo);
   registrarAuditoria('pdi.aprovado', { cicloId });
   emitirEvento('pdi.aprovado', { cicloId });
+  notificarPDIAprovado(ciclo);
   showToast('PDI aprovado. A construção está encerrada — agora é só acompanhar a execução.');
   render();
+}
+async function notificarPDIAprovado(ciclo){
+  const colaborador = state.colaboradores.find(c=>c.id===ciclo.colaboradorId);
+  if(!colaborador?.perfilId) return;
+  const { data: perfil } = await sb.from('perfis').select('email').eq('id', colaborador.perfilId).maybeSingle();
+  if(!perfil?.email) return;
+  enviarEmailNotificacao(
+    perfil.email,
+    'Seu PDI foi aprovado',
+    emailWrapperHTML('PDI aprovado', `Seu Plano de Desenvolvimento Individual (PDI) foi aprovado e a construção está encerrada. Agora é hora de colocar as ações em prática — acompanhe pela Plataforma NORTE.`)
+  );
 }
 function atualizarStatusPDI(cicloId, idx, status){
   const ciclo = state.ciclos.find(c=>c.id===cicloId);

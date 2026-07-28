@@ -185,7 +185,16 @@ async function cadastrarLogin(){
       ? 'Este e-mail já tem uma conta nesta plataforma. Cada e-mail só pode estar vinculado a uma Empresa por vez — se você precisa de acesso a outra Empresa, peça um convite para um e-mail diferente ou fale com o suporte.'
       : error.message; // aqui aparece, por exemplo, "Código de licença inválido ou já utilizado."
     renderLogin();
+    return;
   }
+  // E-mail de boas-vindas — não bloqueia nada se falhar (fire-and-forget).
+  enviarEmailNotificacao(
+    email,
+    'Bem-vindo(a) à Plataforma NORTE',
+    temConvite
+      ? emailWrapperHTML('Conta criada com sucesso!', `Olá, ${nome}! Sua conta na Plataforma NORTE foi criada com sucesso. Você já pode entrar com o e-mail e a senha que acabou de cadastrar.`)
+      : emailWrapperHTML('Conta criada com sucesso!', `Olá, ${nome}! A empresa <b>${nomeEmpresa}</b> foi cadastrada com sucesso na Plataforma NORTE, e você é a pessoa Administradora responsável por ela. Bem-vindo(a)!`)
+  );
   // se der certo, o listener onAuthStateChange cuida de iniciar o app
 }
 function sair(){ sb.auth.signOut().then(()=>location.reload()); }

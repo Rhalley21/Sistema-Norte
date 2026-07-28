@@ -3,6 +3,73 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.15.3 — E-mail de boas-vindas ao criar conta
+Complementa a v0.15.2: agora, assim que alguém termina de criar a conta
+(seja usando um código de convite pra entrar numa empresa já existente, ou
+um código de licença pra cadastrar uma empresa nova), recebe um e-mail de
+boas-vindas confirmando que deu certo. Usa a mesma Edge Function
+`enviar-email` já implantada — nenhuma configuração nova é necessária além
+da que já foi feita pra v0.15.2.
+
+## v0.15.2 — Notificações por e-mail (convite, avaliação pendente, PDI aprovado)
+Primeira leva de notificações por e-mail, usando o Resend como serviço de
+envio. Como o app é um site estático (GitHub Pages), o envio não pode
+acontecer direto do navegador — isso exigiria expor a chave secreta do
+Resend pra qualquer pessoa que abrisse o código-fonte da página. A solução
+é uma **Edge Function** do Supabase: um pedacinho de código que roda no
+servidor do Supabase, guarda a chave em segredo, e só ele conversa com o
+Resend.
+
+**O que foi implementado:**
+- **Convite de acesso gerado**: a tela de convite (Usuários & Acesso) agora
+  tem um campo opcional de e-mail — se preenchido, o código do convite é
+  enviado automaticamente pra pessoa, além de continuar disponível pra
+  copiar manualmente.
+- **Sua avaliação está pendente**: sempre que um ciclo passa a etapa (abre
+  pela primeira vez, avança do Colaborador pro Líder, do Líder pro RH),
+  a pessoa responsável pela nova etapa recebe um e-mail avisando.
+- **PDI aprovado**: o colaborador recebe um e-mail quando o Gestor/RH
+  aprova o PDI dele.
+
+**Arquivos novos:**
+- `supabase/functions/enviar-email/index.ts` — a Edge Function em si (tem
+  instruções completas de implantação no final do próprio arquivo).
+- `sql/14-preparacao-notificacoes-email.sql` — adiciona uma cópia do
+  e-mail em `perfis` (o app não consegue ler `auth.users` diretamente por
+  segurança) e um campo de e-mail em `convites`.
+- `enviarEmailNotificacao()` e `emailWrapperHTML()` em
+  `js/02-core-helpers.js` — funções reutilizáveis pra qualquer notificação
+  futura.
+
+**Nenhum e-mail falhando trava o sistema**: se o envio não funcionar por
+qualquer motivo (Edge Function ainda não implantada, chave errada, etc.),
+a ação principal (gerar convite, avançar etapa, aprovar PDI) continua
+funcionando normalmente — só o e-mail em si não sai, com um aviso no
+console do navegador.
+
+### ⚠️ 3 passos manuais obrigatórios antes de funcionar de verdade
+1. Criar conta gratuita em **resend.com** e pegar a API Key.
+2. Rodar **`sql/14-preparacao-notificacoes-email.sql`** no SQL Editor do
+   Supabase (depois do `13-metricas-super-admin.sql`).
+3. Implantar a Edge Function e configurar a chave do Resend como secret —
+   instruções completas dentro de
+   `supabase/functions/enviar-email/index.ts`.
+
+Sem esses 3 passos, os e-mails simplesmente não saem (mas nada quebra).
+
+## v0.15.1 — Métricas agregadas no Super Admin
+A tela de Super Admin só listava empresas uma a uma — agora mostra também
+números consolidados de toda a plataforma no topo: empresas ativas,
+empresas suspensas, total de colaboradores (somando todas as empresas),
+ciclos em andamento e ciclos já encerrados (histórico).
+
+Como esses números vivem dentro do "payload" de cada empresa (blob JSON em
+`dados_sistema`, não uma tabela separada), foi necessária uma nova permissão
+de leitura pro Super Admin — ver `sql/13-metricas-super-admin.sql` (rodar
+no SQL Editor, depois do `12-suspensao-empresas.sql`). É só leitura: o
+Super Admin nunca ganha permissão de editar os dados operacionais de uma
+empresa-cliente.
+
 ## v0.15.0 — Tela de Auditoria + Suspender empresas (Super Admin)
 
 **1) Tela de Auditoria** (`js/24-page-auditoria.js`, visível pra
