@@ -3,6 +3,20 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.15.4 — Bug de segurança corrigido: Super Admin podia se auto-bloquear
+Um Super Admin que também está cadastrado como colaborador de uma empresa
+(caso comum, já que é a mesma pessoa fazendo os dois papéis) conseguia
+suspender a própria empresa pela tela — e a trava de suspensão vale pra
+qualquer um vinculado a ela, sem exceção pro Super Admin. Resultado: a
+pessoa se bloqueava do próprio sistema, sem conseguir nem entrar de volta
+pra reverter (já que reverter exige estar logado como Super Admin).
+
+Corrigido em `js/23-page-super-admin.js`: o botão "Suspender" não aparece
+mais para a própria empresa do Super Admin (mostra uma nota explicando por
+quê), e a lista marca visualmente qual empresa é "sua empresa". Se for
+realmente necessário suspender a própria empresa por algum motivo, ainda
+dá pra fazer direto via SQL — só não é mais um clique acidental.
+
 ## v0.15.3 — E-mail de boas-vindas ao criar conta
 Complementa a v0.15.2: agora, assim que alguém termina de criar a conta
 (seja usando um código de convite pra entrar numa empresa já existente, ou

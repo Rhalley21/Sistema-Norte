@@ -67,6 +67,14 @@ async function gerarNovoCodigoLicenca(){
 }
 
 async function suspenderEmpresa(empresaId, nomeEmpresa){
+  // BUG DE SEGURANÇA CORRIGIDO: nada impedia o Super Admin de suspender a
+  // própria empresa onde ele também está cadastrado como colaborador — o
+  // que bloqueava o próprio login dele (a trava de suspensão vale pra
+  // qualquer um vinculado àquela empresa, sem exceção pro Super Admin).
+  if(empresaId === empresaIdAtual){
+    showToast('Você não pode suspender a própria empresa por aqui — isso bloquearia seu próprio acesso. Se for realmente necessário, faça isso direto no banco de dados (SQL Editor do Supabase).');
+    return;
+  }
   if(!confirm(`Suspender o acesso de "${nomeEmpresa}"? Ninguém dessa empresa consegue entrar no sistema até você reativar.`)) return;
   const { error } = await sb.from('empresas').update({
     acesso_suspenso: true, suspensa_em: new Date().toISOString(), suspensa_por: meuPerfilId,
@@ -160,13 +168,16 @@ function pageSuperAdmin(){
       ${_superAdminEmpresas.length ? `
         <table><thead><tr><th>Empresa</th><th>CNPJ</th><th>Status</th><th>Cadastrada em</th><th></th></tr></thead><tbody>
           ${_superAdminEmpresas.map(e=>`<tr>
-            <td><b>${e.nome_fantasia||'(sem nome ainda)'}</b></td>
+            <td><b>${e.nome_fantasia||'(sem nome ainda)'}</b>${e.id===empresaIdAtual?' <span class="pill pill-neutral">sua empresa</span>':''}</td>
             <td class="small-muted">${e.cnpj||'—'}</td>
             <td>${e.acesso_suspenso ? '<span class="pill pill-iniciar">Suspensa</span>' : '<span class="pill pill-alavancar">Ativa</span>'}</td>
             <td class="small-muted">${e.created_at ? new Date(e.created_at).toLocaleDateString('pt-BR') : '—'}</td>
-            <td>${e.acesso_suspenso
-              ? `<button class="btn btn-sm btn-ghost" onclick="reativarEmpresa('${e.id}','${(e.nome_fantasia||'').replace(/'/g,"\\'")}')">Reativar</button>`
-              : `<button class="btn btn-sm btn-ghost" style="color:var(--iniciar);" onclick="suspenderEmpresa('${e.id}','${(e.nome_fantasia||'').replace(/'/g,"\\'")}')">Suspender</button>`
+            <td>${e.id===empresaIdAtual
+              ? '<span class="small-muted">Não é possível suspender aqui</span>'
+              : (e.acesso_suspenso
+                ? `<button class="btn btn-sm btn-ghost" onclick="reativarEmpresa('${e.id}','${(e.nome_fantasia||'').replace(/'/g,"\\'")}')">Reativar</button>`
+                : `<button class="btn btn-sm btn-ghost" style="color:var(--iniciar);" onclick="suspenderEmpresa('${e.id}','${(e.nome_fantasia||'').replace(/'/g,"\\'")}')">Suspender</button>`
+              )
             }</td>
           </tr>`).join('')}
         </tbody></table>
