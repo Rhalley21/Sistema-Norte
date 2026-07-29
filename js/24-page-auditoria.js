@@ -53,6 +53,15 @@ async function carregarAuditoria(){
   render();
 }
 
+function formatarDetalhesAuditoria(detalhes){
+  if(!detalhes || !Object.keys(detalhes).length) return '—';
+  return Object.entries(detalhes).map(([chave,valor])=>{
+    let v = String(valor);
+    // Encurta UUIDs (ids compridos) pra não poluir a tabela — mostra só o começo.
+    if(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)) v = v.slice(0,8)+'…';
+    return `${chave}: ${v}`;
+  }).join(' · ');
+}
 function nomePorPerfilId(perfilId){
   return _perfisEmpresa.find(p=>p.id===perfilId)?.nome || 'Alguém (conta removida)';
 }
@@ -111,7 +120,7 @@ function pageAuditoria(){
                 <td class="small-muted" style="white-space:nowrap;">${new Date(e.criado_em).toLocaleString('pt-BR')}</td>
                 <td><b>${AUDITORIA_LABEL[e.evento]||e.evento}</b><br><span class="small-muted" style="font-family:var(--mono);font-size:10.5px;">${e.evento}</span></td>
                 <td>${e.criado_por ? nomePorPerfilId(e.criado_por) : '<span class="small-muted">Sistema</span>'}</td>
-                <td class="small-muted" style="max-width:280px;font-family:var(--mono);font-size:11px;word-break:break-all;">${e.detalhes && Object.keys(e.detalhes).length ? JSON.stringify(e.detalhes) : '—'}</td>
+                <td class="small-muted" style="max-width:220px;font-size:11.5px;word-break:break-word;white-space:normal;">${formatarDetalhesAuditoria(e.detalhes)}</td>
               </tr>
             `).join('')}
           </tbody></table>

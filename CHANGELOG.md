@@ -3,6 +3,12 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.15.5 — Coluna "Detalhes" da Auditoria menos poluída
+A coluna de detalhes de cada evento mostrava o JSON bruto (com chaves,
+aspas e IDs completos de 36 caracteres) — ficava larga e difícil de ler.
+Agora mostra só "chave: valor" separado por ponto, e IDs longos (UUIDs)
+aparecem encurtados (só os 8 primeiros caracteres).
+
 ## v0.15.4 — Bug de segurança corrigido: Super Admin podia se auto-bloquear
 Um Super Admin que também está cadastrado como colaborador de uma empresa
 (caso comum, já que é a mesma pessoa fazendo os dois papéis) conseguia
