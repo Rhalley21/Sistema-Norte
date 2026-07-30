@@ -5,19 +5,18 @@
 const PERSIST_KEYS = ['empresa','estrutura','cultura','cargos','colaboradores','bancoAcoes','ciclos','configuracoes'];
 
 let _salvarTimer = null;
+let _minhaUltimaAtividadeEm = 0; // Date.now() da última vez que EU fiz alguma ação (qualquer render())
 function agendarSalvamento(){
   if(!empresaIdAtual) return;
+  _minhaUltimaAtividadeEm = Date.now();
   clearTimeout(_salvarTimer);
   _salvarTimer = setTimeout(salvarEstado, 500);
 }
-let _meuUltimoSalvamentoEm = null;
 async function salvarEstado(){
   const payload = {};
   PERSIST_KEYS.forEach(k => payload[k] = state[k]);
-  const agora = new Date().toISOString();
-  _meuUltimoSalvamentoEm = agora; // usado pra distinguir "eu mesmo salvei" de "outra pessoa salvou" (ver assinarAtualizacoesAoVivo)
   const { error } = await sb.from('dados_sistema').upsert({
-    empresa_id: empresaIdAtual, payload, atualizado_em: agora
+    empresa_id: empresaIdAtual, payload, atualizado_em: new Date().toISOString()
   });
   if(error) console.error('Falha ao salvar', error);
 }

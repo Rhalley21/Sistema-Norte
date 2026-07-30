@@ -334,14 +334,16 @@ function assinarAtualizacoesAoVivo(){
     .channel(`dados_sistema_${empresaIdAtual}`)
     .on('postgres_changes', {
       event: 'UPDATE', schema: 'public', table: 'dados_sistema', filter: `empresa_id=eq.${empresaIdAtual}`,
-    }, (payload) => {
-      // BUG CORRIGIDO: o aviso disparava até quando a mudança era da
-      // própria pessoa (o sistema salva sozinho toda vez que você faz
-      // qualquer coisa) — ficava aparecendo o tempo todo, sem servir de
-      // aviso real. Agora só mostra quando o "carimbo" de quem salvou não
-      // bate com o do nosso próprio último salvamento.
-      const carimboRecebido = payload.new?.atualizado_em;
-      if(carimboRecebido && carimboRecebido === _meuUltimoSalvamentoEm) return; // eco do meu próprio salvamento — ignora
+    }, () => {
+      // BUG CORRIGIDO (segunda tentativa): comparar o carimbo exato do
+      // salvamento não bastava — se a pessoa clica em várias coisas
+      // seguidas, cada clique dispara seu próprio salvamento, e o aviso de
+      // um mais antigo podia chegar depois do carimbo já ter mudado pra
+      // um mais novo, dando falso positivo. Agora usa uma janela de tempo:
+      // se eu mesmo fiz qualquer ação nos últimos 4 segundos, assume que a
+      // mudança é minha e não mostra o aviso.
+      const segundosDesdeMinhaUltimaAtividade = (Date.now() - _minhaUltimaAtividadeEm) / 1000;
+      if(segundosDesdeMinhaUltimaAtividade < 4) return;
       mostrarAvisoAtualizacao();
     })
     .subscribe();

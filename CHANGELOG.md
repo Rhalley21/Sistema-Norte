@@ -3,6 +3,22 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.16.2 — Segunda correção do aviso de atualização (janela de tempo)
+A correção da v0.16.1 (comparar o carimbo exato do salvamento) não era
+suficiente: se a pessoa clica em várias coisas seguidas, cada clique
+dispara seu próprio salvamento, e o aviso de um mais antigo podia chegar
+depois do carimbo já ter mudado pra um mais novo — dando falso positivo
+mesmo sendo tudo ação da própria pessoa.
+
+Trocado por uma abordagem mais tolerante em `js/18-persistence.js` e
+`js/02-core-helpers.js`: em vez de comparar um carimbo exato, o sistema
+agora marca "última vez que eu fiz alguma ação" a cada interação, e só
+mostra o aviso se **nenhuma ação minha aconteceu nos últimos 4 segundos**
+— cobrindo com folga o caso de vários cliques rápidos seguidos. Testei os
+3 cenários (ação isolada, ação de outra pessoa depois de um tempo, e
+vários cliques rápidos em sequência) e confirmei o comportamento certo
+nos três.
+
 ## v0.16.1 — Bug corrigido: aviso de atualização aparecia toda hora
 O aviso "Alguém mais atualizou os dados" (v0.16.0) disparava até quando a
 mudança era da própria pessoa — o sistema salva sozinho toda vez que
