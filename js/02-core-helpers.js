@@ -310,3 +310,46 @@ function emailWrapperHTML(tituloInterno, corpoTexto, botaoTexto, botaoUrl){
       ${botaoUrl ? `<a href="${botaoUrl}" style="display:inline-block;margin-top:16px;padding:10px 18px;background:#e99610;color:#0a2647;text-decoration:none;border-radius:6px;font-weight:700;font-size:13px;">${botaoTexto||'Acessar'}</a>` : ''}
     </div>`;
 }
+
+/* =========================================================
+   AVISO DE ATUALIZAÇÃO EM TEMPO REAL (Supabase Realtime)
+   -----------------------------------------------------------
+   Resolve o problema de duas pessoas da mesma empresa usando o sistema ao
+   mesmo tempo sem saber que os dados mudaram (ex.: o caso real que
+   aconteceu — RH via "etapa 2" enquanto o Líder já via "etapa 3", porque
+   o RH só carregou os dados antes do Líder enviar).
+
+   Importante: isso AVISA a pessoa, mas não atualiza sozinho. Atualizar
+   automaticamente correria o risco de apagar um formulário que a pessoa
+   esteja preenchendo bem naquele momento — o mesmo tipo de problema já
+   corrigido antes na tela de login. Por isso o aviso fica num elemento
+   separado do #app (não participa do render() principal), e quem decide
+   quando atualizar é a pessoa, com um clique.
+   ========================================================= */
+let _canalRealtimeDadosSistema = null;
+
+function assinarAtualizacoesAoVivo(){
+  if(_canalRealtimeDadosSistema || !empresaIdAtual) return; // já assinado, evita duplicar
+  _canalRealtimeDadosSistema = sb
+    .channel(`dados_sistema_${empresaIdAtual}`)
+    .on('postgres_changes', {
+      event: 'UPDATE', schema: 'public', table: 'dados_sistema', filter: `empresa_id=eq.${empresaIdAtual}`,
+    }, () => {
+      mostrarAvisoAtualizacao();
+    })
+    .subscribe();
+}
+function mostrarAvisoAtualizacao(){
+  const el = document.getElementById('aviso-atualizacao');
+  if(!el) return;
+  el.innerHTML = `
+    <div class="aviso-atualizacao-banner">
+      <span>Alguém mais atualizou os dados da empresa.</span>
+      <button class="btn btn-primary btn-sm" onclick="atualizarDadosAoVivo(); esconderAvisoAtualizacao();">Atualizar agora</button>
+      <button class="btn btn-ghost btn-sm" onclick="esconderAvisoAtualizacao();">Depois</button>
+    </div>`;
+}
+function esconderAvisoAtualizacao(){
+  const el = document.getElementById('aviso-atualizacao');
+  if(el) el.innerHTML = '';
+}

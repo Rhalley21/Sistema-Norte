@@ -181,6 +181,7 @@ async function atualizarDadosAoVivo(silencioso){
   // ciclo (ainda na etapa do Líder) até dar um F5 na página inteira.
   if(!silencioso) showToast('Atualizando dados…');
   await carregarEstado();
+  esconderAvisoAtualizacao();
   render();
 }
 function goto(id){

@@ -3,6 +3,47 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.16.0 — Aviso automático quando outra pessoa atualiza os dados (Realtime)
+Resolve o ponto #4 identificado na revisão geral: duas pessoas da mesma
+empresa usando o sistema ao mesmo tempo sem saber que os dados mudaram —
+o caso real que já aconteceu nessa mesma conversa (RH vendo "etapa 2"
+enquanto o Líder já via "etapa 3"). O botão "Atualizar" já resolvia isso,
+mas exigia que a pessoa soubesse que precisava clicar nele.
+
+Agora, usando o **Supabase Realtime**, o navegador é avisado sozinho
+sempre que os dados da empresa mudam (por qualquer pessoa, em qualquer
+tela) — aparece uma faixa discreta no topo da tela: "Alguém mais atualizou
+os dados da empresa", com botão para atualizar na hora ou ignorar por
+enquanto.
+
+**Decisão importante de segurança**: o aviso não atualiza os dados
+sozinho automaticamente — só avisa. Atualizar sozinho correria o risco de
+apagar um formulário que a pessoa esteja preenchendo bem naquele momento
+(o mesmo tipo de problema já corrigido antes na tela de login). Quem
+decide quando atualizar continua sendo a pessoa, agora só que avisada.
+
+**Precisa rodar uma SQL nova**: `sql/16-ativar-realtime.sql` (depois do
+`15-controle-migrations.sql`) — ativa o Realtime na tabela `dados_sistema`.
+
+## v0.15.6 — Rede de segurança pro processo de publicar atualizações
+Não é uma mudança de funcionalidade — é sobre reduzir o risco do processo
+manual de subir cada atualização (baixar zip → substituir arquivos →
+git push → esperar deploy → dar refresh forçado no navegador).
+
+- **Cache-busting automático** (`index.html`): todo arquivo `.js`/`.css`
+  local agora carrega com `?v=X.Y.Z` na URL. Isso resolve de vez o
+  problema do navegador (ou do GitHub Pages) mostrar a versão antiga do
+  código depois de um `git push` — não depende mais de lembrar de dar
+  Ctrl+Shift+R. **Mas exige disciplina**: a cada nova versão publicada, o
+  número em `?v=` precisa ser atualizado em todas as linhas do
+  `index.html` (tem um comentário lá explicando isso).
+- **Controle de migrations SQL** (`sql/15-controle-migrations.sql`): nova
+  tabela `migrations_aplicadas`, que registra quais scripts já foram
+  rodados. Resolve a dúvida de "já rodei essa SQL ou não" — é só rodar
+  `select * from migrations_aplicadas order by aplicada_em;` no SQL
+  Editor pra ver o histórico completo. Toda migration nova, a partir de
+  agora, deve terminar registrando a si mesma nessa tabela.
+
 ## v0.15.5 — Coluna "Detalhes" da Auditoria menos poluída
 A coluna de detalhes de cada evento mostrava o JSON bruto (com chaves,
 aspas e IDs completos de 36 caracteres) — ficava larga e difícil de ler.
