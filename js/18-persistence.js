@@ -10,11 +10,14 @@ function agendarSalvamento(){
   clearTimeout(_salvarTimer);
   _salvarTimer = setTimeout(salvarEstado, 500);
 }
+let _meuUltimoSalvamentoEm = null;
 async function salvarEstado(){
   const payload = {};
   PERSIST_KEYS.forEach(k => payload[k] = state[k]);
+  const agora = new Date().toISOString();
+  _meuUltimoSalvamentoEm = agora; // usado pra distinguir "eu mesmo salvei" de "outra pessoa salvou" (ver assinarAtualizacoesAoVivo)
   const { error } = await sb.from('dados_sistema').upsert({
-    empresa_id: empresaIdAtual, payload, atualizado_em: new Date().toISOString()
+    empresa_id: empresaIdAtual, payload, atualizado_em: agora
   });
   if(error) console.error('Falha ao salvar', error);
 }

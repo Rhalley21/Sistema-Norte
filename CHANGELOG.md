@@ -3,6 +3,20 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.16.1 — Bug corrigido: aviso de atualização aparecia toda hora
+O aviso "Alguém mais atualizou os dados" (v0.16.0) disparava até quando a
+mudança era da própria pessoa — o sistema salva sozinho toda vez que
+qualquer coisa é feita (agendarSalvamento), e isso também contava como
+"atualização" pro Realtime. Resultado: o aviso ficava aparecendo o tempo
+todo, sem servir de aviso real de nada.
+
+Corrigido em `js/18-persistence.js` e `js/02-core-helpers.js`: cada
+salvamento agora carimba um identificador próprio, e o aviso só aparece
+quando o carimbo recebido pelo Realtime **não bate** com o do nosso
+último salvamento — ou seja, só quando é mudança de outra pessoa de
+verdade. Testei os dois cenários (eco próprio vs. mudança alheia) e
+confirmei o comportamento certo nos dois.
+
 ## v0.16.0 — Aviso automático quando outra pessoa atualiza os dados (Realtime)
 Resolve o ponto #4 identificado na revisão geral: duas pessoas da mesma
 empresa usando o sistema ao mesmo tempo sem saber que os dados mudaram —
