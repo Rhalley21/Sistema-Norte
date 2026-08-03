@@ -229,20 +229,34 @@ function exportarDossiePDF(cicloId){
   // 1) Desenho de Cargo
   let y = tituloSecao('1. Desenho de Cargo (versão ' + (desenho.versao||1) + (desenho.aprovado?', aprovado':', rascunho') + ')', 62);
   doc.setFontSize(9.5);
-  const linhasSumario = doc.splitTextToSize(`Sumário: ${desenho.sumario || '—'}`, 180);
-  doc.text(linhasSumario, 14, y);
-  y += linhasSumario.length*5 + 4;
-  const linhasRequisitos = doc.splitTextToSize(`Requisitos mínimos: ${desenho.requisitos || '—'}`, 180);
-  doc.text(linhasRequisitos, 14, y);
-  y += linhasRequisitos.length*5 + 4;
+  doc.text(`Área: ${desenho.area||'—'}    Nível: ${desenho.nivelHierarquico||'—'}    Regime: ${desenho.regimeTrabalho||'—'}`, 14, y);
+  y += 6;
+  doc.text(`Reporta-se a: ${desenho.subordinacao||'—'}    Local: ${desenho.localTrabalho||'—'}`, 14, y);
+  y += 8;
+  const linhasMissao = doc.splitTextToSize(`Missão do cargo: ${desenho.missao || '—'}`, 180);
+  doc.text(linhasMissao, 14, y);
+  y += linhasMissao.length*5 + 4;
   const linhasCultura = doc.splitTextToSize(`Cultura e Postura Institucional: ${desenho.culturaPostura || '—'}`, 180);
   doc.text(linhasCultura, 14, y);
-  y += linhasCultura.length*5 + 6;
-  if((desenho.atividadesEspecificas||[]).length){
+  y += linhasCultura.length*5 + 4;
+  const linhasFormacao = doc.splitTextToSize(`Formação/Experiência: ${desenho.formacaoAcademica||'—'} ${desenho.experienciaProfissional||''}`, 180);
+  doc.text(linhasFormacao, 14, y);
+  y += linhasFormacao.length*5 + 6;
+  if((desenho.responsabilidades||[]).length){
     doc.autoTable({
       startY: y,
-      head: [['Atividades específicas do cargo']],
-      body: desenho.atividadesEspecificas.map(a=>[a]),
+      head: [['Responsabilidades e Atribuições']],
+      body: desenho.responsabilidades.map(a=>[a]),
+      styles:{ fontSize:8.5 }, headStyles:{ fillColor: corPrimaria },
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  }
+  if((desenho.kpis||[]).length){
+    if(y > 250){ doc.addPage(); y = 20; }
+    doc.autoTable({
+      startY: y,
+      head: [['Indicadores de Desempenho (KPIs do Cargo)']],
+      body: desenho.kpis.map(a=>[a]),
       styles:{ fontSize:8.5 }, headStyles:{ fillColor: corPrimaria },
     });
     y = doc.lastAutoTable.finalY + 10;

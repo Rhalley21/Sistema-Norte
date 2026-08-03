@@ -3,6 +3,32 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.18.0 — Desenho de Cargo no padrão completo (baseado em documento de referência)
+Reconstrução completa do modelo de Desenho de Cargo, a partir de um
+documento de referência real (Desenho de Cargo — Analista de Dados) que
+segue um padrão de mercado bem mais detalhado do que o formato anterior
+(que só tinha sumário, atividades e requisitos em texto livre).
+
+**Estrutura nova, em 9 seções** (tanto na tela de edição quanto na base
+CBO): Identificação do Cargo (área/departamento, nível hierárquico, regime
+de trabalho, local de trabalho, subordinação, subordinados diretos),
+Missão do Cargo, Responsabilidades e Atribuições (+ Cultura e Postura
+Institucional, RN030), Requisitos (formação acadêmica, experiência,
+conhecimentos técnicos, idiomas), Competências Comportamentais,
+Ferramentas e Sistemas Utilizados, Indicadores de Desempenho (KPIs do
+Cargo), Condições de Trabalho, e Perspectivas de Carreira.
+
+- **`js/12-page-desenho.js`**: tela de edição inteira reconstruída nesse
+  formato, com as 9 seções.
+- **`js/04-data-cbo.js`**: os 42 cargos da base CBO já vêm com todo esse
+  conteúdo preenchido — o "Analista de Dados" segue quase palavra por
+  palavra o documento de referência enviado; os demais 41 seguem o mesmo
+  padrão, com conteúdo ajustado ao contexto de cada função (ex.: Pedreiro
+  tem menos "ferramentas de sistema" que um cargo de escritório, o que
+  faz sentido pela natureza do trabalho).
+- **`js/11-page-cargos.js`** (`importarCargo`): atualizado para copiar
+  todos os campos novos da base CBO pro cargo importado pela empresa.
+
 ## v0.17.1 — Filtro de segmento agora é estrito (sem mistura de "gerais")
 Ajuste no comportamento da v0.17.0, a pedido: em vez de misturar cargos
 "gerais" com os do segmento escolhido através de uma regra especial no

@@ -92,10 +92,18 @@ function importarCargo(codigo){
     } : null,
     desenho:{
       versao:1, aprovado:false,
-      sumario: src.sumario,
-      atividadesEspecificas: src.atividades.split(';').map(s=>s.trim()).filter(Boolean),
-      culturaPostura:'',
-      requisitos: src.requisitos
+      area: src.area, nivelHierarquico: src.nivelHierarquico, regimeTrabalho: src.regimeTrabalho,
+      subordinacao: src.subordinacao, subordinadosDiretos: src.subordinadosDiretos, localTrabalho: src.localTrabalho,
+      missao: src.missao,
+      responsabilidades: [...src.responsabilidades], // RN028: cópia editável — a empresa pode ajustar livremente após importar
+      culturaPostura:'', // obrigatório (RN030) — cada empresa preenche a sua própria Cultura e Postura Institucional
+      formacaoAcademica: src.formacaoAcademica, experienciaProfissional: src.experienciaProfissional,
+      conhecimentosTecnicos: src.conhecimentosTecnicos, idiomas: src.idiomas,
+      competenciasComportamentais: [...src.competenciasComportamentais],
+      ferramentasSistemas: [...src.ferramentasSistemas],
+      kpis: [...src.kpis],
+      condicoesTrabalho: src.condicoesTrabalho,
+      perspectivasCarreira: [...src.perspectivasCarreira],
     },
     versoes: [],
     descontinuado: false, ...novoCarimbo(),
@@ -147,7 +155,13 @@ function criarCargoDoZero(){
     id: uid(), nome, familia: document.getElementById('cg_familia').value, natureza: document.getElementById('cg_natureza').value,
     cbo:null, origemCBO:false,
     indicadoresN:[], indicadoresO:[], indicadoresR:[],
-    desenho:{versao:1, aprovado:false, sumario:'', atividadesEspecificas:[], culturaPostura:'', requisitos:''},
+    desenho:{
+      versao:1, aprovado:false,
+      area:'', nivelHierarquico:'', regimeTrabalho:'', subordinacao:'', subordinadosDiretos:'', localTrabalho:'',
+      missao:'', responsabilidades:[], culturaPostura:'',
+      formacaoAcademica:'', experienciaProfissional:'', conhecimentosTecnicos:'', idiomas:'',
+      competenciasComportamentais:[], ferramentasSistemas:[], kpis:[], condicoesTrabalho:'', perspectivasCarreira:[],
+    },
     versoes: [],
     descontinuado: false, ...novoCarimbo(),
   };

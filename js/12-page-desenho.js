@@ -26,10 +26,45 @@ function pageDesenho(){
 
     <div class="card">
       <h3>${cargo.nome} <small>${cargo.familia} · ${cargo.natureza} ${cargo.cbo?'· CBO '+cargo.cbo:''} ${d.aprovado?'· versão publicada v'+d.versao:'· rascunho'}</small></h3>
-      <div class="field"><label>Sumário do cargo</label><textarea id="d_sumario">${d.sumario}</textarea></div>
-      <div class="field"><label>Atividades específicas (uma por linha)</label><textarea id="d_atividades">${d.atividadesEspecificas.join('\\n')}</textarea></div>
-      <div class="field"><label>Categoria obrigatória: Cultura e Postura Institucional</label><textarea id="d_cultura">${d.culturaPostura}</textarea></div>
-      <div class="field"><label>Requisitos mínimos</label><textarea id="d_requisitos">${d.requisitos}</textarea></div>
+
+      <div class="small-muted" style="text-transform:uppercase;letter-spacing:.06em;font-size:11px;margin:16px 0 8px;">1. Identificação do Cargo</div>
+      <div class="grid2">
+        <div class="field"><label>Área / Departamento</label><input id="d_area" value="${d.area||''}" placeholder="Ex: Tecnologia da Informação"></div>
+        <div class="field"><label>Nível Hierárquico</label><input id="d_nivel" value="${d.nivelHierarquico||''}" placeholder="Ex: Técnico / Analista"></div>
+        <div class="field"><label>Regime de Trabalho</label><input id="d_regime" value="${d.regimeTrabalho||''}" placeholder="Ex: CLT — Jornada de 40h semanais"></div>
+        <div class="field"><label>Local de Trabalho</label><input id="d_local" value="${d.localTrabalho||''}" placeholder="Ex: Sede da empresa / Modelo híbrido"></div>
+        <div class="field"><label>Subordinação (reporta-se a)</label><input id="d_subordinacao" value="${d.subordinacao||''}" placeholder="Ex: Coordenador(a) de Dados"></div>
+        <div class="field"><label>Subordinados Diretos</label><input id="d_subordinados" value="${d.subordinadosDiretos||''}" placeholder="Ex: Nenhum"></div>
+      </div>
+
+      <div class="small-muted" style="text-transform:uppercase;letter-spacing:.06em;font-size:11px;margin:16px 0 8px;">2. Missão do Cargo</div>
+      <div class="field"><label>Missão</label><textarea id="d_missao">${d.missao||''}</textarea></div>
+
+      <div class="small-muted" style="text-transform:uppercase;letter-spacing:.06em;font-size:11px;margin:16px 0 8px;">3. Responsabilidades e Atribuições</div>
+      <div class="field"><label>Responsabilidades (uma por linha)</label><textarea id="d_responsabilidades" rows="6">${(d.responsabilidades||[]).join('\n')}</textarea></div>
+      <div class="field"><label>Categoria obrigatória: Cultura e Postura Institucional <small>(RN030)</small></label><textarea id="d_cultura">${d.culturaPostura||''}</textarea></div>
+
+      <div class="small-muted" style="text-transform:uppercase;letter-spacing:.06em;font-size:11px;margin:16px 0 8px;">4. Requisitos do Cargo</div>
+      <div class="field"><label>Formação Acadêmica</label><textarea id="d_formacao">${d.formacaoAcademica||''}</textarea></div>
+      <div class="field"><label>Experiência Profissional</label><textarea id="d_experiencia">${d.experienciaProfissional||''}</textarea></div>
+      <div class="field"><label>Conhecimentos Técnicos</label><textarea id="d_conhecimentos">${d.conhecimentosTecnicos||''}</textarea></div>
+      <div class="field"><label>Idiomas</label><textarea id="d_idiomas">${d.idiomas||''}</textarea></div>
+
+      <div class="small-muted" style="text-transform:uppercase;letter-spacing:.06em;font-size:11px;margin:16px 0 8px;">5. Competências Comportamentais</div>
+      <div class="field"><label>Competências (uma por linha)</label><textarea id="d_competencias" rows="5">${(d.competenciasComportamentais||[]).join('\n')}</textarea></div>
+
+      <div class="small-muted" style="text-transform:uppercase;letter-spacing:.06em;font-size:11px;margin:16px 0 8px;">6. Ferramentas e Sistemas Utilizados</div>
+      <div class="field"><label>Ferramentas/Sistemas (um por linha)</label><textarea id="d_ferramentas" rows="4">${(d.ferramentasSistemas||[]).join('\n')}</textarea></div>
+
+      <div class="small-muted" style="text-transform:uppercase;letter-spacing:.06em;font-size:11px;margin:16px 0 8px;">7. Indicadores de Desempenho (KPIs do Cargo)</div>
+      <div class="field"><label>KPIs (um por linha)</label><textarea id="d_kpis" rows="4">${(d.kpis||[]).join('\n')}</textarea></div>
+
+      <div class="small-muted" style="text-transform:uppercase;letter-spacing:.06em;font-size:11px;margin:16px 0 8px;">8. Condições de Trabalho</div>
+      <div class="field"><label>Condições</label><textarea id="d_condicoes">${d.condicoesTrabalho||''}</textarea></div>
+
+      <div class="small-muted" style="text-transform:uppercase;letter-spacing:.06em;font-size:11px;margin:16px 0 8px;">9. Perspectivas de Carreira</div>
+      <div class="field"><label>Trilha de carreira (uma por linha)</label><textarea id="d_carreira" rows="3">${(d.perspectivasCarreira||[]).join('\n')}</textarea></div>
+
       ${jaPublicadoAntes ? `<div class="field"><label>Motivo da alteração <small>(obrigatório — toda nova versão precisa registrar por que mudou, RN024)</small></label><textarea id="d_motivo" placeholder="Ex: Ajuste de indicadores após revisão do RH em conjunto com a liderança da área."></textarea></div>` : ''}
       <button class="btn" onclick="salvarRascunhoDesenho('${cargo.id}')">Salvar rascunho</button>
       <button class="btn btn-primary" onclick="publicarDesenho('${cargo.id}')" ${indicadoresOk(cargo)?'':'disabled'}>Publicar versão ${jaPublicadoAntes ? d.versao+1 : d.versao}</button>
@@ -109,8 +144,8 @@ function renderDiffVersoes(cargo, va, vb){
       <td>${b || '<span class="small-muted">—</span>'}</td>
     </tr>`;
   const linhaLista = (label, listaA, listaB) => {
-    const nomesA = listaA.map(i=>i.nome||i);
-    const nomesB = listaB.map(i=>i.nome||i);
+    const nomesA = (listaA||[]).map(i=>i.nome||i);
+    const nomesB = (listaB||[]).map(i=>i.nome||i);
     const render1 = nomesA.map(n=>`<span class="chip ${!nomesB.includes(n)?'diff-removido':''}">${n}</span>`).join(' ');
     const render2 = nomesB.map(n=>`<span class="chip ${!nomesA.includes(n)?'diff-adicionado':''}">${n}</span>`).join(' ');
     return `<tr><td class="small-muted">${label}</td><td>${render1||'—'}</td><td>${render2||'—'}</td></tr>`;
@@ -120,10 +155,15 @@ function renderDiffVersoes(cargo, va, vb){
     <table style="margin-top:14px;">
       <thead><tr><th></th><th>v${A.versao} <span class="small-muted">(${A.data})</span></th><th>v${B.versao} <span class="small-muted">(${B.data})</span></th></tr></thead>
       <tbody>
-        ${linhaTexto('Sumário', A.sumario, B.sumario)}
+        ${linhaTexto('Missão', A.missao, B.missao)}
         ${linhaTexto('Cultura e Postura', A.culturaPostura, B.culturaPostura)}
-        ${linhaTexto('Requisitos', A.requisitos, B.requisitos)}
-        ${linhaLista('Atividades', A.atividadesEspecificas, B.atividadesEspecificas)}
+        ${linhaTexto('Formação Acadêmica', A.formacaoAcademica, B.formacaoAcademica)}
+        ${linhaTexto('Experiência Profissional', A.experienciaProfissional, B.experienciaProfissional)}
+        ${linhaLista('Responsabilidades', A.responsabilidades, B.responsabilidades)}
+        ${linhaLista('Competências Comportamentais', A.competenciasComportamentais, B.competenciasComportamentais)}
+        ${linhaLista('Ferramentas e Sistemas', A.ferramentasSistemas, B.ferramentasSistemas)}
+        ${linhaLista('KPIs', A.kpis, B.kpis)}
+        ${linhaLista('Perspectivas de Carreira', A.perspectivasCarreira, B.perspectivasCarreira)}
         ${linhaLista('Indicadores N', A.indicadoresN, B.indicadoresN)}
         ${linhaLista('Indicadores O', A.indicadoresO, B.indicadoresO)}
         ${linhaLista('Indicadores R', A.indicadoresR, B.indicadoresR)}
@@ -189,10 +229,25 @@ function addIndicadorCargo(cargoId,key,pilar){
 }
 function salvarRascunhoDesenho(cargoId, silencioso){
   const cargo = state.cargos.find(c=>c.id===cargoId);
-  cargo.desenho.sumario = document.getElementById('d_sumario').value;
-  cargo.desenho.atividadesEspecificas = document.getElementById('d_atividades').value.split('\\n').filter(Boolean);
-  cargo.desenho.culturaPostura = document.getElementById('d_cultura').value;
-  cargo.desenho.requisitos = document.getElementById('d_requisitos').value;
+  const d = cargo.desenho;
+  d.area = document.getElementById('d_area').value;
+  d.nivelHierarquico = document.getElementById('d_nivel').value;
+  d.regimeTrabalho = document.getElementById('d_regime').value;
+  d.localTrabalho = document.getElementById('d_local').value;
+  d.subordinacao = document.getElementById('d_subordinacao').value;
+  d.subordinadosDiretos = document.getElementById('d_subordinados').value;
+  d.missao = document.getElementById('d_missao').value;
+  d.responsabilidades = document.getElementById('d_responsabilidades').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  d.culturaPostura = document.getElementById('d_cultura').value;
+  d.formacaoAcademica = document.getElementById('d_formacao').value;
+  d.experienciaProfissional = document.getElementById('d_experiencia').value;
+  d.conhecimentosTecnicos = document.getElementById('d_conhecimentos').value;
+  d.idiomas = document.getElementById('d_idiomas').value;
+  d.competenciasComportamentais = document.getElementById('d_competencias').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  d.ferramentasSistemas = document.getElementById('d_ferramentas').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  d.kpis = document.getElementById('d_kpis').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  d.condicoesTrabalho = document.getElementById('d_condicoes').value;
+  d.perspectivasCarreira = document.getElementById('d_carreira').value.split('\n').map(s=>s.trim()).filter(Boolean);
   if(!silencioso){ showToast('Rascunho salvo.'); render(); }
 }
 function publicarDesenho(cargoId){
@@ -211,6 +266,7 @@ function publicarDesenho(cargoId){
 
   const novaVersao = jaPublicadoAntes ? cargo.desenho.versao + 1 : cargo.desenho.versao;
   const dataPublicacao = new Date().toISOString().slice(0,10);
+  const d = cargo.desenho;
 
   // RN024: guarda um retrato imutável desta versão no histórico — nunca é apagado.
   cargo.versoes = cargo.versoes || [];
@@ -218,10 +274,18 @@ function publicarDesenho(cargoId){
     versao: novaVersao,
     data: dataPublicacao,
     motivo,
-    sumario: cargo.desenho.sumario,
-    atividadesEspecificas: [...cargo.desenho.atividadesEspecificas],
-    culturaPostura: cargo.desenho.culturaPostura,
-    requisitos: cargo.desenho.requisitos,
+    area: d.area, nivelHierarquico: d.nivelHierarquico, regimeTrabalho: d.regimeTrabalho,
+    subordinacao: d.subordinacao, subordinadosDiretos: d.subordinadosDiretos, localTrabalho: d.localTrabalho,
+    missao: d.missao,
+    responsabilidades: [...d.responsabilidades],
+    culturaPostura: d.culturaPostura,
+    formacaoAcademica: d.formacaoAcademica, experienciaProfissional: d.experienciaProfissional,
+    conhecimentosTecnicos: d.conhecimentosTecnicos, idiomas: d.idiomas,
+    competenciasComportamentais: [...d.competenciasComportamentais],
+    ferramentasSistemas: [...d.ferramentasSistemas],
+    kpis: [...d.kpis],
+    condicoesTrabalho: d.condicoesTrabalho,
+    perspectivasCarreira: [...d.perspectivasCarreira],
     indicadoresN: cargo.indicadoresN.map(i=>({...i})),
     indicadoresO: cargo.indicadoresO.map(i=>({...i})),
     indicadoresR: cargo.indicadoresR.map(i=>({...i})),
