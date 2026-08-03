@@ -3,6 +3,23 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.17.1 — Filtro de segmento agora é estrito (sem mistura de "gerais")
+Ajuste no comportamento da v0.17.0, a pedido: em vez de misturar cargos
+"gerais" com os do segmento escolhido através de uma regra especial no
+código, agora o filtro é direto — só mostra cargos marcados pro segmento
+que a empresa escolheu.
+
+- Removido o "sentinela" `Geral` da lógica de filtro (`js/11-page-cargos.js`).
+- Os cargos genuinamente universais (Gerente, Recepcionista, Auxiliar
+  Administrativo etc.) continuam aparecendo em qualquer segmento — mas
+  agora porque estão marcados explicitamente em **todos os 13 segmentos**
+  na própria base (`js/04-data-cbo.js`), não por causa de uma exceção
+  escondida no filtro. Os cargos específicos (Enfermeiro, Pedreiro,
+  Professor etc.) continuam só nos segmentos certos.
+- Os números totais por segmento continuam idênticos aos da v0.17.0 (24 a
+  27 cargos, dependendo do segmento) — só a forma de calcular ficou mais
+  simples e transparente.
+
 ## v0.17.0 — Base de Cargos (CBO) filtrada pelo segmento da empresa
 Em vez de simplesmente ampliar a lista de cargos sem critério, o pedido foi
 melhor que isso: filtrar os cargos sugeridos pela área de atuação da

@@ -1,12 +1,14 @@
 let _verTodosCargosCBO = false;
 function pageCargos(){
   const segmentoEmpresa = state.empresa?.segmento || '';
-  // Mostra sempre os cargos "Geral" (existem em qualquer segmento) + os
-  // específicos do segmento da empresa. Se a empresa ainda não escolheu um
-  // segmento, ou se a pessoa quiser ver tudo, mostra a base inteira.
+  // Filtro estrito: só mostra cargos marcados pro segmento escolhido pela
+  // empresa. Cargos genuinamente universais (Gerente, Recepcionista etc.)
+  // já vêm marcados em todos os segmentos na própria base (js/04-data-cbo.js),
+  // então continuam aparecendo — mas não existe mais nenhum "fallback"
+  // automático misturando segmentos diferentes por trás das cortinas.
   const cbosFiltrados = (!segmentoEmpresa || _verTodosCargosCBO)
     ? CBO_MOCK
-    : CBO_MOCK.filter(c => c.segmentos.includes('Geral') || c.segmentos.includes(segmentoEmpresa));
+    : CBO_MOCK.filter(c => c.segmentos.includes(segmentoEmpresa));
 
   return `
     <div class="page-head">
@@ -16,7 +18,7 @@ function pageCargos(){
     </div>
 
     <div class="card">
-      <h3>Biblioteca CBO <small>${segmentoEmpresa && !_verTodosCargosCBO ? `Filtrado para o segmento "${segmentoEmpresa}" + cargos gerais` : 'Selecione um cargo para importar e adaptar'}</small></h3>
+      <h3>Biblioteca CBO <small>${segmentoEmpresa && !_verTodosCargosCBO ? `Filtrado para o segmento "${segmentoEmpresa}"` : 'Selecione um cargo para importar e adaptar'}</small></h3>
       ${segmentoEmpresa ? `<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-dim);margin-bottom:12px;">
         <input type="checkbox" ${_verTodosCargosCBO?'checked':''} onchange="_verTodosCargosCBO=this.checked; render();">
         Ver cargos de todos os segmentos (não só "${segmentoEmpresa}")
