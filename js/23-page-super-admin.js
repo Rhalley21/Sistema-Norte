@@ -12,6 +12,7 @@ let _superAdminJaCarregou = false; // BUG CORRIGIDO abaixo (ver pageSuperAdmin)
 let _superAdminEmpresas = [];
 let _superAdminCodigos = [];
 let _superAdminMetricas = null;
+let _superAdminPayloads = [];
 let _superAdminNovoRotulo = '';
 
 async function carregarDadosSuperAdmin(){
@@ -30,6 +31,7 @@ async function carregarDadosSuperAdmin(){
   _superAdminCodigos = codigos || [];
 
   const listaPayloads = payloads || [];
+  _superAdminPayloads = listaPayloads;
   _superAdminMetricas = {
     empresasAtivas: _superAdminEmpresas.filter(e=>!e.acesso_suspenso).length,
     empresasSuspensas: _superAdminEmpresas.filter(e=>e.acesso_suspenso).length,
@@ -166,11 +168,15 @@ function pageSuperAdmin(){
     <div class="card">
       <h3>Empresas cadastradas na plataforma <small>${_superAdminEmpresas.length} no total</small></h3>
       ${_superAdminEmpresas.length ? `
-        <table><thead><tr><th>Empresa</th><th>CNPJ</th><th>Status</th><th>Cadastrada em</th><th></th></tr></thead><tbody>
-          ${_superAdminEmpresas.map(e=>`<tr>
+        <table><thead><tr><th>Empresa</th><th>CNPJ</th><th>Status</th><th>Pagamento</th><th>Cadastrada em</th><th></th></tr></thead><tbody>
+          ${_superAdminEmpresas.map(e=>{
+            const statusPagamento = _superAdminPayloads.find(p=>p.empresa_id===e.id)?.payload?.empresa?.faturamento?.statusPagamento;
+            const corPagamento = { 'Em dia':'pill-alavancar', 'Pendente':'pill-desenvolver', 'Atrasado':'pill-iniciar', 'Cancelado':'pill-neutral' };
+            return `<tr>
             <td><b>${e.nome_fantasia||'(sem nome ainda)'}</b>${e.id===empresaIdAtual?' <span class="pill pill-neutral">sua empresa</span>':''}</td>
             <td class="small-muted">${e.cnpj||'—'}</td>
             <td>${e.acesso_suspenso ? '<span class="pill pill-iniciar">Suspensa</span>' : '<span class="pill pill-alavancar">Ativa</span>'}</td>
+            <td>${statusPagamento ? `<span class="pill ${corPagamento[statusPagamento]||'pill-neutral'}">${statusPagamento}</span>` : '<span class="small-muted">—</span>'}</td>
             <td class="small-muted">${e.created_at ? new Date(e.created_at).toLocaleDateString('pt-BR') : '—'}</td>
             <td>${e.id===empresaIdAtual
               ? '<span class="small-muted">Não é possível suspender aqui</span>'
@@ -179,7 +185,8 @@ function pageSuperAdmin(){
                 : `<button class="btn btn-sm btn-ghost" style="color:var(--iniciar);" onclick="suspenderEmpresa('${e.id}','${(e.nome_fantasia||'').replace(/'/g,"\\'")}')">Suspender</button>`
               )
             }</td>
-          </tr>`).join('')}
+          </tr>`;
+          }).join('')}
         </tbody></table>
       ` : '<div class="empty">Nenhuma empresa cadastrada ainda.</div>'}
     </div>

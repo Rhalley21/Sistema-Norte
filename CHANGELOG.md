@@ -3,6 +3,42 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.18.3 — Status de pagamento (preparação pro gateway de pagamento)
+Preparação pra quando a integração com um gateway de pagamento (Asaas ou
+outro) for conectada — por enquanto, tudo controlado manualmente.
+
+- **Cadastro da Empresa → Dados de faturamento**: campos novos "Status"
+  (Em dia / Pendente / Atrasado / Cancelado) e "Próxima cobrança" (data).
+- **Tela de Super Admin**: nova coluna "Pagamento" na lista de empresas,
+  mostrando o status de cada uma — dá pra ver de relance quem está em dia
+  e quem está atrasado, sem precisar entrar empresa por empresa.
+- Guardado também um campo `idAssinaturaGateway` (vazio por enquanto) —
+  reservado pra quando a integração de cobrança automática for conectada,
+  sem precisar mudar a estrutura de novo nesse momento.
+
+**Ainda não faz nada sozinho**: esse status é preenchido manualmente por
+enquanto. A cobrança automática (Pix/Cartão/Boleto recorrente via Asaas)
+fica pra quando você criar a conta no gateway e voltarmos a essa parte.
+
+## v0.18.2 — Periodicidade do plano contratual
+Novo campo "Periodicidade do plano" em Cadastro da Empresa → Dados de
+faturamento do contrato, com as opções **Mensal**, **Semestral** e
+**Anual**. Fica ao lado do "Plano contratado" (Essencial/Profissional/
+Enterprise) — um define o nível do plano, o outro define o ciclo de
+cobrança.
+
+## v0.18.1 — Segmento: opção "Outro" ganhou campo de texto livre
+O campo Segmento (Cadastro da Empresa) virou uma lista fixa na v0.17.0
+pra fazer o filtro da Base de Cargos funcionar de forma confiável — mas
+isso tirou a flexibilidade de descrever um segmento que não está na
+lista. Agora tem os dois: escolhe uma das 13 opções fixas, e se escolher
+**"Outro"**, aparece um campo de texto pra descrever livremente.
+
+- O filtro da Base de Cargos continua funcionando normalmente (usa sempre
+  uma das 13 categorias fixas — "Outro" mostra os cargos gerais).
+- O texto livre é só descritivo — aparece ao lado do nome do segmento na
+  tela de Base de Cargos, mas não interfere no filtro.
+
 ## v0.18.0 — Desenho de Cargo no padrão completo (baseado em documento de referência)
 Reconstrução completa do modelo de Desenho de Cargo, a partir de um
 documento de referência real (Desenho de Cargo — Analista de Dados) que

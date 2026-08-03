@@ -52,10 +52,14 @@ function pageEmpresa(){
         <div class="field"><label>Nome fantasia</label><input id="f_fantasia" value="${e.nomeFantasia||''}"></div>
         <div class="field"><label>CNPJ</label><input id="f_cnpj" value="${e.cnpj||''}" placeholder="00.000.000/0000-00"></div>
         <div class="field"><label>Segmento <small>(usado para filtrar sugestões de cargos na Base CBO)</small></label>
-          <select id="f_segmento">
+          <select id="f_segmento" onchange="document.getElementById('wrap_segmento_outro').style.display = this.value==='Outro' ? '' : 'none';">
             <option value="">— selecione —</option>
             ${AREAS_ATUACAO.map(a=>`<option value="${a}" ${e.segmento===a?'selected':''}>${a}</option>`).join('')}
           </select>
+          <div id="wrap_segmento_outro" style="margin-top:8px;display:${e.segmento==='Outro'?'':'none'};">
+            <input id="f_segmento_detalhe" value="${e.segmentoDetalhe||''}" placeholder="Descreva o segmento da empresa (ex: Consultoria ambiental)">
+            <div class="small-muted" style="margin-top:4px;">O filtro da Base de Cargos usa a categoria "Outro" (cargos gerais) — esse texto é só pra detalhar, não afeta o filtro.</div>
+          </div>
         </div>
         <div class="field"><label>Porte</label>
           <select id="f_porte">
@@ -92,6 +96,11 @@ function pageEmpresa(){
             ${['Essencial','Profissional','Enterprise'].map(v=>`<option value="${v}" ${e.faturamento?.plano===v?'selected':''}>${v}</option>`).join('')}
           </select>
         </div>
+        <div class="field"><label>Periodicidade do plano</label>
+          <select id="f_periodicidade_plano">
+            ${['Mensal','Semestral','Anual'].map(v=>`<option value="${v}" ${e.faturamento?.periodicidade===v?'selected':''}>${v}</option>`).join('')}
+          </select>
+        </div>
         <div class="field"><label>Valor mensal (R$)</label><input id="f_valor" type="number" step="0.01" value="${e.faturamento?.valorMensal||''}"></div>
         <div class="field"><label>Início do contrato</label><input id="f_data_contrato" type="date" value="${e.faturamento?.dataInicio||''}"></div>
         <div class="field"><label>Forma de pagamento</label>
@@ -99,6 +108,16 @@ function pageEmpresa(){
             ${['Boleto','Cartão de crédito','Pix','Transferência'].map(v=>`<option value="${v}" ${e.faturamento?.formaPagamento===v?'selected':''}>${v}</option>`).join('')}
           </select>
         </div>
+      </div>
+
+      <div class="small-muted" style="text-transform:uppercase;letter-spacing:.06em;font-size:11px;margin:16px 0 8px;">Status de pagamento <small style="text-transform:none;letter-spacing:normal;">(controlado manualmente por enquanto — passa a ser automático quando o gateway de pagamento for conectado)</small></div>
+      <div class="grid2">
+        <div class="field"><label>Status</label>
+          <select id="f_status_pagamento">
+            ${['Em dia','Pendente','Atrasado','Cancelado'].map(v=>`<option value="${v}" ${e.faturamento?.statusPagamento===v?'selected':(v==='Em dia'&&!e.faturamento?.statusPagamento?'selected':'')}>${v}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><label>Próxima cobrança</label><input id="f_proxima_cobranca" type="date" value="${e.faturamento?.proximaCobranca||''}"></div>
       </div>
     </div>
 
@@ -163,15 +182,23 @@ async function salvarEmpresa(){
     razaoSocial: document.getElementById('f_razao').value || 'Empresa sem nome',
     nomeFantasia: document.getElementById('f_fantasia').value,
     cnpj, segmento: document.getElementById('f_segmento').value,
+    segmentoDetalhe: document.getElementById('f_segmento_detalhe')?.value || '',
     porte: document.getElementById('f_porte').value,
     tipo: document.getElementById('f_tipo').value,
     logotipo: document.getElementById('f_logo').value,
     enderecos: lerEnderecosDaTela(),
     faturamento: {
       plano: document.getElementById('f_plano').value,
+      periodicidade: document.getElementById('f_periodicidade_plano').value,
       valorMensal: document.getElementById('f_valor').value,
       dataInicio: document.getElementById('f_data_contrato').value,
       formaPagamento: document.getElementById('f_pagamento').value,
+      statusPagamento: document.getElementById('f_status_pagamento').value,
+      proximaCobranca: document.getElementById('f_proxima_cobranca').value,
+      // Preenchido futuramente pela integração com o gateway de pagamento
+      // (ver conversa sobre Asaas) — por enquanto não existe, e o status
+      // acima é atualizado manualmente.
+      idAssinaturaGateway: e.faturamento?.idAssinaturaGateway || null,
     },
     estado: 'Ativa',
     ...carimboAnterior,

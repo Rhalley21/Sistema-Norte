@@ -18,7 +18,7 @@ function pageCargos(){
     </div>
 
     <div class="card">
-      <h3>Biblioteca CBO <small>${segmentoEmpresa && !_verTodosCargosCBO ? `Filtrado para o segmento "${segmentoEmpresa}"` : 'Selecione um cargo para importar e adaptar'}</small></h3>
+      <h3>Biblioteca CBO <small>${segmentoEmpresa && !_verTodosCargosCBO ? `Filtrado para o segmento "${segmentoEmpresa}"${segmentoEmpresa==='Outro' && state.empresa?.segmentoDetalhe ? ` (${state.empresa.segmentoDetalhe})` : ''}` : 'Selecione um cargo para importar e adaptar'}</small></h3>
       ${segmentoEmpresa ? `<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-dim);margin-bottom:12px;">
         <input type="checkbox" ${_verTodosCargosCBO?'checked':''} onchange="_verTodosCargosCBO=this.checked; render();">
         Ver cargos de todos os segmentos (não só "${segmentoEmpresa}")
