@@ -1,4 +1,13 @@
+let _verTodosCargosCBO = false;
 function pageCargos(){
+  const segmentoEmpresa = state.empresa?.segmento || '';
+  // Mostra sempre os cargos "Geral" (existem em qualquer segmento) + os
+  // específicos do segmento da empresa. Se a empresa ainda não escolheu um
+  // segmento, ou se a pessoa quiser ver tudo, mostra a base inteira.
+  const cbosFiltrados = (!segmentoEmpresa || _verTodosCargosCBO)
+    ? CBO_MOCK
+    : CBO_MOCK.filter(c => c.segmentos.includes('Geral') || c.segmentos.includes(segmentoEmpresa));
+
   return `
     <div class="page-head">
       <div class="eyebrow">Etapa 04 · Cargos</div>
@@ -7,13 +16,17 @@ function pageCargos(){
     </div>
 
     <div class="card">
-      <h3>Biblioteca CBO <small>Selecione um cargo para importar e adaptar</small></h3>
-      ${CBO_MOCK.map(c=>`
+      <h3>Biblioteca CBO <small>${segmentoEmpresa && !_verTodosCargosCBO ? `Filtrado para o segmento "${segmentoEmpresa}" + cargos gerais` : 'Selecione um cargo para importar e adaptar'}</small></h3>
+      ${segmentoEmpresa ? `<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-dim);margin-bottom:12px;">
+        <input type="checkbox" ${_verTodosCargosCBO?'checked':''} onchange="_verTodosCargosCBO=this.checked; render();">
+        Ver cargos de todos os segmentos (não só "${segmentoEmpresa}")
+      </label>` : '<div class="notice">Defina o Segmento da empresa em Cadastro da Empresa para filtrar a biblioteca automaticamente.</div>'}
+      ${cbosFiltrados.length ? cbosFiltrados.map(c=>`
         <div class="cbo-item">
           <div><b>${c.nome}</b><br><span>CBO ${c.codigo} · ${c.familia} · ${c.natureza}</span></div>
           <button class="btn btn-sm" onclick="importarCargo('${c.codigo}')">Importar cargo →</button>
         </div>
-      `).join('')}
+      `).join('') : '<div class="empty">Nenhum cargo cadastrado para esse segmento ainda — marque "Ver cargos de todos os segmentos" acima, ou crie um cargo do zero abaixo.</div>'}
     </div>
 
     <div class="card">
@@ -22,7 +35,7 @@ function pageCargos(){
         <div class="field"><label>Nome do cargo</label><input id="cg_nome" placeholder="Ex: Analista Comercial Pleno"></div>
         <div class="field"><label>Família</label>
           <select id="cg_familia">
-            ${['Liderança','Coordenação','Operacional','Administrativo/Financeiro','Comercial','Público'].map(f=>`<option>${f}</option>`).join('')}
+            ${['Liderança','Coordenação','Operacional','Administrativo/Financeiro','Comercial','Público','Saúde','Educação','Tecnologia','Jurídico','Construção Civil','Agronegócio','Logística'].map(f=>`<option>${f}</option>`).join('')}
           </select>
         </div>
         <div class="field"><label>Natureza</label>

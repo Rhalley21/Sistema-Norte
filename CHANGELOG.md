@@ -3,6 +3,34 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.17.0 — Base de Cargos (CBO) filtrada pelo segmento da empresa
+Em vez de simplesmente ampliar a lista de cargos sem critério, o pedido foi
+melhor que isso: filtrar os cargos sugeridos pela área de atuação da
+empresa (ex.: uma empresa de Saúde só ver cargos relevantes pra Saúde, não
+uma lista genérica misturada com Pedreiro ou Professor).
+
+- **`js/04-data-cbo.js`**: campo novo `segmentos` em cada cargo, marcando a
+  qual área ele pertence. Cargos "Geral" (Gerente, Recepcionista, Auxiliar
+  Administrativo etc.) aparecem pra qualquer segmento. Foram adicionados
+  18 cargos novos cobrindo áreas que antes não tinham nenhuma
+  representação: Saúde, Educação, Tecnologia, Jurídico, Construção Civil,
+  Agronegócio e Logística — total foi de 24 para 42 cargos.
+- **Cadastro da Empresa**: o campo "Segmento" deixou de ser texto livre e
+  virou uma lista fixa de 13 áreas — isso é o que permite o filtro
+  funcionar de forma confiável (texto livre como "saude" vs "Saúde" vs
+  "Hospital" não dava pra casar com precisão).
+- **Base de Cargos**: filtra automaticamente pelos cargos "Geral" + os do
+  segmento escolhido pela empresa. Tem uma opção pra "ver cargos de todos
+  os segmentos" a qualquer momento, se quiser.
+
+**Importante sobre os códigos CBO usados**: não tive acesso à base de
+dados oficial completa do governo nesse ambiente (sem internet aberta) —
+os códigos e descrições foram escritos com base em conhecimento geral
+sobre ocupações comuns no Brasil, com boa confiança, mas **não foram
+verificados contra o registro oficial do Ministério do Trabalho**. Vale
+conferir o código exato antes de usar em algo formal (ex.: registro em
+carteira de trabalho), se isso for relevante pro caso de uso.
+
 ## v0.16.2 — Segunda correção do aviso de atualização (janela de tempo)
 A correção da v0.16.1 (comparar o carimbo exato do salvamento) não era
 suficiente: se a pessoa clica em várias coisas seguidas, cada clique

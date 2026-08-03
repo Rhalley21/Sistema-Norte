@@ -51,7 +51,12 @@ function pageEmpresa(){
         <div class="field"><label>Razão social</label><input id="f_razao" value="${e.razaoSocial||''}"></div>
         <div class="field"><label>Nome fantasia</label><input id="f_fantasia" value="${e.nomeFantasia||''}"></div>
         <div class="field"><label>CNPJ</label><input id="f_cnpj" value="${e.cnpj||''}" placeholder="00.000.000/0000-00"></div>
-        <div class="field"><label>Segmento</label><input id="f_segmento" value="${e.segmento||''}"></div>
+        <div class="field"><label>Segmento <small>(usado para filtrar sugestões de cargos na Base CBO)</small></label>
+          <select id="f_segmento">
+            <option value="">— selecione —</option>
+            ${AREAS_ATUACAO.map(a=>`<option value="${a}" ${e.segmento===a?'selected':''}>${a}</option>`).join('')}
+          </select>
+        </div>
         <div class="field"><label>Porte</label>
           <select id="f_porte">
             ${['pequena','media','grande'].map(v=>`<option value="${v}" ${e.porte===v?'selected':''}>${v.charAt(0).toUpperCase()+v.slice(1)}</option>`).join('')}
