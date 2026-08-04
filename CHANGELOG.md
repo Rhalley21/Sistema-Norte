@@ -3,6 +3,17 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.20.1 — Bug corrigido: painel de notificações cortado pela barra lateral
+O painel que abre ao clicar no sino 🔔 (320px de largura) ficava presa
+dentro da barra lateral (250px de largura fixa) — o painel era mais largo
+que o espaço onde estava posicionado, então aparecia cortado/apertado.
+
+Corrigido em `js/25-notificacoes.js`: o painel agora usa posicionamento
+fixo relativo à tela inteira (não mais relativo à barra lateral), então
+flutua livremente por cima de todo o conteúdo, sem ser cortado por nada.
+Também adicionei um jeito de fechar o painel clicando em qualquer lugar
+fora dele.
+
 ## v0.20.0 — PWA: instalável no celular
 O sistema virou um PWA (Progressive Web App) de verdade — dá pra instalar
 no celular (ícone na tela inicial, abre em tela cheia, sem barra de

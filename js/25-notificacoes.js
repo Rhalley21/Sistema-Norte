@@ -73,7 +73,8 @@ function renderSinoNotificacoes(){
         🔔${naoLidas ? `<span style="position:absolute;top:-4px;right:-4px;background:var(--iniciar);color:#fff;border-radius:10px;font-size:10px;padding:1px 5px;font-weight:700;">${naoLidas>9?'9+':naoLidas}</span>` : ''}
       </button>
       ${_notificacoesPainelAberto ? `
-        <div style="position:absolute;top:38px;right:0;width:320px;max-height:400px;overflow-y:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.4);z-index:1000;">
+        <div onclick="alternarPainelNotificacoes()" style="position:fixed;inset:0;z-index:1999;background:transparent;"></div>
+        <div style="position:fixed;top:56px;left:16px;width:min(320px, calc(100vw - 32px));max-height:70vh;overflow-y:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.5);z-index:2000;">
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);">
             <b style="font-size:13px;">Notificações</b>
             ${naoLidas ? `<button class="btn btn-ghost btn-sm" onclick="marcarTodasComoLidas()" style="font-size:11px;">Marcar todas como lidas</button>` : ''}
