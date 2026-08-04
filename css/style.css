@@ -270,7 +270,7 @@ hr.sep{border:none;border-top:1px solid var(--line);margin:20px 0;}
   /* Linha de indicador + escolha IDA: empilha em vez de espremer tudo numa linha só. */
   .ida-row{ flex-direction:column; align-items:flex-start; gap:10px; }
   .ida-choices{ width:100%; justify-content:stretch; }
-  .ida-choice{ flex:1; padding:10px 6px; font-size:13px; }
+  .ida-choice{ flex:1; padding:13px 6px; font-size:14px; min-height:44px; }
 
   /* Botões maiores e mais fáceis de tocar. */
   .btn{ padding:10px 14px; }

@@ -362,3 +362,68 @@ function esconderAvisoAtualizacao(){
   const el = document.getElementById('aviso-atualizacao');
   if(el) el.innerHTML = '';
 }
+
+/* =========================================================
+   GRÁFICO DE TRAJETÓRIA IDA — evolução ao longo de múltiplos ciclos
+   -----------------------------------------------------------
+   SVG simples, sem biblioteca externa — plota Resultado, Comportamento e
+   Potencial (as 3 Dimensões) ao longo dos ciclos com diagnóstico, na
+   ordem cronológica. Cada ciclo já é um "retrato congelado" (RN024) — os
+   valores aqui nunca mudam depois de gerados, só a lista de pontos cresce
+   conforme novos ciclos são consolidados.
+   ========================================================= */
+function renderGraficoTrajetoriaIDA(ciclosComDiagnostico){
+  const pontos = ciclosComDiagnostico
+    .filter(c=>c.diagnostico?.dimensaoMedia)
+    .slice().sort((a,b)=>a.dataAbertura.localeCompare(b.dataAbertura));
+
+  if(pontos.length < 2){
+    return '<p class="small-muted">Precisa de pelo menos 2 ciclos com diagnóstico pra desenhar uma trajetória — hoje só tem ' + pontos.length + '.</p>';
+  }
+
+  const W = 640, H = 220, PAD_L = 40, PAD_R = 16, PAD_T = 16, PAD_B = 34;
+  const areaW = W - PAD_L - PAD_R, areaH = H - PAD_T - PAD_B;
+  const passoX = pontos.length > 1 ? areaW / (pontos.length - 1) : 0;
+  const yDoValor = (v) => PAD_T + areaH - (v==null ? 0 : v) * areaH;
+  const xDoIndice = (i) => PAD_L + i * passoX;
+
+  const SERIES = [
+    { chave:'Resultado', cor:'var(--alavancar)' },
+    { chave:'Comportamento', cor:'var(--gold)' },
+    { chave:'Potencial', cor:'var(--iniciar)' },
+  ];
+
+  function linhaSVG(chave){
+    const coords = pontos.map((c,i)=>{
+      const v = c.diagnostico.dimensaoMedia[chave];
+      return v==null ? null : `${xDoIndice(i)},${yDoValor(v)}`;
+    }).filter(Boolean);
+    return coords.length>1 ? `<polyline points="${coords.join(' ')}" fill="none" stroke="${SERIES.find(s=>s.chave===chave).cor}" stroke-width="2.5" />` : '';
+  }
+  function pontosSVG(chave){
+    return pontos.map((c,i)=>{
+      const v = c.diagnostico.dimensaoMedia[chave];
+      if(v==null) return '';
+      return `<circle cx="${xDoIndice(i)}" cy="${yDoValor(v)}" r="3.5" fill="${SERIES.find(s=>s.chave===chave).cor}" />`;
+    }).join('');
+  }
+
+  const linhasGuia = [0, 0.33, 0.66, 1].map(v=>`
+    <line x1="${PAD_L}" x2="${W-PAD_R}" y1="${yDoValor(v)}" y2="${yDoValor(v)}" stroke="var(--line)" stroke-width="1" />
+    <text x="${PAD_L-6}" y="${yDoValor(v)+3}" font-size="9" fill="var(--ink-faint)" text-anchor="end">${v===0?'I':v===1?'A':'D'}</text>
+  `).join('');
+
+  const rotulosX = pontos.map((c,i)=>`
+    <text x="${xDoIndice(i)}" y="${H-PAD_B+16}" font-size="9" fill="var(--ink-faint)" text-anchor="middle">${new Date(c.dataAbertura).toLocaleDateString('pt-BR',{month:'short',year:'2-digit'})}</text>
+  `).join('');
+
+  return `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-width:640px;">
+      ${linhasGuia}
+      ${SERIES.map(s=>linhaSVG(s.chave)+pontosSVG(s.chave)).join('')}
+      ${rotulosX}
+    </svg>
+    <div style="display:flex;gap:16px;margin-top:6px;flex-wrap:wrap;">
+      ${SERIES.map(s=>`<span style="font-size:11.5px;color:var(--ink-dim);"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${s.cor};margin-right:5px;"></span>${s.chave}</span>`).join('')}
+    </div>`;
+}

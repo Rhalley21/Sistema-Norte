@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="pt-BR">
 <!--
-  IMPORTANTE — cache-busting (v0.18.3): todo link/script local abaixo tem
+  IMPORTANTE — cache-busting (v0.20.0): todo link/script local abaixo tem
   "?v=X.Y.Z" no final da URL. Isso existe pra resolver o problema de cache
   do navegador/GitHub Pages que já causou confusão várias vezes — sem
   isso, depois de subir uma atualização, era preciso lembrar de dar
@@ -20,11 +20,17 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#0a2647" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="NORTE" />
 <meta name="theme-color" content="#0a2647" />
 <title>Plataforma NORTE — Instituto INETRIS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=0.18.3" />
+<link rel="stylesheet" href="css/style.css?v=0.20.0" />
 </head>
 <body>
 <div id="app"></div>
@@ -35,30 +41,41 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-<script src="js/01-supabase-client.js?v=0.18.3"></script>
-<script src="js/00-logo-asset.js?v=0.18.3"></script>
-<script src="js/02-core-helpers.js?v=0.18.3"></script>
-<script src="js/03-data-banco-inteligencia.js?v=0.18.3"></script>
-<script src="js/04-data-cbo.js?v=0.18.3"></script>
-<script src="js/05-navigation.js?v=0.18.3"></script>
-<script src="js/06-page-usuarios.js?v=0.18.3"></script>
-<script src="js/07-router-dashboard.js?v=0.18.3"></script>
-<script src="js/08-page-empresa.js?v=0.18.3"></script>
-<script src="js/09-page-estrutura.js?v=0.18.3"></script>
-<script src="js/10-page-cultura.js?v=0.18.3"></script>
-<script src="js/11-page-cargos.js?v=0.18.3"></script>
-<script src="js/12-page-desenho.js?v=0.18.3"></script>
-<script src="js/13-page-colaboradores.js?v=0.18.3"></script>
-<script src="js/14-permissions.js?v=0.18.3"></script>
-<script src="js/15-page-ciclos-avaliacao.js?v=0.18.3"></script>
-<script src="js/16-page-diagnostico.js?v=0.18.3"></script>
-<script src="js/17-page-inteligencia.js?v=0.18.3"></script>
-<script src="js/18-persistence.js?v=0.18.3"></script>
-<script src="js/19-auth.js?v=0.18.3"></script>
-<script src="js/20-page-relatorios.js?v=0.18.3"></script>
-<script src="js/21-dados-teste.js?v=0.18.3"></script>
-<script src="js/22-page-configuracoes.js?v=0.18.3"></script>
-<script src="js/23-page-super-admin.js?v=0.18.3"></script>
-<script src="js/24-page-auditoria.js?v=0.18.3"></script>
+<script src="js/01-supabase-client.js?v=0.20.0"></script>
+<script src="js/00-logo-asset.js?v=0.20.0"></script>
+<script src="js/02-core-helpers.js?v=0.20.0"></script>
+<script src="js/03-data-banco-inteligencia.js?v=0.20.0"></script>
+<script src="js/04-data-cbo.js?v=0.20.0"></script>
+<script src="js/05-navigation.js?v=0.20.0"></script>
+<script src="js/06-page-usuarios.js?v=0.20.0"></script>
+<script src="js/07-router-dashboard.js?v=0.20.0"></script>
+<script src="js/08-page-empresa.js?v=0.20.0"></script>
+<script src="js/09-page-estrutura.js?v=0.20.0"></script>
+<script src="js/10-page-cultura.js?v=0.20.0"></script>
+<script src="js/11-page-cargos.js?v=0.20.0"></script>
+<script src="js/12-page-desenho.js?v=0.20.0"></script>
+<script src="js/13-page-colaboradores.js?v=0.20.0"></script>
+<script src="js/14-permissions.js?v=0.20.0"></script>
+<script src="js/15-page-ciclos-avaliacao.js?v=0.20.0"></script>
+<script src="js/16-page-diagnostico.js?v=0.20.0"></script>
+<script src="js/17-page-inteligencia.js?v=0.20.0"></script>
+<script src="js/18-persistence.js?v=0.20.0"></script>
+<script src="js/19-auth.js?v=0.20.0"></script>
+<script src="js/20-page-relatorios.js?v=0.20.0"></script>
+<script src="js/21-dados-teste.js?v=0.20.0"></script>
+<script src="js/22-page-configuracoes.js?v=0.20.0"></script>
+<script src="js/23-page-super-admin.js?v=0.20.0"></script>
+<script src="js/24-page-auditoria.js?v=0.20.0"></script>
+<script src="js/25-notificacoes.js?v=0.20.0"></script>
+<script>
+  // Registra o Service Worker (deixa o app instalável como PWA). Se falhar
+  // por qualquer motivo, o site continua funcionando normalmente — só não
+  // fica instalável/com fallback offline.
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(e => console.warn('Service Worker não registrado:', e));
+    });
+  }
+</script>
 </body>
 </html>

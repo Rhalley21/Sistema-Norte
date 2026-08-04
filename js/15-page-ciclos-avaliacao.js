@@ -158,6 +158,7 @@ async function notificarProximaEtapaCiclo(ciclo){
   if(!perfilIdsAlvo.length) return;
   const { data: perfisAlvo } = await sb.from('perfis').select('id,email').in('id', perfilIdsAlvo);
   for(const p of (perfisAlvo||[])){
+    criarNotificacaoInApp(p.id, 'avaliacao_pendente', 'Avaliação pendente', `${colaborador.nome} está aguardando sua avaliação.`, 'ciclos');
     if(!p.email) continue;
     enviarEmailNotificacao(
       p.email,
@@ -997,6 +998,7 @@ function aprovarPDI(cicloId){
 async function notificarPDIAprovado(ciclo){
   const colaborador = state.colaboradores.find(c=>c.id===ciclo.colaboradorId);
   if(!colaborador?.perfilId) return;
+  criarNotificacaoInApp(colaborador.perfilId, 'pdi_aprovado', 'PDI aprovado', 'Seu Plano de Desenvolvimento Individual foi aprovado.', 'diagnostico');
   const { data: perfil } = await sb.from('perfis').select('email').eq('id', colaborador.perfilId).maybeSingle();
   if(!perfil?.email) return;
   enviarEmailNotificacao(

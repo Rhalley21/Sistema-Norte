@@ -3,6 +3,98 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.20.0 — PWA: instalável no celular
+O sistema virou um PWA (Progressive Web App) de verdade — dá pra instalar
+no celular (ícone na tela inicial, abre em tela cheia, sem barra de
+navegador), tanto no Android quanto no iPhone.
+
+- **`manifest.json`**: nome, ícones, cor do tema.
+- **`icons/icon-192.png` e `icons/icon-512.png`**: gerados a partir do
+  logo padrão atual do sistema.
+- **`sw.js`** (Service Worker): estratégia deliberadamente simples —
+  "rede primeiro, cache só como reserva pra quando estiver sem internet".
+  Isso é importante: um Service Worker mal feito poderia trazer de volta o
+  problema de cache que já corrigimos antes (v0.15.6, o "?v=" nas URLs) —
+  esse aqui nunca esconde uma versão nova por trás de cache.
+- Melhorei o tamanho dos botões de Iniciar/Desenvolver/Alavancar no celular
+  (na tela de preenchimento de avaliação) pra ficar mais fácil de tocar
+  certo — já existia responsividade ali, só ajustei a altura mínima.
+
+**Como instalar**: no Android (Chrome), abre o site e toca em "Adicionar à
+tela inicial" (ou o navegador sugere isso automaticamente depois de usar
+um pouco). No iPhone (Safari), toca em Compartilhar → "Adicionar à Tela de
+Início".
+
+## v0.19.3 — Relatório Institucional Consolidado (PDF)
+Novo tipo de relatório em Relatórios: um "raio-x" da empresa toda, num PDF
+único, pensado pro RH apresentar à diretoria — diferente dos relatórios
+existentes, que são sempre por colaborador/ciclo específico.
+
+**5 seções**: Resumo Executivo (colaboradores ativos, ciclos abertos/
+encerrados), Distribuição por Classificação IDA (com percentuais),
+Adoção de PDI (% de ciclos com PDI ativo, PDIs já aprovados), Comparação
+por Unidade/Setor (média de classificação por setor), e Alertas de
+Acompanhamento (PDIs de Mentalidade pendentes, colaboradores sem ciclo
+aberto).
+
+Reaproveita os mesmos cálculos já usados no Dashboard Executivo e no
+Super Admin — nenhuma lógica nova de agregação, só reorganizada num
+documento único.
+
+## v0.19.2 — Gráfico de trajetória IDA entre ciclos
+Novo gráfico de linha (SVG próprio, sem biblioteca externa) mostrando a
+evolução de Resultado, Comportamento e Potencial ao longo dos ciclos com
+diagnóstico — aproveitando que cada ciclo já é um "retrato congelado"
+(RN024) que nunca muda depois de gerado.
+
+- **Dashboard do Colaborador**: seção "Minha trajetória", com a própria
+  evolução ao longo do tempo (aparece quando já tem 2+ ciclos).
+- **Diagnóstico & PDI**: seção "Trajetória por colaborador", agrupando os
+  ciclos de cada pessoa e mostrando o gráfico de quem já tem histórico
+  suficiente — sem alterar os cards individuais por ciclo que já existiam.
+- Com só 1 ciclo, mostra uma mensagem clara em vez de um gráfico quebrado
+  ou vazio.
+
+## v0.19.1 — Notificações in-app (sino de alertas)
+Complementar ao e-mail (v0.15.2/v0.15.3): agora existe um sino 🔔 no topo
+do menu lateral, com contador de não lidas, que abre um painel com o
+histórico de notificações — diferente dos cartões de "pendências" dos
+dashboards (que são calculados na hora e desaparecem quando resolvidos),
+essas ficam guardadas e podem ser marcadas como lidas.
+
+- **`sql/17-notificacoes-in-app.sql`** (rodar no SQL Editor, depois do
+  `16-ativar-realtime.sql`): cria a tabela `notificacoes`, com RLS
+  garantindo que cada pessoa só vê as próprias, e ativa Realtime nela.
+- **`js/25-notificacoes.js`**: o sino, o painel, e a lógica de carregar/
+  marcar como lida — chegam em tempo real via Realtime, igual ao aviso de
+  atualização (v0.16.0), sem precisar recarregar a tela.
+- Conectado nos mesmos 2 pontos que já disparam e-mail: **avaliação
+  pendente** (quando o ciclo passa de etapa) e **PDI aprovado** — mesmo
+  evento, dois canais (e-mail + sino), um não depende do outro.
+- Clicar numa notificação marca ela como lida e já navega pra tela
+  relevante (Ciclos de Avaliação, ou Diagnóstico & PDI).
+
+## v0.19.0 — Dashboard de analytics entre Empresas-clientes (Super Admin)
+Nova seção "Analytics entre Empresas-clientes" na tela de Super Admin,
+calculada a partir dos mesmos dados já carregados pras métricas agregadas
+(sem consulta nova ao banco):
+
+- **Churn**: % de empresas suspensas ou com pagamento cancelado.
+- **Engajamento médio no ciclo**: % de ciclos que chegam a "Encerrado"
+  (em vez de ficarem abandonados no meio do caminho).
+- **Adoção média de PDI**: dos ciclos que geraram diagnóstico, quantos de
+  fato têm um PDI de Desenvolvimento ou Mentalidade preenchido (mede se a
+  empresa está só avaliando, ou também usando a parte de desenvolvimento).
+- **Tabela comparativa de maturidade entre empresas**: colaboradores,
+  conclusão de ciclo, adoção de PDI, cobertura (% de colaboradores que já
+  participaram de algum ciclo), última atividade registrada, e um "score
+  de maturidade" (média dos indicadores acima, 0-100) — ordenada da mais
+  madura pra menos madura. Empresas em churn aparecem esmaecidas na lista.
+
+**Importante**: esses indicadores são de produto (pra você acompanhar
+adoção entre clientes), não fazem parte da Metodologia NORTE nem de
+nenhuma RN oficial — são cálculos nossos, específicos dessa tela.
+
 ## v0.18.3 — Status de pagamento (preparação pro gateway de pagamento)
 Preparação pra quando a integração com um gateway de pagamento (Asaas ou
 outro) for conectada — por enquanto, tudo controlado manualmente.

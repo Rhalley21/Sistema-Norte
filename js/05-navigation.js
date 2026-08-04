@@ -127,6 +127,7 @@ function renderSidebar(){
         <div class="brand-name" id="sidebar-brand-name">${logoEmpresaAtual() && state.empresa?.nomeFantasia ? state.empresa.nomeFantasia : 'NORTE'}</div>
         <div class="brand-sub" id="sidebar-brand-sub">${logoEmpresaAtual() ? 'Metodologia NORTE' : 'Instituto INETRIS'}</div>
       </div>
+      ${renderSinoNotificacoes()}
       <button class="menu-hamburguer" onclick="_menuMobileAberto=!_menuMobileAberto; render();" aria-label="Abrir menu">
         ${_menuMobileAberto ? '✕' : '☰'}
       </button>

@@ -24,7 +24,7 @@ async function carregarDadosSuperAdmin(){
     // do "payload" (blob JSON), não em tabelas separadas — por isso a
     // consulta é direto em dados_sistema. Precisa da política de leitura
     // nova (ver sql/13-metricas-super-admin.sql).
-    sb.from('dados_sistema').select('empresa_id, payload'),
+    sb.from('dados_sistema').select('empresa_id, payload, atualizado_em'),
   ]);
   if(erroEmpresas || erroCodigos || erroPayloads) showToast('Não foi possível carregar os dados: ' + (erroEmpresas?.message || erroCodigos?.message || erroPayloads?.message));
   _superAdminEmpresas = empresas || [];
@@ -39,10 +39,67 @@ async function carregarDadosSuperAdmin(){
     totalCiclosAbertos: listaPayloads.reduce((soma,d)=> soma + (d.payload?.ciclos?.filter(c=>c.estado!=='Encerrado').length || 0), 0),
     totalCiclosEncerrados: listaPayloads.reduce((soma,d)=> soma + (d.payload?.ciclos?.filter(c=>c.estado==='Encerrado').length || 0), 0),
   };
+  const analytics = calcularAnalyticsPorEmpresa();
+  const media = (campo) => {
+    const valores = analytics.map(a=>a[campo]).filter(v=>v!==null);
+    return valores.length ? Math.round(valores.reduce((a,b)=>a+b,0)/valores.length) : null;
+  };
+  _superAdminMetricas.taxaChurn = _superAdminEmpresas.length ? Math.round((analytics.filter(a=>a.emChurn).length/_superAdminEmpresas.length)*100) : 0;
+  _superAdminMetricas.engajamentoMedio = media('taxaConclusao');
+  _superAdminMetricas.adocaoPDIMedia = media('taxaAdocaoPDI');
 
   _superAdminCarregando = false;
   _superAdminJaCarregou = true;
   render();
+}
+
+/* ---------- Analytics entre Empresas-clientes ----------
+   Calcula, por empresa, indicadores de churn, engajamento no ciclo,
+   adoção de PDI e um "score de maturidade" comparativo — tudo a partir
+   dos mesmos payloads já carregados (sem consulta nova ao banco). */
+function calcularAnalyticsPorEmpresa(){
+  return _superAdminEmpresas.map(e=>{
+    const registro = _superAdminPayloads.find(p=>p.empresa_id===e.id);
+    const payload = registro?.payload || {};
+    const colaboradores = payload.colaboradores || [];
+    const ciclos = payload.ciclos || [];
+    const colaboradoresAtivos = colaboradores.filter(c=>!c.inativo);
+
+    const ciclosEncerrados = ciclos.filter(c=>c.estado==='Encerrado');
+    const taxaConclusao = ciclos.length ? Math.round((ciclosEncerrados.length/ciclos.length)*100) : null;
+
+    const ciclosComDiagnostico = ciclos.filter(c=>c.diagnostico);
+    const ciclosComPDIAtivo = ciclosComDiagnostico.filter(c=>(c.pdiDesenvolvimento||[]).length || c.pdiMentalidade);
+    const taxaAdocaoPDI = ciclosComDiagnostico.length ? Math.round((ciclosComPDIAtivo.length/ciclosComDiagnostico.length)*100) : null;
+
+    const pdisAprovados = ciclos.filter(c=>c.pdiAprovado).length;
+    const taxaAprovacaoPDI = ciclosComPDIAtivo.length ? Math.round((pdisAprovados/ciclosComPDIAtivo.length)*100) : null;
+
+    // Cobertura: quantos colaboradores ativos já participaram de algum ciclo alguma vez.
+    const colaboradoresComCiclo = new Set(ciclos.map(c=>c.colaboradorId));
+    const taxaCobertura = colaboradoresAtivos.length ? Math.round((colaboradoresAtivos.filter(c=>colaboradoresComCiclo.has(c.id)).length/colaboradoresAtivos.length)*100) : null;
+
+    // Última atividade registrada (proxy de engajamento recente).
+    const ultimaAtividade = registro?.atualizado_em ? new Date(registro.atualizado_em) : null;
+    const diasDesdeUltimaAtividade = ultimaAtividade ? Math.round((Date.now()-ultimaAtividade.getTime())/(1000*60*60*24)) : null;
+
+    // Churn: suspensa ou com pagamento cancelado.
+    const statusPagamento = payload.empresa?.faturamento?.statusPagamento;
+    const emChurn = !!e.acesso_suspenso || statusPagamento === 'Cancelado';
+
+    // Score de maturidade (0-100): média simples dos indicadores disponíveis
+    // (RN da metodologia não define isso — é um indicador de produto nosso,
+    // só pra comparar tenants entre si, não é nenhuma regra oficial).
+    const indicadoresValidos = [taxaConclusao, taxaAdocaoPDI, taxaCobertura].filter(v=>v!==null);
+    const scoreMaturidade = indicadoresValidos.length ? Math.round(indicadoresValidos.reduce((a,b)=>a+b,0)/indicadoresValidos.length) : null;
+
+    return {
+      id: e.id, nome: e.nome_fantasia || '(sem nome)',
+      totalColaboradores: colaboradoresAtivos.length,
+      totalCiclos: ciclos.length, taxaConclusao, taxaAdocaoPDI, taxaAprovacaoPDI, taxaCobertura,
+      diasDesdeUltimaAtividade, emChurn, scoreMaturidade,
+    };
+  });
 }
 
 function gerarCodigoLicencaLetras(){
@@ -137,6 +194,33 @@ function pageSuperAdmin(){
       <div class="kpi"><div class="n">${_superAdminMetricas?.totalColaboradores ?? 0}</div><div class="l">Colaboradores na plataforma</div></div>
       <div class="kpi"><div class="n">${_superAdminMetricas?.totalCiclosAbertos ?? 0}</div><div class="l">Ciclos em andamento</div></div>
       <div class="kpi"><div class="n">${_superAdminMetricas?.totalCiclosEncerrados ?? 0}</div><div class="l">Ciclos encerrados (histórico)</div></div>
+    </div>
+
+    <div class="card">
+      <h3>Analytics entre Empresas-clientes <small>Indicadores de produto — não fazem parte da metodologia NORTE, servem só pra você acompanhar adoção entre clientes</small></h3>
+      <div class="kpi-grid">
+        <div class="kpi"><div class="n" style="color:${(_superAdminMetricas?.taxaChurn||0)>20?'var(--iniciar)':'inherit'};">${_superAdminMetricas?.taxaChurn ?? 0}%</div><div class="l">Churn (suspensas ou pagamento cancelado)</div></div>
+        <div class="kpi"><div class="n">${_superAdminMetricas?.engajamentoMedio ?? '—'}${_superAdminMetricas?.engajamentoMedio!==null?'%':''}</div><div class="l">Engajamento médio no ciclo (taxa de conclusão)</div></div>
+        <div class="kpi"><div class="n">${_superAdminMetricas?.adocaoPDIMedia ?? '—'}${_superAdminMetricas?.adocaoPDIMedia!==null?'%':''}</div><div class="l">Adoção média de PDI</div></div>
+      </div>
+      ${(() => {
+        const analytics = calcularAnalyticsPorEmpresa().sort((a,b)=>(b.scoreMaturidade||0)-(a.scoreMaturidade||0));
+        if(!analytics.length) return '<div class="empty">Nenhuma empresa pra comparar ainda.</div>';
+        return `
+        <table><thead><tr>
+          <th>Empresa</th><th>Colaboradores</th><th>Conclusão de ciclo</th><th>Adoção de PDI</th><th>Cobertura</th><th>Última atividade</th><th>Maturidade</th>
+        </tr></thead><tbody>
+          ${analytics.map(a=>`<tr ${a.emChurn?'style="opacity:.55;"':''}>
+            <td><b>${a.nome}</b>${a.emChurn?' <span class="pill pill-iniciar">Churn</span>':''}</td>
+            <td>${a.totalColaboradores}</td>
+            <td>${a.taxaConclusao!==null?a.taxaConclusao+'%':'<span class="small-muted">sem ciclo ainda</span>'}</td>
+            <td>${a.taxaAdocaoPDI!==null?a.taxaAdocaoPDI+'%':'<span class="small-muted">—</span>'}</td>
+            <td>${a.taxaCobertura!==null?a.taxaCobertura+'%':'<span class="small-muted">—</span>'}</td>
+            <td class="small-muted">${a.diasDesdeUltimaAtividade!==null?`há ${a.diasDesdeUltimaAtividade} dia(s)`:'—'}</td>
+            <td>${a.scoreMaturidade!==null?`<span class="pill ${a.scoreMaturidade>=70?'pill-alavancar':a.scoreMaturidade>=34?'pill-desenvolver':'pill-iniciar'}">${a.scoreMaturidade}</span>`:'<span class="small-muted">—</span>'}</td>
+          </tr>`).join('')}
+        </tbody></table>`;
+      })()}
     </div>
 
     <div class="card">

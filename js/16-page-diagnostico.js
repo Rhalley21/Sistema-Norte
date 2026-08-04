@@ -8,12 +8,38 @@ function pdiMentalidadeNaoIniciado(ciclo){
 }
 function pageDiagnostico(){
   const comDiag = state.ciclos.filter(c=>c.diagnostico && cicloVisivelParaMim(c));
+
+  // Agrupa por colaborador pra mostrar a trajetória de quem já tem 2+
+  // ciclos com diagnóstico — os cards individuais abaixo continuam
+  // mostrando ciclo a ciclo, isso aqui é só a visão de trajetória.
+  const porColaborador = {};
+  comDiag.forEach(c=>{
+    porColaborador[c.colaboradorId] = porColaborador[c.colaboradorId] || [];
+    porColaborador[c.colaboradorId].push(c);
+  });
+  const comTrajetoria = Object.entries(porColaborador).filter(([,ciclos])=>ciclos.length>1);
+
   return `
     <div class="page-head">
       <div class="eyebrow">Etapa 08 · Ciclo NORTE</div>
       <h1>Diagnóstico & PDI — visão consolidada</h1>
       <p class="page-desc">Todo diagnóstico gera obrigatoriamente dois PDIs: Desenvolvimento e Mentalidade. Tela somente leitura — o Diagnóstico nunca é editável manualmente (RN017).</p>
     </div>
+
+    ${comTrajetoria.length ? `
+    <div class="card">
+      <h3>Trajetória por colaborador <small>Só aparece quem já tem 2 ou mais ciclos com diagnóstico</small></h3>
+      ${comTrajetoria.map(([colabId, ciclos])=>{
+        const p = state.colaboradores.find(x=>x.id===colabId);
+        return `
+        <div style="margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--line);">
+          <div class="small-muted" style="margin-bottom:6px;"><b style="color:var(--ink);">${p?.nome||'—'}</b> · ${ciclos.length} ciclos</div>
+          ${renderGraficoTrajetoriaIDA(ciclos)}
+        </div>`;
+      }).join('')}
+    </div>
+    ` : ''}
+
     ${comDiag.length? comDiag.map(c=>{
       const p = state.colaboradores.find(x=>x.id===c.colaboradorId);
       const cargo = state.cargos.find(x=>x.id===c.cargoId);

@@ -387,6 +387,10 @@ function renderDashboardColaborador(){
     </div>
     ${historico.length>1 ? `
     <div class="card">
+      <h3>Minha trajetória <small>Resultado, Comportamento e Potencial ao longo dos ciclos</small></h3>
+      ${renderGraficoTrajetoriaIDA(historico)}
+    </div>
+    <div class="card">
       <h3>Minha evolução ao longo do tempo</h3>
       <table><thead><tr><th>Data</th><th>Classificação geral</th></tr></thead><tbody>
         ${historico.map(c=>`<tr><td class="small-muted">${c.dataAbertura}</td><td><span class="pill ${pillClass(c.diagnostico.geral)}">${pillLabel(c.diagnostico.geral)}</span></td></tr>`).join('')}

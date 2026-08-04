@@ -59,6 +59,7 @@ function pageRelatorios(){
           ['avaliacao','Avaliação individual (PDF)'],
           ['pdi','PDI individual (PDF)'],
           ['dossie','Dossiê completo — Desenho + Avaliação + PDI (PDF)'],
+          ['institucional','Relatório Institucional Consolidado — raio-x da empresa (PDF)'],
           ['consolidado','Consolidado por Unidade/Setor (Excel)'],
           ['comparativo','Comparativo histórico do colaborador (Excel)'],
         ].map(([v,l])=>`<button class="filtro-pill ${_tipoRelatorio===v?'active':''}" onclick="_tipoRelatorio='${v}'; render();">${l}</button>`).join('')}
@@ -80,6 +81,16 @@ function pageRelatorios(){
           </div>
           <button class="btn btn-primary" onclick="${_tipoRelatorio==='avaliacao' ? 'exportarAvaliacaoPDF' : _tipoRelatorio==='pdi' ? 'exportarPDIPDF' : 'exportarDossiePDF'}(document.getElementById('rel_ciclo').value)">Exportar PDF</button>
         ` : '<div class="empty">Nenhum ciclo com diagnóstico gerado ainda.</div>'}
+      </div>
+    ` : ''}
+
+    ${_tipoRelatorio==='institucional' ? `
+      <div class="card">
+        <h3>Relatório Institucional Consolidado</h3>
+        <p class="page-desc">Um PDF único com o panorama da empresa toda — pensado pra apresentar à diretoria: resumo executivo, distribuição por classificação, evolução entre ciclos, comparação por Unidade/Setor, adoção de PDI e alertas de acompanhamento.</p>
+        ${ciclosComDiagnostico.length ? `
+          <button class="btn btn-primary" onclick="exportarRelatorioInstitucionalPDF()">Exportar PDF</button>
+        ` : '<div class="empty">Nenhum ciclo com diagnóstico gerado ainda — o relatório institucional precisa de pelo menos um.</div>'}
       </div>
     ` : ''}
 
@@ -193,6 +204,101 @@ function exportarPDIPDF(cicloId){
   doc.save(`pdi_${p.nome.replace(/\s+/g,'_')}_${ciclo.dataAbertura}.pdf`);
   registrarAuditoria('relatorio.exportado', { tipo:'pdi_individual', cicloId });
   showToast('PDF do PDI exportado.');
+}
+
+function exportarRelatorioInstitucionalPDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const corPrimaria = hexParaRgb(state.configuracoes?.identidadeVisual?.corPrimaria);
+  const corSecundaria = hexParaRgb(state.configuracoes?.identidadeVisual?.corSecundaria);
+  function tituloSecao(texto, y){
+    doc.setFontSize(13); doc.setTextColor(...corPrimaria);
+    doc.text(texto, 14, y);
+    doc.setTextColor(0);
+    return y + 6;
+  }
+
+  const ciclosComDiag = state.ciclos.filter(c=>c.diagnostico);
+  const colaboradoresAtivos = state.colaboradores.filter(c=>!c.inativo);
+
+  // Capa
+  doc.setFontSize(18); doc.text('Relatório Institucional Consolidado', 14, 20);
+  doc.setFontSize(11); doc.setTextColor(120);
+  doc.text(state.empresa?.nomeFantasia || '', 14, 28);
+  doc.setTextColor(0);
+  desenharLogoNoPDF(doc, 160, 8, 35, 22);
+  doc.setFontSize(9); doc.setTextColor(120);
+  doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')} — Metodologia NORTE · Instituto INETRIS`, 14, 34);
+  doc.setTextColor(0);
+
+  // 1) Resumo executivo
+  let y = tituloSecao('1. Resumo Executivo', 46);
+  doc.setFontSize(10);
+  doc.text(`Colaboradores ativos: ${colaboradoresAtivos.length}`, 14, y); y += 6;
+  doc.text(`Ciclos com diagnóstico gerado: ${ciclosComDiag.length}`, 14, y); y += 6;
+  doc.text(`Ciclos em andamento: ${state.ciclos.filter(c=>c.estado!=='Encerrado').length}`, 14, y); y += 6;
+  doc.text(`Ciclos encerrados: ${state.ciclos.filter(c=>c.estado==='Encerrado').length}`, 14, y); y += 10;
+
+  // 2) Distribuição por classificação
+  y = tituloSecao('2. Distribuição por Classificação (IDA)', y);
+  let cI=0,cD=0,cA=0;
+  ciclosComDiag.forEach(c=>{ const g=c.diagnostico.geral; if(g==='I')cI++; else if(g==='D')cD++; else if(g==='A')cA++; });
+  const totalClass = cI+cD+cA;
+  doc.autoTable({
+    startY: y,
+    head: [['Classificação','Quantidade','%']],
+    body: [
+      ['Iniciar', cI, totalClass?Math.round((cI/totalClass)*100)+'%':'—'],
+      ['Desenvolver', cD, totalClass?Math.round((cD/totalClass)*100)+'%':'—'],
+      ['Alavancar', cA, totalClass?Math.round((cA/totalClass)*100)+'%':'—'],
+    ],
+    styles:{ fontSize:9 }, headStyles:{ fillColor: corPrimaria },
+  });
+  y = doc.lastAutoTable.finalY + 10;
+
+  // 3) Adoção de PDI
+  if(y > 240){ doc.addPage(); y = 20; }
+  y = tituloSecao('3. Adoção de PDI', y);
+  const ciclosComPDIAtivo = ciclosComDiag.filter(c=>(c.pdiDesenvolvimento||[]).length || c.pdiMentalidade);
+  const pdisAprovados = ciclosComDiag.filter(c=>c.pdiAprovado).length;
+  doc.setFontSize(10);
+  doc.text(`Ciclos com PDI ativo: ${ciclosComPDIAtivo.length} de ${ciclosComDiag.length} (${ciclosComDiag.length?Math.round((ciclosComPDIAtivo.length/ciclosComDiag.length)*100):0}%)`, 14, y); y += 6;
+  doc.text(`PDIs já aprovados: ${pdisAprovados}`, 14, y); y += 10;
+
+  // 4) Comparação por Unidade/Setor
+  if(y > 220){ doc.addPage(); y = 20; }
+  y = tituloSecao('4. Comparação por Unidade/Setor', y);
+  const porSetor = {};
+  colaboradoresAtivos.forEach(p=>{
+    const setor = state.estrutura.find(n=>n.id===p.setorId);
+    const nomeSetor = setor?.nome || 'Sem setor definido';
+    porSetor[nomeSetor] = porSetor[nomeSetor] || { total:0, comDiagnostico:0, somaGeral:0 };
+    porSetor[nomeSetor].total++;
+    const ultimoCiclo = state.ciclos.filter(c=>c.colaboradorId===p.id && c.diagnostico).sort((a,b)=>b.dataAbertura.localeCompare(a.dataAbertura))[0];
+    if(ultimoCiclo){ porSetor[nomeSetor].comDiagnostico++; porSetor[nomeSetor].somaGeral += IDA_VAL[ultimoCiclo.diagnostico.geral]; }
+  });
+  doc.autoTable({
+    startY: y,
+    head: [['Setor','Colaboradores','Com diagnóstico','Média geral']],
+    body: Object.entries(porSetor).map(([nome,d])=>[
+      nome, d.total, d.comDiagnostico, d.comDiagnostico ? (d.somaGeral/d.comDiagnostico).toFixed(2) : '—',
+    ]),
+    styles:{ fontSize:9 }, headStyles:{ fillColor: corSecundaria },
+  });
+  y = doc.lastAutoTable.finalY + 10;
+
+  // 5) Alertas de acompanhamento
+  if(y > 220){ doc.addPage(); y = 20; }
+  y = tituloSecao('5. Alertas de Acompanhamento', y);
+  const mentalidadePendente = ciclosComDiag.filter(c=>pdiMentalidadeNaoIniciado(c) && c.estado!=='Encerrado').length;
+  const semCicloAberto = colaboradoresAtivos.filter(p=>!state.ciclos.some(c=>c.colaboradorId===p.id && c.estado!=='Encerrado')).length;
+  doc.setFontSize(10);
+  doc.text(`PDIs de Mentalidade ainda não iniciados: ${mentalidadePendente} (obrigatório em todo ciclo — RN020)`, 14, y); y += 6;
+  doc.text(`Colaboradores elegíveis sem ciclo aberto no momento: ${semCicloAberto}`, 14, y);
+
+  doc.save(`relatorio_institucional_${(state.empresa?.nomeFantasia||'empresa').replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
+  registrarAuditoria('relatorio.exportado', { tipo:'institucional_consolidado' });
+  showToast('Relatório Institucional Consolidado exportado.');
 }
 
 function exportarDossiePDF(cicloId){
