@@ -13,6 +13,9 @@ function renderRoute(){
     case 'relatorios': return pageRelatorios();
     case 'configuracoes': return pageConfiguracoes();
     case 'auditoria': return pageAuditoria();
+    case 'clima': return pageClima();
+    case 'sucessao': return pageMapaSucessao();
+    case 'webhooks': return pageWebhooks();
     case 'dashboard_role': return pageDashboard();
     case 'super_admin': return souSuperAdmin ? pageSuperAdmin() : pageDashboard();
     default: return pageDashboard();
@@ -25,17 +28,30 @@ state.route = 'dashboard_role';
    Cada jornada ganha uma "home" com as ações pendentes em destaque, pra
    reduzir cliques: a pessoa já vê o que precisa fazer, sem precisar navegar. */
 function renderPendenciasAdmin(){
-  const itens = [];
-  if(!state.empresa || state.empresa.estado!=='Ativa') itens.push({texto:'Ativar o cadastro da empresa', rota:'empresa'});
-  if(state.empresa && state.empresa.estado==='Ativa' && !state.estrutura.length) itens.push({texto:'Cadastrar ao menos uma Unidade na Estrutura Organizacional', rota:'estrutura'});
-  if(!state.cultura.missao) itens.push({texto:'Preencher a Cultura Organizacional (missão, visão, valores)', rota:'cultura'});
-  if(!state.cargos.some(c=>c.desenho.aprovado)) itens.push({texto:'Publicar ao menos um Desenho de Cargo', rota:'cargos'});
-  if(_perfisEmpresa.length < 2) itens.push({texto:'Convidar ao menos mais uma pessoa (RH, Gestor ou Colaborador)', rota:'usuarios'});
-  if(!itens.length) return '';
+  const passos = [
+    { texto:'Ativar o cadastro da empresa', rota:'empresa', feito: !!(state.empresa && state.empresa.estado==='Ativa') },
+    { texto:'Cadastrar ao menos uma Unidade na Estrutura Organizacional', rota:'estrutura', feito: state.estrutura.length>0 },
+    { texto:'Preencher a Cultura Organizacional (missão, visão, valores)', rota:'cultura', feito: !!state.cultura.missao },
+    { texto:'Publicar ao menos um Desenho de Cargo', rota:'cargos', feito: state.cargos.some(c=>c.desenho.aprovado) },
+    { texto:'Convidar ao menos mais uma pessoa (RH, Gestor ou Colaborador)', rota:'usuarios', feito: _perfisEmpresa.length>=2 },
+  ];
+  const feitos = passos.filter(p=>p.feito).length;
+  if(feitos === passos.length) return ''; // onboarding completo — some daqui, não fica poluindo o dashboard pra sempre
+
+  const percentual = Math.round((feitos/passos.length)*100);
+  const primeiroAcesso = feitos === 0;
   return `
     <div class="card" style="border-left:3px solid var(--gold);">
-      <h3>Onboarding do tenant <small>Passos ainda pendentes pra deixar o sistema pronto pra operar</small></h3>
-      ${itens.map(i=>`<div class="pendencia-item"><span>${i.texto}</span><button class="btn btn-sm" onclick="goto('${i.rota}')">Resolver →</button></div>`).join('')}
+      <h3>${primeiroAcesso ? 'Bem-vindo(a) à Plataforma NORTE! 👋' : 'Onboarding do tenant'} <small>${feitos} de ${passos.length} passos concluídos — siga a ordem abaixo pra deixar o sistema pronto pra operar</small></h3>
+      <div style="background:var(--surface-2);border-radius:20px;height:8px;overflow:hidden;margin:10px 0 16px;">
+        <div style="background:var(--gold);height:100%;width:${percentual}%;transition:width .3s ease;"></div>
+      </div>
+      ${passos.map(p=>`
+        <div class="pendencia-item" style="${p.feito?'opacity:.55;':''}">
+          <span>${p.feito?'✅':'◻'} ${p.texto}</span>
+          ${!p.feito ? `<button class="btn btn-sm" onclick="goto('${p.rota}')">Resolver →</button>` : ''}
+        </div>
+      `).join('')}
     </div>`;
 }
 function diasDesdeAbertura(ciclo){
@@ -396,6 +412,20 @@ function renderDashboardColaborador(){
         ${historico.map(c=>`<tr><td class="small-muted">${c.dataAbertura}</td><td><span class="pill ${pillClass(c.diagnostico.geral)}">${pillLabel(c.diagnostico.geral)}</span></td></tr>`).join('')}
       </tbody></table>
     </div>` : ''}
+    ${(() => {
+      const meusCheckins = state.feedbackContinuo.filter(f=>f.colaboradorId===meuRegistro.id).slice().sort((a,b)=>b.criadoEm.localeCompare(a.criadoEm));
+      if(!meusCheckins.length) return '';
+      return `
+      <div class="card">
+        <h3>Meus check-ins <small>Registro informal do meu Gestor — não pontua, não afeta minha avaliação formal</small></h3>
+        ${meusCheckins.map(f=>`
+          <div style="padding:10px 0;border-top:1px solid var(--line);">
+            <div class="small-muted" style="font-size:11px;">${new Date(f.criadoEm).toLocaleString('pt-BR')}</div>
+            <div style="font-size:13px;margin-top:4px;">${f.texto}</div>
+          </div>
+        `).join('')}
+      </div>`;
+    })()}
   `;
 }
 

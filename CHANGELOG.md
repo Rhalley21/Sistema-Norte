@@ -3,6 +3,77 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.22.0 — Webhooks públicos sobre eventos de domínio
+Reaproveita o barramento de eventos de domínio que já existe desde a
+v0.7.0 (`eventos_dominio` — ciclo.aberto, pdi.aprovado, diagnostico.gerado
+etc.). Agora dá pra cadastrar uma URL de webhook por Empresa, e o sistema
+chama essa URL automaticamente sempre que um dos eventos escolhidos
+acontece — sem precisar construir uma integração sob medida pra cada
+sistema externo (folha de pagamento, ATS, Slack).
+
+- **`sql/18-webhooks-eventos-dominio.sql`** (rodar no SQL Editor, depois
+  do `17-notificacoes-in-app.sql`): ativa a extensão `pg_net`, cria a
+  tabela `webhooks_configurados`, e um gatilho no banco que dispara os
+  webhooks direto — **não depende do navegador de ninguém estar aberto**,
+  já que roda no próprio Postgres.
+- **Nova tela "Webhooks (integrações)"** (Administrador/RH): cadastra
+  webhooks com nome, URL e quais eventos escutar (ou todos), mostra a
+  chave de assinatura (pra quem recebe confirmar que a chamada veio do
+  NORTE de verdade), ativa/desativa/exclui.
+- **Importante**: depois de rodar a SQL, teste com uma URL de teste (ex.:
+  webhook.site) antes de usar em produção — a sintaxe exata do `pg_net`
+  pode variar um pouco conforme a versão do Supabase.
+
+**Sobre o item "PWA / instalável no celular"**: isso já foi implementado
+na v0.20.0 (manifest, ícones, service worker) — nada novo a fazer aqui.
+
+## v0.21.1 — White-label na interface + onboarding com barra de progresso
+
+**White-label na interface**: as cores de Identidade Visual (Configurações),
+que até agora só afetavam os PDFs exportados, agora também repintam a
+interface do sistema ao vivo (botões, abas ativas etc.) assim que a empresa
+salva sua cor escolhida. Diferente da tentativa anterior (v0.12.0,
+removida na v0.12.1) — aqui não tem nenhuma extração automática de cor a
+partir do logo, é só a cor que a própria empresa escolhe manualmente. As
+cores de classificação IDA continuam fixas, nunca mudam.
+
+**Onboarding com barra de progresso**: o checklist de primeiros passos
+("Onboarding do tenant") já existia, mas ficava discreto entre outros
+cartões de pendência. Agora mostra uma barra de progresso visual (X de 5
+passos), marca visualmente os passos já concluídos (✅) ao lado dos
+pendentes, e na primeira visita (0 passos feitos) troca a saudação por
+"Bem-vindo(a) à Plataforma NORTE!". Continua desaparecendo sozinho quando
+os 5 passos são concluídos.
+
+## v0.21.0 — 4 módulos novos: Check-in, Clima/eNPS, 9-Box, Sucessão
+
+**1) Feedback contínuo (check-ins 1:1)** — registro informal de conversas
+entre Gestor e Colaborador fora do ciclo formal. **Não pontua, não afeta
+a média 25/50/25 (RN003)** — é só um histórico de acompanhamento contínuo.
+Aparece na tela de Colaboradores (Gestor registra) e no Dashboard do
+Colaborador (vê o que foi registrado sobre ele).
+
+**2) Pesquisa de Clima / eNPS** — módulo novo e separado da Avaliação de
+Desempenho (não usa escala IDA). RH cria uma pesquisa com pergunta
+customizável (padrão eNPS: nota 0-10 de recomendação), colaboradores
+respondem, RH acompanha o score eNPS calculado automaticamente
+(promotores − detratores), distribuição e comentários recebidos.
+
+**3) Matriz 9-Box** — gráfico de dispersão (SVG próprio) cruzando
+Desempenho (dimensão Resultado) × Potencial, reaproveitando 100% dos
+dados já calculados no Diagnóstico. Adicionado na tela de Diagnóstico &
+PDI, respeitando a visibilidade por papel (Gestor só vê a própria equipe).
+
+**4) Mapa de Sucessão** — nova tela, sugerindo automaticamente sucessores
+em potencial pra cargos de natureza Estratégica (posições-chave),
+baseado em quem tem o Potencial mais alto na mesma Unidade/Setor. É
+sugestão de ponto de partida — a decisão final continua sendo humana
+(Princípio 6 da Metodologia).
+
+Nenhum desses 4 precisa de SQL nova — todos guardam dados dentro do
+mesmo blob flexível já usado pelo resto do sistema. Testei a lógica de
+cálculo dos 4 isoladamente antes de entregar.
+
 ## v0.20.1 — Bug corrigido: painel de notificações cortado pela barra lateral
 O painel que abre ao clicar no sino 🔔 (320px de largura) ficava presa
 dentro da barra lateral (250px de largura fixa) — o painel era mais largo

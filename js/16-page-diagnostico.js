@@ -40,6 +40,19 @@ function pageDiagnostico(){
     </div>
     ` : ''}
 
+    <div class="card">
+      <h3>Matriz 9-Box <small>Desempenho × Potencial — visão consolidada da equipe</small></h3>
+      ${(() => {
+        const colaboradoresVisiveis = state.colaboradores.filter(c => {
+          if(c.inativo) return false;
+          if(meuPapelReal === 'owner' || meuPapelReal === 'rh') return true;
+          if(meuPapelReal === 'lider') return c.gestorPerfilId === meuPerfilId;
+          return c.perfilId === meuPerfilId;
+        });
+        return renderMatriz9Box(colaboradoresVisiveis, state.ciclos);
+      })()}
+    </div>
+
     ${comDiag.length? comDiag.map(c=>{
       const p = state.colaboradores.find(x=>x.id===c.colaboradorId);
       const cargo = state.cargos.find(x=>x.id===c.cargoId);

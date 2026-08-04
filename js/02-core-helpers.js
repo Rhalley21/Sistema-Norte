@@ -36,6 +36,8 @@ const state = {
   cargos: [], // {id,nome,familia,natureza,cbo,indicadoresN:[],indicadoresO:[],desenho:{versao,atividades,aprovado}}
   colaboradores: [], // {id,nome,cargoId,setorId,gestorNome,admissao}
   bancoAcoes: [],
+  feedbackContinuo: [], // check-ins 1:1 fora do ciclo formal — RN003 não é afetada (não pontua)
+  pesquisasClima: [], // pesquisas de clima/eNPS, módulo separado da avaliação de desempenho
   ciclos: [], // {id,colaboradorId,cargoId,estado,dataAbertura,notas:{colaborador:{},gestor:{},rh:{}},diagnostico,pdiDesenvolvimento,pdiMentalidade}
   ciclosSelecionado: null,
   avaliadorAtivo: 'colaborador'
@@ -426,4 +428,85 @@ function renderGraficoTrajetoriaIDA(ciclosComDiagnostico){
     <div style="display:flex;gap:16px;margin-top:6px;flex-wrap:wrap;">
       ${SERIES.map(s=>`<span style="font-size:11.5px;color:var(--ink-dim);"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${s.cor};margin-right:5px;"></span>${s.chave}</span>`).join('')}
     </div>`;
+}
+
+/* =========================================================
+   MATRIZ 9-BOX — Desempenho (Resultado) × Potencial
+   -----------------------------------------------------------
+   Visualização clássica de RH, reaproveitando dados já calculados no
+   Diagnóstico: eixo X = Resultado (Dimensão), eixo Y = Potencial
+   (Dimensão) — cada colaborador plotado pelo último ciclo com
+   diagnóstico que ele tiver.
+   ========================================================= */
+function calcularPosicoes9Box(colaboradores, ciclos){
+  return colaboradores.map(p=>{
+    const ultimoCiclo = ciclos.filter(c=>c.colaboradorId===p.id && c.diagnostico?.dimensaoMedia)
+      .slice().sort((a,b)=>b.dataAbertura.localeCompare(a.dataAbertura))[0];
+    if(!ultimoCiclo) return null;
+    const desempenho = ultimoCiclo.diagnostico.dimensaoMedia.Resultado;
+    const potencial = ultimoCiclo.diagnostico.dimensaoMedia.Potencial;
+    if(desempenho==null || potencial==null) return null;
+    return { nome:p.nome, desempenho, potencial };
+  }).filter(Boolean);
+}
+
+const QUADRANTES_9BOX = [
+  ['Enigma','Comprometido','Forte desempenho'],
+  ['Questionável','Mantenedor','Alto potencial'],
+  ['Risco','Eficaz','Estrela'],
+];
+
+function renderMatriz9Box(colaboradores, ciclos){
+  const pontos = calcularPosicoes9Box(colaboradores, ciclos);
+  if(!pontos.length) return '<div class="empty">Nenhum colaborador com diagnóstico ainda para plotar.</div>';
+
+  const W = 480, H = 480, PAD = 50;
+  const area = W - PAD*2;
+  const xDoValor = (v) => PAD + v*area;
+  const yDoValor = (v) => H - PAD - v*area; // potencial cresce pra cima
+
+  const celulas = [];
+  for(let col=0; col<3; col++){
+    for(let lin=0; lin<3; lin++){
+      const x0 = PAD + col*(area/3), y0 = PAD + lin*(area/3);
+      celulas.push(`<rect x="${x0}" y="${y0}" width="${area/3}" height="${area/3}" fill="none" stroke="var(--line)" stroke-width="1" />
+        <text x="${x0+8}" y="${y0+16}" font-size="9" fill="var(--ink-faint)">${QUADRANTES_9BOX[2-lin][col]}</text>`);
+    }
+  }
+
+  const bolinhas = pontos.map(p=>{
+    const cor = p.desempenho>=0.67 && p.potencial>=0.67 ? 'var(--alavancar)' : (p.desempenho<=0.33 && p.potencial<=0.33 ? 'var(--iniciar)' : 'var(--gold)');
+    return `<circle cx="${xDoValor(p.desempenho)}" cy="${yDoValor(p.potencial)}" r="6" fill="${cor}" fill-opacity=".85" stroke="var(--surface)" stroke-width="1.5">
+      <title>${p.nome}</title>
+    </circle>`;
+  }).join('');
+
+  return `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:480px;height:auto;">
+      ${celulas.join('')}
+      <text x="${W/2}" y="${H-14}" font-size="11" fill="var(--ink-dim)" text-anchor="middle">Desempenho (Resultado) →</text>
+      <text x="14" y="${H/2}" font-size="11" fill="var(--ink-dim)" text-anchor="middle" transform="rotate(-90 14 ${H/2})">Potencial →</text>
+      ${bolinhas}
+    </svg>
+    <div class="small-muted" style="margin-top:6px;">Passe o mouse sobre cada ponto pra ver o nome. ${pontos.length} colaborador(es) plotado(s).</div>
+  `;
+}
+
+/* =========================================================
+   WHITE-LABEL NA INTERFACE — cores da Identidade Visual, ao vivo
+   -----------------------------------------------------------
+   Diferente da tentativa anterior (v0.12.0, removida na v0.12.1 por
+   decisão do usuário) — aquela tentava EXTRAIR a cor automaticamente do
+   logo. Esta aqui só usa as cores que a própria empresa escolhe
+   manualmente nos seletores de cor de Configurações → Identidade Visual
+   (que já existiam e já afetavam só os PDFs) — agora também repinta a
+   interface ao vivo. Nunca mexe nas cores semânticas de classificação
+   IDA (Iniciar/Desenvolver/Alavancar), que continuam fixas da metodologia.
+   ========================================================= */
+function aplicarTemaCoresInterface(corPrimaria){
+  if(!corPrimaria || !/^#[0-9a-f]{6}$/i.test(corPrimaria)) return;
+  const h = corPrimaria.replace('#','');
+  const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+  document.documentElement.style.setProperty('--gold', corPrimaria);
+  document.documentElement.style.setProperty('--gold-soft', `rgba(${r},${g},${b},.16)`);
 }

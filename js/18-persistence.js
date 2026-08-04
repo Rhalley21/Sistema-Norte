@@ -2,7 +2,7 @@
    PERSISTÊNCIA — só os dados de negócio da empresa são salvos
    (navegação/preview de papel ficam só na sessão do navegador)
    ========================================================= */
-const PERSIST_KEYS = ['empresa','estrutura','cultura','cargos','colaboradores','bancoAcoes','ciclos','configuracoes'];
+const PERSIST_KEYS = ['empresa','estrutura','cultura','cargos','colaboradores','bancoAcoes','ciclos','configuracoes','feedbackContinuo','pesquisasClima'];
 
 let _salvarTimer = null;
 let _minhaUltimaAtividadeEm = 0; // Date.now() da última vez que EU fiz alguma ação (qualquer render())

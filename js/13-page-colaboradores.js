@@ -146,10 +146,12 @@ function pageColaboradoresGestor(){
             <td>
               <button class="btn btn-ghost btn-sm" onclick="_movimentarColabId='${emMovimento?'':p.id}'; render();">${emMovimento?'Cancelar':'Promover / Movimentar'}</button>
               ${p.movimentacoes?.length ? `<button class="btn btn-ghost btn-sm" onclick="_verHistoricoColabId = _verHistoricoColabId==='${p.id}'?null:'${p.id}'; render();">Histórico (${p.movimentacoes.length})</button>` : ''}
+              <button class="btn btn-ghost btn-sm" onclick="_checkinColabId = _checkinColabId==='${p.id}'?null:'${p.id}'; render();">Check-in (${state.feedbackContinuo.filter(f=>f.colaboradorId===p.id).length})</button>
             </td>
           </tr>
           ${emMovimento ? renderFormMovimentacao(p, cargosAprovados, unidades, setores, contasGestor) : ''}
           ${_verHistoricoColabId===p.id ? renderHistoricoMovimentacao(p) : ''}
+          ${_checkinColabId===p.id ? renderPainelCheckin(p) : ''}
           `;
         }).join('')}
       </tbody></table>` : '<div class="empty">Nenhum colaborador vinculado a você como gestor direto ainda.</div>'}
@@ -301,6 +303,45 @@ function addColaborador(){
 }
 
 let _verHistoricoColabId = null;
+let _checkinColabId = null;
+
+/* ---------- Feedback contínuo (check-ins 1:1 fora do ciclo formal) ----------
+   Registro informal, NÃO pontuado — não afeta a média 25/50/25 (RN003) de
+   nenhum ciclo. É só um histórico de conversas entre Gestor e Colaborador
+   ao longo do tempo, complementar ao ciclo anual formal. */
+function renderPainelCheckin(p){
+  const historico = state.feedbackContinuo.filter(f=>f.colaboradorId===p.id).slice().sort((a,b)=>b.criadoEm.localeCompare(a.criadoEm));
+  return `
+    <tr><td colspan="5">
+      <div class="card" style="margin:8px 0;">
+        <h3 style="font-size:14px;">Check-ins com ${p.nome} <small>Registro informal — não pontua, não afeta a avaliação formal (RN003)</small></h3>
+        <div class="field"><label>Novo check-in</label><textarea id="checkin_texto_${p.id}" placeholder="Ex: conversamos sobre a prioridade do projeto X essa semana, combinamos..."></textarea></div>
+        <button class="btn btn-primary btn-sm" onclick="registrarFeedbackContinuo('${p.id}')">Registrar</button>
+        ${historico.length ? `
+          <div style="margin-top:14px;">
+            ${historico.map(f=>`
+              <div style="padding:10px 0;border-top:1px solid var(--line);">
+                <div class="small-muted" style="font-size:11px;">${new Date(f.criadoEm).toLocaleString('pt-BR')} — ${nomePorPerfilId ? nomePorPerfilId(f.autorPerfilId) : 'Gestor'}</div>
+                <div style="font-size:13px;margin-top:4px;">${f.texto}</div>
+              </div>
+            `).join('')}
+          </div>
+        ` : '<p class="small-muted" style="margin-top:10px;">Nenhum check-in registrado ainda.</p>'}
+      </div>
+    </td></tr>`;
+}
+function registrarFeedbackContinuo(colaboradorId){
+  const textarea = document.getElementById(`checkin_texto_${colaboradorId}`);
+  const texto = textarea.value.trim();
+  if(!texto){ showToast('Escreva algo antes de registrar o check-in.'); return; }
+  state.feedbackContinuo.push({
+    id: uid(), colaboradorId, autorPerfilId: meuPerfilId, texto,
+    criadoEm: new Date().toISOString(),
+  });
+  registrarAuditoria('feedback_continuo.registrado', { colaboradorId });
+  showToast('Check-in registrado.');
+  render();
+}
 
 function renderFormMovimentacao(p, cargosAprovados, unidades, setores, contasGestor){
   return `

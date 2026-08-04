@@ -45,7 +45,7 @@ function pageConfiguracoes(){
     </div>
 
     <div class="card">
-      <h3>Identidade visual em relatórios exportados</h3>
+      <h3>Identidade visual <small>Cores aparecem na interface do sistema e nos relatórios exportados</small></h3>
       <div class="field"><label>Logotipo</label>${logoUploadWidgetHTML('cfg_logo', iv.logoUrl||'')}</div>
       <p class="small-muted" style="margin-top:4px;">O logotipo aparece no topo dos PDFs exportados quando definido por <b>Colar imagem</b> ou <b>Enviar arquivo</b>. Um link (URL) externo funciona para exibição na tela, mas o navegador não consegue embuti-lo no PDF de forma confiável (limitação de CORS) — nesse caso o PDF sai sem o logotipo.</p>
       <div class="grid2" style="margin-top:12px;">
@@ -91,6 +91,7 @@ function salvarConfiguracoes(){
     },
   };
   registrarAuditoria('configuracoes.atualizadas', { ...state.configuracoes });
-  showToast('Configurações salvas.');
+  aplicarTemaCoresInterface(state.configuracoes.identidadeVisual.corPrimaria);
+  showToast('Configurações salvas. As cores da interface já foram atualizadas.');
   render();
 }
