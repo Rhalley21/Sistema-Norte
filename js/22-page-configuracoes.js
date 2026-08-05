@@ -2,7 +2,7 @@
    MÓDULO CONFIGURAÇÕES (4.14)
    ========================================================= */
 
-function pageConfiguracoes(){
+function pageConfiguracoes() {
   const c = state.configuracoes || {};
   const iv = c.identidadeVisual || {};
   return `
@@ -16,7 +16,7 @@ function pageConfiguracoes(){
       <h3>Ciclo de Avaliação</h3>
       <div class="field"><label>Periodicidade padrão do ciclo</label>
         <select id="cfg_periodicidade">
-          ${['Anual','Semestral','Trimestral'].map(v=>`<option value="${v}" ${c.periodicidadeCiclo===v?'selected':''}>${v}</option>`).join('')}
+          ${['Anual', 'Semestral', 'Trimestral'].map((v) => `<option value="${v}" ${c.periodicidadeCiclo === v ? 'selected' : ''}>${v}</option>`).join('')}
         </select>
       </div>
       <div class="notice">Avaliadores e pesos: Colaborador 25% / Líder Direto 50% / RH 25% — fixo conforme RN003 do PRD (Documento 04), sem exceção configurável.</div>
@@ -38,7 +38,7 @@ function pageConfiguracoes(){
     <div class="card">
       <h3>Notificações</h3>
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
-        <input type="checkbox" id="cfg_lembretes" ${c.notificacoes?.lembretesPrazo?'checked':''}>
+        <input type="checkbox" id="cfg_lembretes" ${c.notificacoes?.lembretesPrazo ? 'checked' : ''}>
         Mostrar lembretes visuais de prazo (D-5, D-2, D-0) nas telas de avaliação
       </label>
       <p class="small-muted" style="margin-top:8px;">Nota: são lembretes visuais, exibidos quando alguém abre a tela — não são e-mails/push reais (isso exigiria um servidor com fila de notificações, que este projeto ainda não tem).</p>
@@ -46,26 +46,26 @@ function pageConfiguracoes(){
 
     <div class="card">
       <h3>Identidade visual <small>Cores aparecem na interface do sistema e nos relatórios exportados</small></h3>
-      <div class="field"><label>Logotipo</label>${logoUploadWidgetHTML('cfg_logo', iv.logoUrl||'')}</div>
+      <div class="field"><label>Logotipo</label>${logoUploadWidgetHTML('cfg_logo', iv.logoUrl || '')}</div>
       <p class="small-muted" style="margin-top:4px;">O logotipo aparece no topo dos PDFs exportados quando definido por <b>Colar imagem</b> ou <b>Enviar arquivo</b>. Um link (URL) externo funciona para exibição na tela, mas o navegador não consegue embuti-lo no PDF de forma confiável (limitação de CORS) — nesse caso o PDF sai sem o logotipo.</p>
       <div class="grid2" style="margin-top:12px;">
-        <div class="field"><label>Cor primária</label><input id="cfg_cor1" type="color" value="${iv.corPrimaria||'#0a2647'}"></div>
-        <div class="field"><label>Cor secundária</label><input id="cfg_cor2" type="color" value="${iv.corSecundaria||'#e99610'}"></div>
+        <div class="field"><label>Cor primária</label><input id="cfg_cor1" type="color" value="${iv.corPrimaria || '#0a2647'}"></div>
+        <div class="field"><label>Cor secundária</label><input id="cfg_cor2" type="color" value="${iv.corSecundaria || '#e99610'}"></div>
       </div>
     </div>
 
     <div class="card">
       <h3>Permissões (RNF002) <small>Exceções ao modelo padrão de papéis, concedidas caso a caso pelo Administrador</small></h3>
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 0;">
-        <input type="checkbox" id="cfg_perm_gestor_ciclo" ${c.permissoesExtras?.gestorAbreCiclo?'checked':''}>
+        <input type="checkbox" id="cfg_perm_gestor_ciclo" ${c.permissoesExtras?.gestorAbreCiclo ? 'checked' : ''}>
         Permitir que Gestores abram novos ciclos de avaliação (padrão: só Dono/RH)
       </label>
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 0;">
-        <input type="checkbox" id="cfg_perm_gestor_desenho" ${c.permissoesExtras?.gestorPublicaDesenho?'checked':''}>
+        <input type="checkbox" id="cfg_perm_gestor_desenho" ${c.permissoesExtras?.gestorPublicaDesenho ? 'checked' : ''}>
         Permitir que Gestores acessem Base de Cargos e Desenho de Cargo (padrão: só Dono/RH)
       </label>
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 0;">
-        <input type="checkbox" id="cfg_perm_rh_empresa" ${c.permissoesExtras?.rhCadastraEmpresa?'checked':''}>
+        <input type="checkbox" id="cfg_perm_rh_empresa" ${c.permissoesExtras?.rhCadastraEmpresa ? 'checked' : ''}>
         Permitir que RH acesse o Cadastro da Empresa (padrão: só Dono)
       </label>
       <div class="notice">Estas exceções afetam só o que está listado aqui. As demais regras (ex: quem avalia, quem aprova PDI) continuam fixas pela metodologia.</div>
@@ -75,7 +75,7 @@ function pageConfiguracoes(){
   `;
 }
 
-function salvarConfiguracoes(){
+function salvarConfiguracoes() {
   state.configuracoes = {
     periodicidadeCiclo: document.getElementById('cfg_periodicidade').value,
     notificacoes: { lembretesPrazo: document.getElementById('cfg_lembretes').checked },

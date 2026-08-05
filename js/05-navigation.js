@@ -1,65 +1,81 @@
 const STEPS_BASE = [
-  {id:'empresa', label:'Cadastro da Empresa', group:'Fundação', papeis:['owner']},
-  {id:'estrutura', label:'Estrutura Organizacional', group:'Fundação', papeis:['owner','rh']},
-  {id:'cultura', label:'Cultura Organizacional', group:'Fundação', papeis:['owner','rh']},
-  {id:'usuarios', label:'Usuários & Acesso', group:'Fundação', papeis:['owner','rh']},
-  {id:'cargos', label:'Base de Cargos (CBO)', group:'Cargos', papeis:['owner','rh']},
-  {id:'desenho', label:'Desenho de Cargo', group:'Cargos', papeis:['owner','rh']},
-  {id:'colaboradores', label:'Colaboradores', group:'Pessoas', papeis:['owner','rh','lider']},
-  {id:'clima', label:'Pesquisa de Clima / eNPS', group:'Pessoas'},
-  {id:'sucessao', label:'Mapa de Sucessão', group:'Pessoas', papeis:['owner','rh']},
-  {id:'ciclos', label:'Ciclos de Avaliação', group:'Ciclo NORTE'},
-  {id:'diagnostico', label:'Diagnóstico & PDI', group:'Ciclo NORTE'},
-  {id:'inteligencia', label:'Banco de Inteligência', group:'Base', papeis:['owner','rh']},
-  {id:'relatorios', label:'Relatórios', group:'Base', papeis:['owner','rh']},
-  {id:'webhooks', label:'Webhooks (integrações)', group:'Base', papeis:['owner','rh']},
-  {id:'configuracoes', label:'Configurações', group:'Base', papeis:['owner']},
-  {id:'auditoria', label:'Auditoria', group:'Base', papeis:['owner','rh']},
-  {id:'dashboard_role', label:'Dashboards', group:'Base'},
+  { id: 'empresa', label: 'Cadastro da Empresa', group: 'Fundação', papeis: ['owner'] },
+  { id: 'estrutura', label: 'Estrutura Organizacional', group: 'Fundação', papeis: ['owner', 'rh'] },
+  { id: 'cultura', label: 'Cultura Organizacional', group: 'Fundação', papeis: ['owner', 'rh'] },
+  { id: 'usuarios', label: 'Usuários & Acesso', group: 'Fundação', papeis: ['owner', 'rh'] },
+  { id: 'cargos', label: 'Base de Cargos (CBO)', group: 'Cargos', papeis: ['owner', 'rh'] },
+  { id: 'desenho', label: 'Desenho de Cargo', group: 'Cargos', papeis: ['owner', 'rh'] },
+  { id: 'colaboradores', label: 'Colaboradores', group: 'Pessoas', papeis: ['owner', 'rh', 'lider'] },
+  { id: 'clima', label: 'Pesquisa de Clima / eNPS', group: 'Pessoas' },
+  { id: 'sucessao', label: 'Mapa de Sucessão', group: 'Pessoas', papeis: ['owner', 'rh'] },
+  { id: 'ciclos', label: 'Ciclos de Avaliação', group: 'Ciclo NORTE' },
+  { id: 'diagnostico', label: 'Diagnóstico & PDI', group: 'Ciclo NORTE' },
+  { id: 'inteligencia', label: 'Banco de Inteligência', group: 'Base', papeis: ['owner', 'rh'] },
+  { id: 'relatorios', label: 'Relatórios', group: 'Base', papeis: ['owner', 'rh'] },
+  { id: 'webhooks', label: 'Webhooks (integrações)', group: 'Base', papeis: ['owner', 'rh'] },
+  { id: 'configuracoes', label: 'Configurações', group: 'Base', papeis: ['owner'] },
+  { id: 'auditoria', label: 'Auditoria', group: 'Base', papeis: ['owner', 'rh'] },
+  { id: 'dashboard_role', label: 'Dashboards', group: 'Base' },
   // Só visível pra quem é Super Admin da PLATAFORMA (dono do NORTE) — não
   // tem relação com o papel dentro de uma Empresa (owner/rh/lider/colaborador).
-  {id:'super_admin', label:'Super Admin — Empresas', group:'Plataforma', apenasSuperAdmin:true},
+  { id: 'super_admin', label: 'Super Admin — Empresas', group: 'Plataforma', apenasSuperAdmin: true },
 ];
-function stepsVisiveis(){
+function stepsVisiveis() {
   const perm = state.configuracoes?.permissoesExtras || {};
-  return STEPS_BASE.filter(s => {
-    if(s.apenasSuperAdmin) return souSuperAdmin;
-    if(!s.papeis) return true;
-    if(s.papeis.includes(meuPapelReal)) return true;
+  return STEPS_BASE.filter((s) => {
+    if (s.apenasSuperAdmin) return souSuperAdmin;
+    if (!s.papeis) return true;
+    if (s.papeis.includes(meuPapelReal)) return true;
     // RNF002 — exceções configuráveis pelo Administrador
-    if(s.id==='desenho' && meuPapelReal==='lider' && perm.gestorPublicaDesenho) return true;
-    if(s.id==='cargos' && meuPapelReal==='lider' && perm.gestorPublicaDesenho) return true;
-    if(s.id==='empresa' && meuPapelReal==='rh' && perm.rhCadastraEmpresa) return true;
+    if (s.id === 'desenho' && meuPapelReal === 'lider' && perm.gestorPublicaDesenho) return true;
+    if (s.id === 'cargos' && meuPapelReal === 'lider' && perm.gestorPublicaDesenho) return true;
+    if (s.id === 'empresa' && meuPapelReal === 'rh' && perm.rhCadastraEmpresa) return true;
     return false;
   });
 }
 Object.defineProperty(window, 'STEPS', { get: stepsVisiveis });
 
-function stepUnlocked(id){
-  switch(id){
-    case 'empresa': return true;
-    case 'estrutura': return state.empresa?.estado === 'Ativa';
-    case 'cultura': return state.estrutura.length>0;
-    case 'usuarios': return true;
-    case 'cargos': return !!state.cultura.missao;
-    case 'desenho': return state.cargos.length>0;
-    case 'colaboradores': return state.cargos.some(c=>c.desenho.aprovado && !c.descontinuado);
-    case 'ciclos': return state.colaboradores.length>0;
-    case 'diagnostico': return state.ciclos.length>0;
-    case 'inteligencia': return true;
-    case 'relatorios': return true;
-    case 'configuracoes': return true;
-    case 'dashboard_role': return true;
-    case 'super_admin': return true;
-    case 'auditoria': return true;
-    default: return true;
+function stepUnlocked(id) {
+  switch (id) {
+    case 'empresa':
+      return true;
+    case 'estrutura':
+      return state.empresa?.estado === 'Ativa';
+    case 'cultura':
+      return state.estrutura.length > 0;
+    case 'usuarios':
+      return true;
+    case 'cargos':
+      return !!state.cultura.missao;
+    case 'desenho':
+      return state.cargos.length > 0;
+    case 'colaboradores':
+      return state.cargos.some((c) => c.desenho.aprovado && !c.descontinuado);
+    case 'ciclos':
+      return state.colaboradores.length > 0;
+    case 'diagnostico':
+      return state.ciclos.length > 0;
+    case 'inteligencia':
+      return true;
+    case 'relatorios':
+      return true;
+    case 'configuracoes':
+      return true;
+    case 'dashboard_role':
+      return true;
+    case 'super_admin':
+      return true;
+    case 'auditoria':
+      return true;
+    default:
+      return true;
   }
 }
 
 /* ---------- Render root ---------- */
 let _ultimaRotaRenderizada = null;
 let _ultimoCicloAtivoRenderizado = undefined;
-function render(){
+function render() {
   const app = document.getElementById('app');
   app.innerHTML = `
     ${renderSidebar()}
@@ -72,34 +88,34 @@ function render(){
   // Agora só rola pro topo quando a pessoa realmente muda de tela (rota) ou
   // abre/fecha um ciclo — nunca por causa de uma interação dentro da mesma tela.
   const mudouDeTela = state.route !== _ultimaRotaRenderizada || state.cicloAtivo !== _ultimoCicloAtivoRenderizado;
-  if(mudouDeTela) window.scrollTo(0,0);
+  if (mudouDeTela) window.scrollTo(0, 0);
   _ultimaRotaRenderizada = state.route;
   _ultimoCicloAtivoRenderizado = state.cicloAtivo;
   agendarSalvamento();
 }
 
-function logoEmpresaAtual(){
+function logoEmpresaAtual() {
   return state.configuracoes?.identidadeVisual?.logoUrl || state.empresa?.logotipo || '';
 }
 // Atualiza o logo/nome do menu lateral na hora, sem precisar de um render()
 // completo da página (que apagaria campos ainda não salvos em outros
 // formulários abertos ao mesmo tempo). Chamada sempre que o logotipo muda
 // (definido ou removido), em qualquer uma das duas telas que o editam.
-function atualizarLogoSidebarAoVivo(){
+function atualizarLogoSidebarAoVivo() {
   const img = document.getElementById('sidebar-logo-img');
   const nome = document.getElementById('sidebar-brand-name');
   const sub = document.getElementById('sidebar-brand-sub');
   const logo = logoEmpresaAtual();
-  if(img) img.src = logo || `data:image/png;base64,${LOGO_INETRIS_B64}`;
-  if(nome) nome.textContent = (logo && state.empresa?.nomeFantasia) ? state.empresa.nomeFantasia : 'NORTE';
-  if(sub) sub.textContent = logo ? 'Metodologia NORTE' : 'Instituto INETRIS';
+  if (img) img.src = logo || `data:image/png;base64,${LOGO_INETRIS_B64}`;
+  if (nome) nome.textContent = logo && state.empresa?.nomeFantasia ? state.empresa.nomeFantasia : 'NORTE';
+  if (sub) sub.textContent = logo ? 'Metodologia NORTE' : 'Instituto INETRIS';
 }
-function compassSVG(){
-  const stageIdx = STEPS.findIndex(s=>s.id===state.route);
+function compassSVG() {
+  const stageIdx = STEPS.findIndex((s) => s.id === state.route);
   const total = STEPS.length || 1;
-  const progresso = stageIdx>=0 ? Math.round(((stageIdx+1)/total)*100) : 0;
+  const progresso = stageIdx >= 0 ? Math.round(((stageIdx + 1) / total) * 100) : 0;
   const logoEmpresa = logoEmpresaAtual();
-  if(logoEmpresa){
+  if (logoEmpresa) {
     return `
     <div class="compass-wrap" title="Ciclo NORTE — ${progresso}% navegado">
       <img id="sidebar-logo-img" src="${logoEmpresa}" alt="Logotipo da empresa" style="width:100%;height:100%;object-fit:contain;background:#fff;border-radius:6px;" />
@@ -113,21 +129,21 @@ function compassSVG(){
 
 let _menuMobileAberto = false;
 
-function renderSidebar(){
+function renderSidebar() {
   const roles = [
-    {id:'admin', label:'Administrador'},
-    {id:'rh', label:'RH'},
-    {id:'gestor', label:'Gestor'},
-    {id:'colaborador', label:'Colaborador'},
+    { id: 'admin', label: 'Administrador' },
+    { id: 'rh', label: 'RH' },
+    { id: 'gestor', label: 'Gestor' },
+    { id: 'colaborador', label: 'Colaborador' },
   ];
   const podeAlternarPapel = meuPapelReal === 'owner';
-  const groups = [...new Set(STEPS.map(s=>s.group))];
+  const groups = [...new Set(STEPS.map((s) => s.group))];
   return `
   <aside class="sidebar">
     <div class="brand">
       ${compassSVG()}
       <div>
-        <div class="brand-name" id="sidebar-brand-name">${logoEmpresaAtual() && state.empresa?.nomeFantasia ? state.empresa.nomeFantasia : 'NORTE'}</div>
+        <div class="brand-name" id="sidebar-brand-name">${logoEmpresaAtual() && state.empresa?.nomeFantasia ? escaparHtml(state.empresa.nomeFantasia) : 'NORTE'}</div>
         <div class="brand-sub" id="sidebar-brand-sub">${logoEmpresaAtual() ? 'Metodologia NORTE' : 'Instituto INETRIS'}</div>
       </div>
       ${renderSinoNotificacoes()}
@@ -139,29 +155,42 @@ function renderSidebar(){
     <div class="sidebar-nav-content ${_menuMobileAberto ? 'aberto' : ''}">
       <div class="role-switcher">
         <div class="role-label">${podeAlternarPapel ? 'Ver como (pré-visualização)' : 'Seu papel'}</div>
-        ${podeAlternarPapel
-          ? roles.map(r=>`
-              <button class="role-btn ${state.role===r.id?'active':''}" onclick="setRole('${r.id}')">
+        ${
+          podeAlternarPapel
+            ? roles
+                .map(
+                  (r) => `
+              <button class="role-btn ${state.role === r.id ? 'active' : ''}" onclick="setRole('${r.id}')">
                 <span class="dot"></span>${r.label}
               </button>
-            `).join('')
-          : `<div class="role-btn active" style="cursor:default;"><span class="dot"></span>${roles.find(r=>r.id===state.role)?.label || state.role}</div>`
+            `
+                )
+                .join('')
+            : `<div class="role-btn active" style="cursor:default;"><span class="dot"></span>${roles.find((r) => r.id === state.role)?.label || state.role}</div>`
         }
       </div>
 
       <nav class="steps">
-        ${groups.map(g=>`
+        ${groups
+          .map(
+            (g) => `
           <div class="step-group-label">${g}</div>
-          ${STEPS.filter(s=>s.group===g).map(s=>{
-            const unlocked = stepUnlocked(s.id);
-            const idx = STEPS.indexOf(s)+1;
-            const clickAction = unlocked ? ("goto('"+s.id+"')") : ("showToast('Complete a etapa anterior primeiro — o NORTE não permite pular passos.')");
-            return `<button class="step-btn ${state.route===s.id?'active':''} ${unlocked?'':'locked'}"
+          ${STEPS.filter((s) => s.group === g)
+            .map((s) => {
+              const unlocked = stepUnlocked(s.id);
+              const idx = STEPS.indexOf(s) + 1;
+              const clickAction = unlocked
+                ? "goto('" + s.id + "')"
+                : "showToast('Complete a etapa anterior primeiro — o NORTE não permite pular passos.')";
+              return `<button class="step-btn ${state.route === s.id ? 'active' : ''} ${unlocked ? '' : 'locked'}"
               onclick="${clickAction}">
-              <span class="num">${String(idx).padStart(2,'0')}</span>${s.label}
+              <span class="num">${String(idx).padStart(2, '0')}</span>${s.label}
             </button>`;
-          }).join('')}
-        `).join('')}
+            })
+            .join('')}
+        `
+          )
+          .join('')}
       </nav>
 
       <button class="step-btn" style="margin-top:8px;opacity:.75;" onclick="sair()">
@@ -176,26 +205,33 @@ function renderSidebar(){
   </aside>`;
 }
 
-function setRole(r){ state.role = r; _menuMobileAberto = false; render(); }
-async function atualizarDadosAoVivo(silencioso){
+function setRole(r) {
+  state.role = r;
+  _menuMobileAberto = false;
+  render();
+}
+async function atualizarDadosAoVivo(silencioso) {
   // BUG CORRIGIDO: o sistema carregava os dados uma única vez, no login, e
   // nunca mais buscava atualização — sem sincronização em tempo real entre
   // usuários diferentes. Se o Líder enviasse a avaliação enquanto o RH já
   // estava com a tela aberta, o RH continuava vendo a versão antiga do
   // ciclo (ainda na etapa do Líder) até dar um F5 na página inteira.
-  if(!silencioso) showToast('Atualizando dados…');
+  if (!silencioso) showToast('Atualizando dados…');
   await carregarEstado();
   esconderAvisoAtualizacao();
   render();
 }
-function goto(id){
-  if(!STEPS.find(s=>s.id===id)){ showToast('Você não tem acesso a essa área.'); return; }
+function goto(id) {
+  if (!STEPS.find((s) => s.id === id)) {
+    showToast('Você não tem acesso a essa área.');
+    return;
+  }
   state.route = id;
   _menuMobileAberto = false;
-  if(id === 'usuarios') carregarUsuarios();
-  if(id === 'colaboradores') carregarUsuarios(); // usado pra detectar inconsistências (ver banner de "desligado mas com login ativo")
-  if(id === 'auditoria') carregarUsuarios(); // usado pra resolver nome de quem fez cada evento
-  if(id === 'ciclos') atualizarDadosAoVivo(true); // busca o estado mais recente sempre que entra na tela de Ciclos
+  if (id === 'usuarios') carregarUsuarios();
+  if (id === 'colaboradores') carregarUsuarios(); // usado pra detectar inconsistências (ver banner de "desligado mas com login ativo")
+  if (id === 'auditoria') carregarUsuarios(); // usado pra resolver nome de quem fez cada evento
+  if (id === 'ciclos') atualizarDadosAoVivo(true); // busca o estado mais recente sempre que entra na tela de Ciclos
   render();
 }
 

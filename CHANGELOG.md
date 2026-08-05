@@ -3,6 +3,83 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.24.0 — CI: sintaxe, lint e formatação em todo push/PR
+Até agora, nada impedia um código quebrado de ir pra `main` — cada
+verificação dependia de eu (ou você) lembrar de testar manualmente antes
+de subir. Agora existe um pipeline de CI (`.github/workflows/ci.yml`) que
+roda automaticamente em todo `push` e Pull Request pra `main`, com 3
+checagens: sintaxe de todo arquivo `.js`, ESLint (erros reais de código) e
+Prettier (formatação consistente).
+
+- **Bug real encontrado pelo ESLint**: `js/08-page-empresa.js` tinha uma
+  variável (`e`) que não existia — quebraria o salvamento do Cadastro da
+  Empresa toda vez que alguém salvasse, desde a v0.18.3. Corrigido pra
+  usar `empresaAnterior` (o valor correto, já capturado antes na mesma
+  função). Ninguém tinha notado ainda porque `node --check` (o que eu
+  vinha fazendo manualmente) só pega erro de sintaxe, não esse tipo de
+  referência a variável inexistente.
+- **`package.json`, `.eslintrc.json`, `.prettierrc.json`**: configuração
+  do projeto. O ESLint foi ajustado especificamente pra esse tipo de
+  projeto (~29 arquivos JS sem sistema de módulos, compartilhando
+  propositalmente o mesmo escopo global) — a lista de mais de 300
+  funções/variáveis compartilhadas foi extraída automaticamente do
+  próprio código, pra não dar falso positivo em cada uso legítimo entre
+  arquivos.
+- **Todo o código foi formatado pelo Prettier por padrão, uma única vez**,
+  já que era a primeira vez que uma ferramenta de formatação entrava no
+  projeto — confirmei que nenhuma correção de segurança (v0.23.0) foi
+  alterada nesse processo, comparando antes/depois.
+- **`README.md`**: nova seção explicando como rodar essas checagens
+  localmente, e — importante — **como ativar a proteção de branch no
+  GitHub** (passo manual, só quem tem acesso de administrador do
+  repositório consegue fazer, que transforma isso de "só avisa" pra
+  "impede o merge de verdade").
+
+## v0.23.0 — Correções de segurança: XSS armazenado e tokens fracos
+A partir de uma revisão de segurança externa, dois problemas de alto risco
+foram identificados e corrigidos.
+
+**1) XSS armazenado (stored XSS)** — quase toda a interface montava HTML
+via interpolação direta de texto vindo de campos livres (nome de
+colaborador, comentário, título, URL etc.), sem nenhum escape. Alguém
+mal-intencionado podia colocar algo como `<img src=x onerror="...">` num
+campo de texto livre, e esse código executaria na tela de **qualquer
+pessoa que visse aquele texto depois** — inclusive RH ou Administrador,
+um caminho de escalonamento de privilégio dentro da própria empresa.
+
+Corrigido com duas funções novas em `js/02-core-helpers.js`:
+- `escaparHtml()` — para texto de usuário indo pro meio do HTML.
+- `escaparParaOnclick()` — para texto de usuário usado como argumento
+  dentro de um `onclick`/`onchange` (precisa de tratamento em duas
+  camadas: escape JavaScript primeiro, depois escape HTML — só usar
+  `escaparHtml()` ali não bastava, e alguns lugares já tinham um escape
+  manual incompleto que só tratava aspas simples, não aspas duplas).
+
+Aplicado em praticamente todas as telas do sistema: Colaboradores,
+Webhooks, Empresa, Cultura Organizacional, Desenho de Cargo (incluindo a
+comparação entre versões), Base de Cargos, Ciclos de Avaliação (PDI,
+Mentalidade, indicadores), Notificações in-app, Banco de Inteligência,
+Pesquisa de Clima, Super Admin (incluindo a tabela de analytics entre
+empresas), Auditoria (corrigido na origem — `nomePorPerfilId()` já
+protege todos os lugares que a usam), Usuários & Acesso, Estrutura
+Organizacional, Mapa de Sucessão, Diagnóstico & PDI, os 3 e-mails que o
+sistema envia (convite, boas-vindas, avaliação pendente), o gráfico SVG
+da Matriz 9-Box, e os dashboards de todos os papéis.
+
+Testado com os 3 padrões de ataque reais: `<img onerror>` num campo de
+texto, aspas duplas tentando quebrar um atributo `onclick`, e aspas
+simples tentando quebrar a string JavaScript dentro do `onclick` — os
+três ficaram neutralizados, e o caso legítimo (nome com apóstrofo, tipo
+"O'Brien") continua funcionando normalmente.
+
+**2) Tokens gerados com `Math.random()`** — não é criptograficamente
+seguro, usado nos códigos de convite (`js/06-page-usuarios.js`) e de
+licença de empresa (`js/23-page-super-admin.js`). Como esses códigos dão
+acesso a criar conta/empresa na plataforma, trocado por
+`crypto.getRandomValues()` — a mesma família segura que já era usada
+corretamente em outro lugar (`uid()`, via `crypto.randomUUID()`). Mesmo
+formato de código de antes, só a fonte de aleatoriedade mudou.
+
 ## v0.22.3 — Segundo bug de contraste corrigido (texto sumindo no menu "Ver como")
 A correção da v0.22.2 resolveu o botão principal (fundo mudava de cor
 junto com o texto), mas não cobria outro caso: em vários lugares — menu

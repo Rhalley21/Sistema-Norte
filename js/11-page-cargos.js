@@ -1,14 +1,13 @@
 let _verTodosCargosCBO = false;
-function pageCargos(){
+function pageCargos() {
   const segmentoEmpresa = state.empresa?.segmento || '';
   // Filtro estrito: só mostra cargos marcados pro segmento escolhido pela
   // empresa. Cargos genuinamente universais (Gerente, Recepcionista etc.)
   // já vêm marcados em todos os segmentos na própria base (js/04-data-cbo.js),
   // então continuam aparecendo — mas não existe mais nenhum "fallback"
   // automático misturando segmentos diferentes por trás das cortinas.
-  const cbosFiltrados = (!segmentoEmpresa || _verTodosCargosCBO)
-    ? CBO_MOCK
-    : CBO_MOCK.filter(c => c.segmentos.includes(segmentoEmpresa));
+  const cbosFiltrados =
+    !segmentoEmpresa || _verTodosCargosCBO ? CBO_MOCK : CBO_MOCK.filter((c) => c.segmentos.includes(segmentoEmpresa));
 
   return `
     <div class="page-head">
@@ -18,17 +17,29 @@ function pageCargos(){
     </div>
 
     <div class="card">
-      <h3>Biblioteca CBO <small>${segmentoEmpresa && !_verTodosCargosCBO ? `Filtrado para o segmento "${segmentoEmpresa}"${segmentoEmpresa==='Outro' && state.empresa?.segmentoDetalhe ? ` (${state.empresa.segmentoDetalhe})` : ''}` : 'Selecione um cargo para importar e adaptar'}</small></h3>
-      ${segmentoEmpresa ? `<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-dim);margin-bottom:12px;">
-        <input type="checkbox" ${_verTodosCargosCBO?'checked':''} onchange="_verTodosCargosCBO=this.checked; render();">
+      <h3>Biblioteca CBO <small>${segmentoEmpresa && !_verTodosCargosCBO ? `Filtrado para o segmento "${segmentoEmpresa}"${segmentoEmpresa === 'Outro' && state.empresa?.segmentoDetalhe ? ` (${state.empresa.segmentoDetalhe})` : ''}` : 'Selecione um cargo para importar e adaptar'}</small></h3>
+      ${
+        segmentoEmpresa
+          ? `<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-dim);margin-bottom:12px;">
+        <input type="checkbox" ${_verTodosCargosCBO ? 'checked' : ''} onchange="_verTodosCargosCBO=this.checked; render();">
         Ver cargos de todos os segmentos (não só "${segmentoEmpresa}")
-      </label>` : '<div class="notice">Defina o Segmento da empresa em Cadastro da Empresa para filtrar a biblioteca automaticamente.</div>'}
-      ${cbosFiltrados.length ? cbosFiltrados.map(c=>`
+      </label>`
+          : '<div class="notice">Defina o Segmento da empresa em Cadastro da Empresa para filtrar a biblioteca automaticamente.</div>'
+      }
+      ${
+        cbosFiltrados.length
+          ? cbosFiltrados
+              .map(
+                (c) => `
         <div class="cbo-item">
-          <div><b>${c.nome}</b><br><span>CBO ${c.codigo} · ${c.familia} · ${c.natureza}</span></div>
+          <div><b>${escaparHtml(c.nome)}</b><br><span>CBO ${escaparHtml(c.codigo)} · ${escaparHtml(c.familia)} · ${escaparHtml(c.natureza)}</span></div>
           <button class="btn btn-sm" onclick="importarCargo('${c.codigo}')">Importar cargo →</button>
         </div>
-      `).join('') : '<div class="empty">Nenhum cargo cadastrado para esse segmento ainda — marque "Ver cargos de todos os segmentos" acima, ou crie um cargo do zero abaixo.</div>'}
+      `
+              )
+              .join('')
+          : '<div class="empty">Nenhum cargo cadastrado para esse segmento ainda — marque "Ver cargos de todos os segmentos" acima, ou crie um cargo do zero abaixo.</div>'
+      }
     </div>
 
     <div class="card">
@@ -37,12 +48,12 @@ function pageCargos(){
         <div class="field"><label>Nome do cargo</label><input id="cg_nome" placeholder="Ex: Analista Comercial Pleno"></div>
         <div class="field"><label>Família</label>
           <select id="cg_familia">
-            ${['Liderança','Coordenação','Operacional','Administrativo/Financeiro','Comercial','Público','Saúde','Educação','Tecnologia','Jurídico','Construção Civil','Agronegócio','Logística'].map(f=>`<option>${f}</option>`).join('')}
+            ${['Liderança', 'Coordenação', 'Operacional', 'Administrativo/Financeiro', 'Comercial', 'Público', 'Saúde', 'Educação', 'Tecnologia', 'Jurídico', 'Construção Civil', 'Agronegócio', 'Logística'].map((f) => `<option>${f}</option>`).join('')}
           </select>
         </div>
         <div class="field"><label>Natureza</label>
           <select id="cg_natureza">
-            ${['Operacional','Apoio','Estratégica'].map(f=>`<option>${f}</option>`).join('')}
+            ${['Operacional', 'Apoio', 'Estratégica'].map((f) => `<option>${f}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -51,54 +62,99 @@ function pageCargos(){
 
     <div class="card">
       <h3>Cargos da empresa</h3>
-      ${state.cargos.length? `<table><thead><tr><th>Cargo</th><th>CBO</th><th>Família</th><th>Desenho</th><th></th></tr></thead><tbody>
-        ${state.cargos.map(c=>`
-          <tr style="${c.descontinuado?'opacity:.55;':''}">
-            <td><b>${c.nome}</b></td>
-            <td class="small-muted">${c.cbo||'—'}</td>
-            <td class="small-muted">${c.familia}</td>
-            <td>${c.descontinuado?'<span class="pill pill-iniciar">Descontinuado</span>':(c.desenho.aprovado?'<span class="pill pill-alavancar">Publicado v'+c.desenho.versao+'</span>':'<span class="pill pill-desenvolver">Rascunho</span>')}</td>
+      ${
+        state.cargos.length
+          ? `<table><thead><tr><th>Cargo</th><th>CBO</th><th>Família</th><th>Desenho</th><th></th></tr></thead><tbody>
+        ${state.cargos
+          .map(
+            (c) => `
+          <tr style="${c.descontinuado ? 'opacity:.55;' : ''}">
+            <td><b>${escaparHtml(c.nome)}</b></td>
+            <td class="small-muted">${c.cbo || '—'}</td>
+            <td class="small-muted">${escaparHtml(c.familia)}</td>
+            <td>${c.descontinuado ? '<span class="pill pill-iniciar">Descontinuado</span>' : c.desenho.aprovado ? '<span class="pill pill-alavancar">Publicado v' + c.desenho.versao + '</span>' : '<span class="pill pill-desenvolver">Rascunho</span>'}</td>
             <td>
               <button class="btn btn-sm btn-ghost" onclick="goto('desenho'); state.cargoEditando='${c.id}'">Editar desenho →</button>
-              ${c.desenho.aprovado ? `<button class="btn btn-sm btn-ghost" onclick="alternarDescontinuarCargo('${c.id}')">${c.descontinuado?'Reativar':'Descontinuar'}</button>` : ''}
+              ${c.desenho.aprovado ? `<button class="btn btn-sm btn-ghost" onclick="alternarDescontinuarCargo('${c.id}')">${c.descontinuado ? 'Reativar' : 'Descontinuar'}</button>` : ''}
             </td>
           </tr>
-        `).join('')}
-      </tbody></table>` : '<div class="empty">Nenhum cargo cadastrado.</div>'}
+        `
+          )
+          .join('')}
+      </tbody></table>`
+          : '<div class="empty">Nenhum cargo cadastrado.</div>'
+      }
     </div>
   `;
 }
-function alternarDescontinuarCargo(cargoId){
-  const cargo = state.cargos.find(c=>c.id===cargoId);
-  const vinculados = state.colaboradores.filter(p=>p.cargoId===cargoId).length;
-  cargo.descontinuado = !cargo.descontinuado; atualizarCarimbo(cargo);
-  registrarAuditoria(cargo.descontinuado?'cargo.descontinuado':'cargo.reativado', { nome: cargo.nome, colaboradoresVinculados: vinculados });
-  showToast(cargo.descontinuado
-    ? `Cargo descontinuado. ${vinculados>0?`Os ${vinculados} colaborador(es) já vinculados e seu histórico continuam intactos — só não é possível abrir novos ciclos para este cargo.`:'Não é mais possível vincular novos colaboradores a este cargo.'}`
-    : 'Cargo reativado.');
+function alternarDescontinuarCargo(cargoId) {
+  const cargo = state.cargos.find((c) => c.id === cargoId);
+  const vinculados = state.colaboradores.filter((p) => p.cargoId === cargoId).length;
+  cargo.descontinuado = !cargo.descontinuado;
+  atualizarCarimbo(cargo);
+  registrarAuditoria(cargo.descontinuado ? 'cargo.descontinuado' : 'cargo.reativado', {
+    nome: cargo.nome,
+    colaboradoresVinculados: vinculados,
+  });
+  showToast(
+    cargo.descontinuado
+      ? `Cargo descontinuado. ${vinculados > 0 ? `Os ${vinculados} colaborador(es) já vinculados e seu histórico continuam intactos — só não é possível abrir novos ciclos para este cargo.` : 'Não é mais possível vincular novos colaboradores a este cargo.'}`
+      : 'Cargo reativado.'
+  );
   render();
 }
-function importarCargo(codigo){
-  const src = CBO_MOCK.find(c=>c.codigo===codigo);
+function importarCargo(codigo) {
+  const src = CBO_MOCK.find((c) => c.codigo === codigo);
   const banco = BANCO_INTELIGENCIA[src.familia];
   const novo = {
-    id: uid(), nome: src.nome, familia: src.familia, natureza: src.natureza, cbo: src.codigo, origemCBO:true,
-    indicadoresN:[], indicadoresO:[], indicadoresR:[],
-    sugestoes: banco ? {
-      competencias: banco.competencias.map(nome=>({id:uid(), nome, marcado:true})),
-      indicadoresN: banco.indicadoresN.map(item=>({id:uid(), nome:item.nome, competencia:item.competencia, marcado:true})),
-      indicadoresO: banco.indicadoresO.map(item=>({id:uid(), nome:item.nome, competencia:item.competencia, marcado:true})),
-      indicadoresR: banco.indicadoresR.map(item=>({id:uid(), nome:item.nome, competencia:item.competencia, marcado:true})),
-    } : null,
-    desenho:{
-      versao:1, aprovado:false,
-      area: src.area, nivelHierarquico: src.nivelHierarquico, regimeTrabalho: src.regimeTrabalho,
-      subordinacao: src.subordinacao, subordinadosDiretos: src.subordinadosDiretos, localTrabalho: src.localTrabalho,
+    id: uid(),
+    nome: src.nome,
+    familia: src.familia,
+    natureza: src.natureza,
+    cbo: src.codigo,
+    origemCBO: true,
+    indicadoresN: [],
+    indicadoresO: [],
+    indicadoresR: [],
+    sugestoes: banco
+      ? {
+          competencias: banco.competencias.map((nome) => ({ id: uid(), nome, marcado: true })),
+          indicadoresN: banco.indicadoresN.map((item) => ({
+            id: uid(),
+            nome: item.nome,
+            competencia: item.competencia,
+            marcado: true,
+          })),
+          indicadoresO: banco.indicadoresO.map((item) => ({
+            id: uid(),
+            nome: item.nome,
+            competencia: item.competencia,
+            marcado: true,
+          })),
+          indicadoresR: banco.indicadoresR.map((item) => ({
+            id: uid(),
+            nome: item.nome,
+            competencia: item.competencia,
+            marcado: true,
+          })),
+        }
+      : null,
+    desenho: {
+      versao: 1,
+      aprovado: false,
+      area: src.area,
+      nivelHierarquico: src.nivelHierarquico,
+      regimeTrabalho: src.regimeTrabalho,
+      subordinacao: src.subordinacao,
+      subordinadosDiretos: src.subordinadosDiretos,
+      localTrabalho: src.localTrabalho,
       missao: src.missao,
       responsabilidades: [...src.responsabilidades], // RN028: cópia editável — a empresa pode ajustar livremente após importar
-      culturaPostura:'', // obrigatório (RN030) — cada empresa preenche a sua própria Cultura e Postura Institucional
-      formacaoAcademica: src.formacaoAcademica, experienciaProfissional: src.experienciaProfissional,
-      conhecimentosTecnicos: src.conhecimentosTecnicos, idiomas: src.idiomas,
+      culturaPostura: '', // obrigatório (RN030) — cada empresa preenche a sua própria Cultura e Postura Institucional
+      formacaoAcademica: src.formacaoAcademica,
+      experienciaProfissional: src.experienciaProfissional,
+      conhecimentosTecnicos: src.conhecimentosTecnicos,
+      idiomas: src.idiomas,
       competenciasComportamentais: [...src.competenciasComportamentais],
       ferramentasSistemas: [...src.ferramentasSistemas],
       kpis: [...src.kpis],
@@ -106,64 +162,108 @@ function importarCargo(codigo){
       perspectivasCarreira: [...src.perspectivasCarreira],
     },
     versoes: [],
-    descontinuado: false, ...novoCarimbo(),
+    descontinuado: false,
+    ...novoCarimbo(),
   };
   state.cargos.push(novo);
   state.cargoEditando = novo.id;
   showToast('Cargo importado. Revise as sugestões do Banco de Inteligência antes de aplicar (RN028).');
   goto('desenho');
 }
-function atualizarSugestoesCargo(cargoId){
-  const cargo = state.cargos.find(c=>c.id===cargoId);
+function atualizarSugestoesCargo(cargoId) {
+  const cargo = state.cargos.find((c) => c.id === cargoId);
   const banco = BANCO_INTELIGENCIA[cargo.familia];
-  if(!banco){ showToast('Nenhuma sugestão disponível para esta família de cargo.'); return; }
+  if (!banco) {
+    showToast('Nenhuma sugestão disponível para esta família de cargo.');
+    return;
+  }
   cargo.sugestoes = {
-    competencias: banco.competencias.map(nome=>({id:uid(), nome, marcado:true})),
-    indicadoresN: banco.indicadoresN.map(item=>({id:uid(), nome:item.nome, competencia:item.competencia, marcado:true})),
-    indicadoresO: banco.indicadoresO.map(item=>({id:uid(), nome:item.nome, competencia:item.competencia, marcado:true})),
-    indicadoresR: banco.indicadoresR.map(item=>({id:uid(), nome:item.nome, competencia:item.competencia, marcado:true})),
+    competencias: banco.competencias.map((nome) => ({ id: uid(), nome, marcado: true })),
+    indicadoresN: banco.indicadoresN.map((item) => ({
+      id: uid(),
+      nome: item.nome,
+      competencia: item.competencia,
+      marcado: true,
+    })),
+    indicadoresO: banco.indicadoresO.map((item) => ({
+      id: uid(),
+      nome: item.nome,
+      competencia: item.competencia,
+      marcado: true,
+    })),
+    indicadoresR: banco.indicadoresR.map((item) => ({
+      id: uid(),
+      nome: item.nome,
+      competencia: item.competencia,
+      marcado: true,
+    })),
   };
   showToast('Sugestões atualizadas — revise e marque só o que fizer sentido antes de aplicar (RN028).');
   render();
 }
-function toggleSugestao(cargoId, grupo, sugestaoId){
-  const cargo = state.cargos.find(c=>c.id===cargoId);
-  const item = cargo.sugestoes[grupo].find(s=>s.id===sugestaoId);
+function toggleSugestao(cargoId, grupo, sugestaoId) {
+  const cargo = state.cargos.find((c) => c.id === cargoId);
+  const item = cargo.sugestoes[grupo].find((s) => s.id === sugestaoId);
   item.marcado = !item.marcado;
   render();
 }
-function aplicarSugestoesCargo(cargoId){
-  const cargo = state.cargos.find(c=>c.id===cargoId);
-  ['indicadoresN','indicadoresO','indicadoresR'].forEach(key=>{
-    const selecionados = cargo.sugestoes[key].filter(s=>s.marcado);
-    selecionados.forEach(s=> cargo[key].push({id:uid(), nome:s.nome, competencia:s.competencia}));
+function aplicarSugestoesCargo(cargoId) {
+  const cargo = state.cargos.find((c) => c.id === cargoId);
+  ['indicadoresN', 'indicadoresO', 'indicadoresR'].forEach((key) => {
+    const selecionados = cargo.sugestoes[key].filter((s) => s.marcado);
+    selecionados.forEach((s) => cargo[key].push({ id: uid(), nome: s.nome, competencia: s.competencia }));
   });
   cargo.sugestoes = null;
   showToast('Sugestões aplicadas ao cargo — já podem ser editadas normalmente.');
   render();
 }
-function descartarSugestoesCargo(cargoId){
-  const cargo = state.cargos.find(c=>c.id===cargoId);
+function descartarSugestoesCargo(cargoId) {
+  const cargo = state.cargos.find((c) => c.id === cargoId);
   cargo.sugestoes = null;
   showToast('Sugestões descartadas.');
   render();
 }
-function criarCargoDoZero(){
+function criarCargoDoZero() {
   const nome = document.getElementById('cg_nome').value.trim();
-  if(!nome){ showToast('Informe o nome do cargo.'); return; }
+  if (!nome) {
+    showToast('Informe o nome do cargo.');
+    return;
+  }
   const novo = {
-    id: uid(), nome, familia: document.getElementById('cg_familia').value, natureza: document.getElementById('cg_natureza').value,
-    cbo:null, origemCBO:false,
-    indicadoresN:[], indicadoresO:[], indicadoresR:[],
-    desenho:{
-      versao:1, aprovado:false,
-      area:'', nivelHierarquico:'', regimeTrabalho:'', subordinacao:'', subordinadosDiretos:'', localTrabalho:'',
-      missao:'', responsabilidades:[], culturaPostura:'',
-      formacaoAcademica:'', experienciaProfissional:'', conhecimentosTecnicos:'', idiomas:'',
-      competenciasComportamentais:[], ferramentasSistemas:[], kpis:[], condicoesTrabalho:'', perspectivasCarreira:[],
+    id: uid(),
+    nome,
+    familia: document.getElementById('cg_familia').value,
+    natureza: document.getElementById('cg_natureza').value,
+    cbo: null,
+    origemCBO: false,
+    indicadoresN: [],
+    indicadoresO: [],
+    indicadoresR: [],
+    desenho: {
+      versao: 1,
+      aprovado: false,
+      area: '',
+      nivelHierarquico: '',
+      regimeTrabalho: '',
+      subordinacao: '',
+      subordinadosDiretos: '',
+      localTrabalho: '',
+      missao: '',
+      responsabilidades: [],
+      culturaPostura: '',
+      formacaoAcademica: '',
+      experienciaProfissional: '',
+      conhecimentosTecnicos: '',
+      idiomas: '',
+      competenciasComportamentais: [],
+      ferramentasSistemas: [],
+      kpis: [],
+      condicoesTrabalho: '',
+      perspectivasCarreira: [],
     },
     versoes: [],
-    descontinuado: false, ...novoCarimbo(),
+    descontinuado: false,
+    ...novoCarimbo(),
   };
   state.cargos.push(novo);
   state.cargoEditando = novo.id;

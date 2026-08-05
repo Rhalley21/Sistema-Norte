@@ -59,3 +59,49 @@ E abrir o endereço que aparecer (ex: `http://localhost:3000`).
   trecho certo.
 - A ordem dos números no nome dos arquivos JS é a ordem que eles são carregados na
   página — mantenha essa ordem se for adicionar algo novo no `index.html`.
+
+## CI (integração contínua) — v0.24.0
+
+Desde a v0.24.0, todo `push` e Pull Request pra branch `main` roda
+automaticamente 3 verificações (arquivo `.github/workflows/ci.yml`):
+
+1. **Sintaxe** — confirma que todo arquivo `.js` está sintaticamente válido.
+2. **ESLint** — pega erros reais de código (variável/função duplicada,
+   chave duplicada num objeto, etc.) — já pegou pelo menos um bug real
+   escondido em produção (`js/08-page-empresa.js`, variável `e` que não
+   existia, quebrando o salvamento do Cadastro da Empresa).
+3. **Prettier** — confirma que o código está formatado de um jeito
+   consistente (não formata sozinho no CI, só avisa se estiver fora do
+   padrão).
+
+Você vê o resultado direto na aba **"Actions"** do repositório no GitHub,
+ou como um ✅/❌ ao lado de cada commit/Pull Request.
+
+### Rodando localmente, antes de subir
+
+```bash
+npm install        # só precisa rodar uma vez (ou quando adicionar dependência nova)
+npm run check:sintaxe
+npm run lint
+npm run format:check   # ou "npm run format" pra já corrigir automaticamente
+```
+
+### Importante: isso hoje só AVISA, não BLOQUEIA
+
+Por padrão, o GitHub só mostra o resultado (✅/❌) — não impede ninguém de
+dar merge numa `main` com o CI vermelho. Pra transformar isso numa
+trava de verdade (ninguém consegue mergear com CI falhando), é preciso
+ativar manualmente, uma vez, nas configurações do repositório:
+
+1. No GitHub, vai em **Settings** → **Branches** (ou **Rules** → **Rulesets**,
+   dependendo da versão da interface).
+2. Adiciona uma regra de proteção pra branch `main`.
+3. Ativa **"Require status checks to pass before merging"**.
+4. Marca o check **"Sintaxe, Lint e Formatação"** (o nome do job definido
+   em `ci.yml`) como obrigatório.
+5. Salva.
+
+Sem esse passo manual (que só quem tem acesso de administrador do
+repositório consegue fazer), o CI roda e avisa, mas não impede
+tecnicamente um código quebrado de ir pra `main` — é só esse último passo
+que fecha essa porta de vez.

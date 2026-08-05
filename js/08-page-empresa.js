@@ -1,19 +1,19 @@
 /* ---------- Validação de CNPJ (algoritmo de dígito verificador) ---------- */
-function validarCNPJ(cnpjBruto){
-  const cnpj = (cnpjBruto||'').replace(/\D/g,'');
-  if(cnpj.length !== 14) return false;
-  if(/^(\d)\1{13}$/.test(cnpj)) return false; // todos os dígitos iguais
+function validarCNPJ(cnpjBruto) {
+  const cnpj = (cnpjBruto || '').replace(/\D/g, '');
+  if (cnpj.length !== 14) return false;
+  if (/^(\d)\1{13}$/.test(cnpj)) return false; // todos os dígitos iguais
   const calcularDigito = (base, pesos) => {
-    const soma = base.split('').reduce((acc,d,i)=>acc + parseInt(d,10)*pesos[i], 0);
+    const soma = base.split('').reduce((acc, d, i) => acc + parseInt(d, 10) * pesos[i], 0);
     const resto = soma % 11;
     return resto < 2 ? 0 : 11 - resto;
   };
-  const pesos1 = [5,4,3,2,9,8,7,6,5,4,3,2];
-  const pesos2 = [6,5,4,3,2,9,8,7,6,5,4,3,2];
-  const d1 = calcularDigito(cnpj.slice(0,12), pesos1);
-  if(d1 !== parseInt(cnpj[12],10)) return false;
-  const d2 = calcularDigito(cnpj.slice(0,12)+d1, pesos2);
-  if(d2 !== parseInt(cnpj[13],10)) return false;
+  const pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const pesos2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const d1 = calcularDigito(cnpj.slice(0, 12), pesos1);
+  if (d1 !== parseInt(cnpj[12], 10)) return false;
+  const d2 = calcularDigito(cnpj.slice(0, 12) + d1, pesos2);
+  if (d2 !== parseInt(cnpj[13], 10)) return false;
   return true;
 }
 
@@ -23,67 +23,75 @@ function validarCNPJ(cnpjBruto){
    uma tabela própria, mesmo sem nenhum consumidor externo hoje. A ideia é
    que integrações futuras (ERP, LMS, Power BI, API pública) consigam se
    conectar a esse fluxo sem precisar alterar o núcleo do sistema. */
-async function emitirEvento(nomeEvento, payload){
-  try{
+async function emitirEvento(nomeEvento, payload) {
+  try {
     await sb.from('eventos_dominio').insert({ empresa_id: empresaIdAtual, evento: nomeEvento, payload });
-  }catch(e){ console.error('Falha ao emitir evento de domínio', e); }
+  } catch (e) {
+    console.error('Falha ao emitir evento de domínio', e);
+  }
 }
 
-async function registrarAuditoria(evento, detalhes){
-  try{
+async function registrarAuditoria(evento, detalhes) {
+  try {
     await sb.from('auditoria').insert({ empresa_id: empresaIdAtual, evento, detalhes, criado_por: meuPerfilId });
-  }catch(e){ console.error('Falha ao registrar auditoria', e); }
+  } catch (e) {
+    console.error('Falha ao registrar auditoria', e);
+  }
 }
 
-function pageEmpresa(){
+function pageEmpresa() {
   const e = state.empresa || {};
   const enderecos = e.enderecos && e.enderecos.length ? e.enderecos : [''];
   return `
     <div class="page-head">
       <div class="eyebrow">Etapa 01 · Fundação</div>
       <h1>Cadastro da Empresa</h1>
-      <p class="page-desc">Nó raiz do sistema (Cap. 4.1 do PRD). Toda estrutura, cargo e colaborador se vincula a este cadastro. ${e.estado==='Ativa'?'<span class="pill pill-alavancar" style="margin-left:6px;">Ativa</span>':'<span class="pill pill-neutral" style="margin-left:6px;">Pendente</span>'}</p>
+      <p class="page-desc">Nó raiz do sistema (Cap. 4.1 do PRD). Toda estrutura, cargo e colaborador se vincula a este cadastro. ${e.estado === 'Ativa' ? '<span class="pill pill-alavancar" style="margin-left:6px;">Ativa</span>' : '<span class="pill pill-neutral" style="margin-left:6px;">Pendente</span>'}</p>
     </div>
 
     <div class="card">
       <h3>Dados institucionais</h3>
       <div class="grid2">
-        <div class="field"><label>Razão social</label><input id="f_razao" value="${e.razaoSocial||''}"></div>
-        <div class="field"><label>Nome fantasia</label><input id="f_fantasia" value="${e.nomeFantasia||''}"></div>
-        <div class="field"><label>CNPJ</label><input id="f_cnpj" value="${e.cnpj||''}" placeholder="00.000.000/0000-00"></div>
+        <div class="field"><label>Razão social</label><input id="f_razao" value="${escaparHtml(e.razaoSocial)}"></div>
+        <div class="field"><label>Nome fantasia</label><input id="f_fantasia" value="${escaparHtml(e.nomeFantasia)}"></div>
+        <div class="field"><label>CNPJ</label><input id="f_cnpj" value="${escaparHtml(e.cnpj)}" placeholder="00.000.000/0000-00"></div>
         <div class="field"><label>Segmento <small>(usado para filtrar sugestões de cargos na Base CBO)</small></label>
           <select id="f_segmento" onchange="document.getElementById('wrap_segmento_outro').style.display = this.value==='Outro' ? '' : 'none';">
             <option value="">— selecione —</option>
-            ${AREAS_ATUACAO.map(a=>`<option value="${a}" ${e.segmento===a?'selected':''}>${a}</option>`).join('')}
+            ${AREAS_ATUACAO.map((a) => `<option value="${a}" ${e.segmento === a ? 'selected' : ''}>${a}</option>`).join('')}
           </select>
-          <div id="wrap_segmento_outro" style="margin-top:8px;display:${e.segmento==='Outro'?'':'none'};">
-            <input id="f_segmento_detalhe" value="${e.segmentoDetalhe||''}" placeholder="Descreva o segmento da empresa (ex: Consultoria ambiental)">
+          <div id="wrap_segmento_outro" style="margin-top:8px;display:${e.segmento === 'Outro' ? '' : 'none'};">
+            <input id="f_segmento_detalhe" value="${escaparHtml(e.segmentoDetalhe)}" placeholder="Descreva o segmento da empresa (ex: Consultoria ambiental)">
             <div class="small-muted" style="margin-top:4px;">O filtro da Base de Cargos usa a categoria "Outro" (cargos gerais) — esse texto é só pra detalhar, não afeta o filtro.</div>
           </div>
         </div>
         <div class="field"><label>Porte</label>
           <select id="f_porte">
-            ${['pequena','media','grande'].map(v=>`<option value="${v}" ${e.porte===v?'selected':''}>${v.charAt(0).toUpperCase()+v.slice(1)}</option>`).join('')}
+            ${['pequena', 'media', 'grande'].map((v) => `<option value="${v}" ${e.porte === v ? 'selected' : ''}>${v.charAt(0).toUpperCase() + v.slice(1)}</option>`).join('')}
           </select>
         </div>
         <div class="field"><label>Tipo</label>
           <select id="f_tipo">
-            ${['privada','publica'].map(v=>`<option value="${v}" ${e.tipo===v?'selected':''}>${v==='privada'?'Privada':'Pública'}</option>`).join('')}
+            ${['privada', 'publica'].map((v) => `<option value="${v}" ${e.tipo === v ? 'selected' : ''}>${v === 'privada' ? 'Privada' : 'Pública'}</option>`).join('')}
           </select>
         </div>
-        <div class="field"><label>Logotipo</label>${logoUploadWidgetHTML('f_logo', e.logotipo||'')}</div>
+        <div class="field"><label>Logotipo</label>${logoUploadWidgetHTML('f_logo', e.logotipo || '')}</div>
       </div>
     </div>
 
     <div class="card">
       <h3>Endereços <small>Uma ou mais unidades/endereços da empresa</small></h3>
       <div id="lista_enderecos">
-        ${enderecos.map((end,i)=>`
+        ${enderecos
+          .map(
+            (end, i) => `
           <div class="field" style="display:flex;gap:8px;align-items:flex-end;">
-            <div style="flex:1;"><input class="end_input" value="${end}" placeholder="Endereço completo"></div>
+            <div style="flex:1;"><input class="end_input" value="${escaparHtml(end)}" placeholder="Endereço completo"></div>
             <button class="btn btn-ghost btn-sm" onclick="removerEndereco(${i})">Remover</button>
           </div>
-        `).join('')}
+        `
+          )
+          .join('')}
       </div>
       <button class="btn btn-ghost btn-sm" onclick="adicionarEnderecoTemp()">+ Adicionar outro endereço</button>
     </div>
@@ -93,19 +101,19 @@ function pageEmpresa(){
       <div class="grid2">
         <div class="field"><label>Plano contratado</label>
           <select id="f_plano">
-            ${['Essencial','Profissional','Enterprise'].map(v=>`<option value="${v}" ${e.faturamento?.plano===v?'selected':''}>${v}</option>`).join('')}
+            ${['Essencial', 'Profissional', 'Enterprise'].map((v) => `<option value="${v}" ${e.faturamento?.plano === v ? 'selected' : ''}>${v}</option>`).join('')}
           </select>
         </div>
         <div class="field"><label>Periodicidade do plano</label>
           <select id="f_periodicidade_plano">
-            ${['Mensal','Semestral','Anual'].map(v=>`<option value="${v}" ${e.faturamento?.periodicidade===v?'selected':''}>${v}</option>`).join('')}
+            ${['Mensal', 'Semestral', 'Anual'].map((v) => `<option value="${v}" ${e.faturamento?.periodicidade === v ? 'selected' : ''}>${v}</option>`).join('')}
           </select>
         </div>
-        <div class="field"><label>Valor mensal (R$)</label><input id="f_valor" type="number" step="0.01" value="${e.faturamento?.valorMensal||''}"></div>
-        <div class="field"><label>Início do contrato</label><input id="f_data_contrato" type="date" value="${e.faturamento?.dataInicio||''}"></div>
+        <div class="field"><label>Valor mensal (R$)</label><input id="f_valor" type="number" step="0.01" value="${e.faturamento?.valorMensal || ''}"></div>
+        <div class="field"><label>Início do contrato</label><input id="f_data_contrato" type="date" value="${e.faturamento?.dataInicio || ''}"></div>
         <div class="field"><label>Forma de pagamento</label>
           <select id="f_pagamento">
-            ${['Boleto','Cartão de crédito','Pix','Transferência'].map(v=>`<option value="${v}" ${e.faturamento?.formaPagamento===v?'selected':''}>${v}</option>`).join('')}
+            ${['Boleto', 'Cartão de crédito', 'Pix', 'Transferência'].map((v) => `<option value="${v}" ${e.faturamento?.formaPagamento === v ? 'selected' : ''}>${v}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -114,10 +122,10 @@ function pageEmpresa(){
       <div class="grid2">
         <div class="field"><label>Status</label>
           <select id="f_status_pagamento">
-            ${['Em dia','Pendente','Atrasado','Cancelado'].map(v=>`<option value="${v}" ${e.faturamento?.statusPagamento===v?'selected':(v==='Em dia'&&!e.faturamento?.statusPagamento?'selected':'')}>${v}</option>`).join('')}
+            ${['Em dia', 'Pendente', 'Atrasado', 'Cancelado'].map((v) => `<option value="${v}" ${e.faturamento?.statusPagamento === v ? 'selected' : v === 'Em dia' && !e.faturamento?.statusPagamento ? 'selected' : ''}>${v}</option>`).join('')}
           </select>
         </div>
-        <div class="field"><label>Próxima cobrança</label><input id="f_proxima_cobranca" type="date" value="${e.faturamento?.proximaCobranca||''}"></div>
+        <div class="field"><label>Próxima cobrança</label><input id="f_proxima_cobranca" type="date" value="${e.faturamento?.proximaCobranca || ''}"></div>
       </div>
     </div>
 
@@ -130,31 +138,34 @@ function pageEmpresa(){
 
 // Endereços são editados em inputs soltos (sem re-render a cada tecla, pra não
 // perder o foco) e só consolidados no array quando salva ou adiciona/remove.
-function lerEnderecosDaTela(){
-  return Array.from(document.querySelectorAll('.end_input')).map(i=>i.value).filter(v=>v.trim()!=='');
+function lerEnderecosDaTela() {
+  return Array.from(document.querySelectorAll('.end_input'))
+    .map((i) => i.value)
+    .filter((v) => v.trim() !== '');
 }
-function adicionarEnderecoTemp(){
+function adicionarEnderecoTemp() {
   const atuais = lerEnderecosDaTela();
   atuais.push('');
   state.empresa = state.empresa || {};
   state.empresa.enderecos = atuais;
   render();
 }
-function removerEndereco(idx){
+function removerEndereco(idx) {
   const atuais = lerEnderecosDaTela();
-  atuais.splice(idx,1);
+  atuais.splice(idx, 1);
   state.empresa = state.empresa || {};
-  state.empresa.enderecos = atuais.length?atuais:[''];
+  state.empresa.enderecos = atuais.length ? atuais : [''];
   render();
 }
 
-async function salvarEmpresa(){
+async function salvarEmpresa() {
   const erroEl = document.getElementById('erro_empresa');
   erroEl.innerHTML = '';
 
   const cnpj = document.getElementById('f_cnpj').value.trim();
-  if(!validarCNPJ(cnpj)){
-    erroEl.innerHTML = '<p class="small-muted" style="color:var(--iniciar);margin-top:8px;">CNPJ inválido — confira o número digitado (dígito verificador não confere).</p>';
+  if (!validarCNPJ(cnpj)) {
+    erroEl.innerHTML =
+      '<p class="small-muted" style="color:var(--iniciar);margin-top:8px;">CNPJ inválido — confira o número digitado (dígito verificador não confere).</p>';
     return;
   }
 
@@ -165,23 +176,27 @@ async function salvarEmpresa(){
   //    Se outro tenant já usa esse CNPJ, o banco recusa (índice único) e
   //    devolve erro — é assim que detectamos duplicidade ENTRE empresas.
   const { error: erroCnpj } = await sb.from('empresas').update({ cnpj }).eq('id', empresaIdAtual);
-  if(erroCnpj){
-    if(erroCnpj.code === '23505' || /duplicate|unique/i.test(erroCnpj.message||'')){
-      erroEl.innerHTML = '<p class="small-muted" style="color:var(--iniciar);margin-top:8px;">CNPJ já cadastrado nesta instância. Se isso for um erro, entre em contato com o suporte.</p>';
+  if (erroCnpj) {
+    if (erroCnpj.code === '23505' || /duplicate|unique/i.test(erroCnpj.message || '')) {
+      erroEl.innerHTML =
+        '<p class="small-muted" style="color:var(--iniciar);margin-top:8px;">CNPJ já cadastrado nesta instância. Se isso for um erro, entre em contato com o suporte.</p>';
     } else {
-      erroEl.innerHTML = '<p class="small-muted" style="color:var(--iniciar);margin-top:8px;">Não foi possível salvar agora. Tente novamente.</p>';
+      erroEl.innerHTML =
+        '<p class="small-muted" style="color:var(--iniciar);margin-top:8px;">Não foi possível salvar agora. Tente novamente.</p>';
     }
     return;
   }
 
-  const carimboAnterior = state.empresa && state.empresa.criadoEm
-    ? { tenantId: state.empresa.tenantId, criadoPor: state.empresa.criadoPor, criadoEm: state.empresa.criadoEm }
-    : { tenantId: empresaIdAtual, criadoPor: meuPerfilId, criadoEm: new Date().toISOString() };
+  const carimboAnterior =
+    state.empresa && state.empresa.criadoEm
+      ? { tenantId: state.empresa.tenantId, criadoPor: state.empresa.criadoPor, criadoEm: state.empresa.criadoEm }
+      : { tenantId: empresaIdAtual, criadoPor: meuPerfilId, criadoEm: new Date().toISOString() };
 
   state.empresa = {
     razaoSocial: document.getElementById('f_razao').value || 'Empresa sem nome',
     nomeFantasia: document.getElementById('f_fantasia').value,
-    cnpj, segmento: document.getElementById('f_segmento').value,
+    cnpj,
+    segmento: document.getElementById('f_segmento').value,
     segmentoDetalhe: document.getElementById('f_segmento_detalhe')?.value || '',
     porte: document.getElementById('f_porte').value,
     tipo: document.getElementById('f_tipo').value,
@@ -198,21 +213,22 @@ async function salvarEmpresa(){
       // Preenchido futuramente pela integração com o gateway de pagamento
       // (ver conversa sobre Asaas) — por enquanto não existe, e o status
       // acima é atualizado manualmente.
-      idAssinaturaGateway: e.faturamento?.idAssinaturaGateway || null,
+      idAssinaturaGateway: empresaAnterior?.faturamento?.idAssinaturaGateway || null,
     },
     estado: 'Ativa',
     ...carimboAnterior,
-    atualizadoPor: meuPerfilId, atualizadoEm: new Date().toISOString(),
+    atualizadoPor: meuPerfilId,
+    atualizadoEm: new Date().toISOString(),
   };
 
-  if(!jaEstavaAtiva){
+  if (!jaEstavaAtiva) {
     registrarAuditoria('empresa.criada', { razaoSocial: state.empresa.razaoSocial, cnpj });
     showToast('Empresa cadastrada com sucesso. Módulo Estrutura Organizacional liberado.');
   } else {
-    const camposComparar = ['razaoSocial','nomeFantasia','cnpj','segmento','porte','tipo','logotipo'];
+    const camposComparar = ['razaoSocial', 'nomeFantasia', 'cnpj', 'segmento', 'porte', 'tipo', 'logotipo'];
     const alteracoes = camposComparar
-      .filter(campo => empresaAnterior[campo] !== state.empresa[campo])
-      .map(campo => ({ campo, valorAnterior: empresaAnterior[campo], novoValor: state.empresa[campo] }));
+      .filter((campo) => empresaAnterior[campo] !== state.empresa[campo])
+      .map((campo) => ({ campo, valorAnterior: empresaAnterior[campo], novoValor: state.empresa[campo] }));
     registrarAuditoria('empresa.atualizada', { razaoSocial: state.empresa.razaoSocial, alteracoes });
     showToast('Dados da empresa atualizados.');
   }

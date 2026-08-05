@@ -1,0 +1,39 @@
+name: CI
+
+# Roda em todo push e Pull Request pra main — se algum desses passos
+# falhar, o GitHub mostra isso claramente no PR (e, se a proteção de
+# branch estiver ativada — ver README.md — chega a BLOQUEAR o merge até
+# corrigir). É exatamente isso que faltava: hoje nada impede um código
+# quebrado de ir pra main; depois deste arquivo, passa a impedir.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verificacoes:
+    name: Sintaxe, Lint e Formatação
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixa o código
+        uses: actions/checkout@v4
+
+      - name: Instala o Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instala as dependências
+        run: npm ci
+
+      - name: Verifica a sintaxe de todo arquivo .js (nunca deixa passar um arquivo quebrado)
+        run: npm run check:sintaxe
+
+      - name: ESLint (erros de código — variável duplicada, chave duplicada etc.)
+        run: npm run lint
+
+      - name: Prettier (formatação consistente — só verifica, não formata sozinho aqui)
+        run: npm run format:check

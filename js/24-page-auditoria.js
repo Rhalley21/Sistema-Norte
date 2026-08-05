@@ -39,50 +39,56 @@ let _auditoriaEventos = [];
 let _auditoriaFiltroEvento = '';
 let _auditoriaFiltroPessoa = '';
 
-async function carregarAuditoria(){
-  _auditoriaCarregando = true; render();
-  const { data, error } = await sb.from('auditoria')
+async function carregarAuditoria() {
+  _auditoriaCarregando = true;
+  render();
+  const { data, error } = await sb
+    .from('auditoria')
     .select('id, evento, detalhes, criado_por, criado_em')
     .eq('empresa_id', empresaIdAtual)
     .order('criado_em', { ascending: false })
     .limit(500);
-  if(error) showToast('Não foi possível carregar a auditoria: ' + error.message);
+  if (error) showToast('Não foi possível carregar a auditoria: ' + error.message);
   _auditoriaEventos = data || [];
   _auditoriaCarregando = false;
   _auditoriaJaCarregou = true;
   render();
 }
 
-function formatarDetalhesAuditoria(detalhes){
-  if(!detalhes || !Object.keys(detalhes).length) return '—';
-  return Object.entries(detalhes).map(([chave,valor])=>{
-    let v = String(valor);
-    // Encurta UUIDs (ids compridos) pra não poluir a tabela — mostra só o começo.
-    if(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)) v = v.slice(0,8)+'…';
-    return `${chave}: ${v}`;
-  }).join(' · ');
+function formatarDetalhesAuditoria(detalhes) {
+  if (!detalhes || !Object.keys(detalhes).length) return '—';
+  return Object.entries(detalhes)
+    .map(([chave, valor]) => {
+      let v = String(valor);
+      // Encurta UUIDs (ids compridos) pra não poluir a tabela — mostra só o começo.
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)) v = v.slice(0, 8) + '…';
+      return `${escaparHtml(chave)}: ${escaparHtml(v)}`;
+    })
+    .join(' · ');
 }
-function nomePorPerfilId(perfilId){
-  return _perfisEmpresa.find(p=>p.id===perfilId)?.nome || 'Alguém (conta removida)';
+function nomePorPerfilId(perfilId) {
+  const nome = _perfisEmpresa.find((p) => p.id === perfilId)?.nome || 'Alguém (conta removida)';
+  return escaparHtml(nome);
 }
 
-function pageAuditoria(){
+function pageAuditoria() {
   // BUG-CLASSE evitada de propósito: usa uma flag de "já carregou" em vez de
   // checar se a lista está vazia (o mesmo erro corrigido na v0.14.1 da tela
   // de Super Admin — lista vazia é uma resposta válida, não motivo pra
   // ficar recarregando pra sempre).
-  if(!_auditoriaJaCarregou && !_auditoriaCarregando){
+  if (!_auditoriaJaCarregou && !_auditoriaCarregando) {
     carregarAuditoria();
   }
 
-  const tiposDisponiveis = [...new Set(_auditoriaEventos.map(e=>e.evento))].sort();
-  const pessoasDisponiveis = [...new Set(_auditoriaEventos.map(e=>e.criado_por).filter(Boolean))]
-    .map(id=>({ id, nome: nomePorPerfilId(id) }))
-    .sort((a,b)=>a.nome.localeCompare(b.nome));
+  const tiposDisponiveis = [...new Set(_auditoriaEventos.map((e) => e.evento))].sort();
+  const pessoasDisponiveis = [...new Set(_auditoriaEventos.map((e) => e.criado_por).filter(Boolean))]
+    .map((id) => ({ id, nome: nomePorPerfilId(id) }))
+    .sort((a, b) => a.nome.localeCompare(b.nome));
 
-  const eventosFiltrados = _auditoriaEventos.filter(e=>
-    (!_auditoriaFiltroEvento || e.evento === _auditoriaFiltroEvento) &&
-    (!_auditoriaFiltroPessoa || e.criado_por === _auditoriaFiltroPessoa)
+  const eventosFiltrados = _auditoriaEventos.filter(
+    (e) =>
+      (!_auditoriaFiltroEvento || e.evento === _auditoriaFiltroEvento) &&
+      (!_auditoriaFiltroPessoa || e.criado_por === _auditoriaFiltroPessoa)
   );
 
   return `
@@ -98,13 +104,13 @@ function pageAuditoria(){
         <div class="field"><label>Filtrar por tipo de evento</label>
           <select onchange="_auditoriaFiltroEvento=this.value; render();">
             <option value="">Todos</option>
-            ${tiposDisponiveis.map(t=>`<option value="${t}" ${_auditoriaFiltroEvento===t?'selected':''}>${AUDITORIA_LABEL[t]||t}</option>`).join('')}
+            ${tiposDisponiveis.map((t) => `<option value="${t}" ${_auditoriaFiltroEvento === t ? 'selected' : ''}>${AUDITORIA_LABEL[t] || t}</option>`).join('')}
           </select>
         </div>
         <div class="field"><label>Filtrar por pessoa</label>
           <select onchange="_auditoriaFiltroPessoa=this.value; render();">
             <option value="">Todas</option>
-            ${pessoasDisponiveis.map(p=>`<option value="${p.id}" ${_auditoriaFiltroPessoa===p.id?'selected':''}>${p.nome}</option>`).join('')}
+            ${pessoasDisponiveis.map((p) => `<option value="${p.id}" ${_auditoriaFiltroPessoa === p.id ? 'selected' : ''}>${p.nome}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -112,20 +118,28 @@ function pageAuditoria(){
 
     <div class="card">
       <h3>Eventos <small>${eventosFiltrados.length} de ${_auditoriaEventos.length} (últimos 500 registros)</small></h3>
-      ${_auditoriaCarregando ? '<div class="empty">Carregando…</div>' : (
-        eventosFiltrados.length ? `
+      ${
+        _auditoriaCarregando
+          ? '<div class="empty">Carregando…</div>'
+          : eventosFiltrados.length
+            ? `
           <table><thead><tr><th>Quando</th><th>Evento</th><th>Quem fez</th><th>Detalhes</th></tr></thead><tbody>
-            ${eventosFiltrados.map(e=>`
+            ${eventosFiltrados
+              .map(
+                (e) => `
               <tr>
                 <td class="small-muted" style="white-space:nowrap;">${new Date(e.criado_em).toLocaleString('pt-BR')}</td>
-                <td><b>${AUDITORIA_LABEL[e.evento]||e.evento}</b><br><span class="small-muted" style="font-family:var(--mono);font-size:10.5px;">${e.evento}</span></td>
+                <td><b>${AUDITORIA_LABEL[e.evento] || e.evento}</b><br><span class="small-muted" style="font-family:var(--mono);font-size:10.5px;">${e.evento}</span></td>
                 <td>${e.criado_por ? nomePorPerfilId(e.criado_por) : '<span class="small-muted">Sistema</span>'}</td>
                 <td class="small-muted" style="max-width:220px;font-size:11.5px;word-break:break-word;white-space:normal;">${formatarDetalhesAuditoria(e.detalhes)}</td>
               </tr>
-            `).join('')}
+            `
+              )
+              .join('')}
           </tbody></table>
-        ` : '<div class="empty">Nenhum evento encontrado com esse filtro.</div>'
-      )}
+        `
+            : '<div class="empty">Nenhum evento encontrado com esse filtro.</div>'
+      }
     </div>
   `;
 }

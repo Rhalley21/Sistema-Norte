@@ -1,4 +1,4 @@
-const PAPEL_LABEL_UI = { owner:'Dono', rh:'RH', lider:'Gestor/Líder', colaborador:'Colaborador' };
+const PAPEL_LABEL_UI = { owner: 'Dono', rh: 'RH', lider: 'Gestor/Líder', colaborador: 'Colaborador' };
 let _perfisEmpresa = [];
 let _convitesEmpresa = [];
 let _papelNovoConvite = 'colaborador';
@@ -9,106 +9,179 @@ let _gerandoConvite = false;
 
 let _historicoAcessos = [];
 
-async function carregarUsuarios(){
-  const { data: perfis } = await sb.from('perfis').select('id, nome, papel, desativado, estrutura_nome, escopo_estendido').eq('empresa_id', empresaIdAtual);
+async function carregarUsuarios() {
+  const { data: perfis } = await sb
+    .from('perfis')
+    .select('id, nome, papel, desativado, estrutura_nome, escopo_estendido')
+    .eq('empresa_id', empresaIdAtual);
   _perfisEmpresa = perfis || [];
-  const { data: convites } = await sb.from('convites').select('id, codigo, papel, criado_em, estrutura_nome')
-    .eq('empresa_id', empresaIdAtual).eq('usado', false).order('criado_em', { ascending:false });
+  const { data: convites } = await sb
+    .from('convites')
+    .select('id, codigo, papel, criado_em, estrutura_nome')
+    .eq('empresa_id', empresaIdAtual)
+    .eq('usado', false)
+    .order('criado_em', { ascending: false });
   _convitesEmpresa = convites || [];
-  const { data: acessos } = await sb.from('auditoria').select('criado_por, criado_em')
-    .eq('empresa_id', empresaIdAtual).eq('evento', 'usuario.login').order('criado_em', { ascending:false }).limit(50);
+  const { data: acessos } = await sb
+    .from('auditoria')
+    .select('criado_por, criado_em')
+    .eq('empresa_id', empresaIdAtual)
+    .eq('evento', 'usuario.login')
+    .order('criado_em', { ascending: false })
+    .limit(50);
   _historicoAcessos = acessos || [];
   render();
 }
-function ultimoAcessoDe(perfilId){
-  const registro = _historicoAcessos.find(a=>a.criado_por===perfilId);
+function ultimoAcessoDe(perfilId) {
+  const registro = _historicoAcessos.find((a) => a.criado_por === perfilId);
   return registro ? registro.criado_em : null;
 }
-function formatarDataHora(iso){
-  if(!iso) return null;
+function formatarDataHora(iso) {
+  if (!iso) return null;
   const d = new Date(iso);
   return d.toLocaleString('pt-BR');
 }
-function gerarCodigoConvite(){
-  return Math.random().toString(36).slice(2,8).toUpperCase() + '-' + Math.random().toString(36).slice(2,6).toUpperCase();
-}
-async function gerarConvite(){
-  if(meuPapelReal !== 'owner' && _papelNovoConvite === 'rh'){
-    _erroConvite = 'Apenas o Administrador pode convidar um novo RH.'; render(); return;
+function gerarCodigoConvite() {
+  // BUG DE SEGURANÇA CORRIGIDO: Math.random() não é criptograficamente
+  // seguro — é previsível o suficiente pra, em teoria, ser adivinhado.
+  // Como esse código dá acesso de entrada numa empresa, usamos
+  // crypto.getRandomValues() (a mesma família segura já usada em uid(),
+  // via crypto.randomUUID()) pra gerar os caracteres de verdade
+  // aleatórios, criptograficamente seguros.
+  const alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+  const bytes = new Uint8Array(10);
+  (window.crypto || window.msCrypto).getRandomValues(bytes);
+  let codigo = '';
+  for (let i = 0; i < 10; i++) {
+    if (i === 6) codigo += '-';
+    codigo += alfabeto[bytes[i] % alfabeto.length];
   }
-  _gerandoConvite = true; _erroConvite = null; render();
+  return codigo;
+}
+async function gerarConvite() {
+  if (meuPapelReal !== 'owner' && _papelNovoConvite === 'rh') {
+    _erroConvite = 'Apenas o Administrador pode convidar um novo RH.';
+    render();
+    return;
+  }
+  _gerandoConvite = true;
+  _erroConvite = null;
+  render();
   const codigo = gerarCodigoConvite();
-  const nodeEstrutura = state.estrutura.find(n=>n.id===_estruturaNovoConvite);
+  const nodeEstrutura = state.estrutura.find((n) => n.id === _estruturaNovoConvite);
   const emailDestino = _emailNovoConvite.trim() || null;
   const { error } = await sb.from('convites').insert({
-    empresa_id: empresaIdAtual, codigo, papel: _papelNovoConvite, criado_por: meuPerfilId,
+    empresa_id: empresaIdAtual,
+    codigo,
+    papel: _papelNovoConvite,
+    criado_por: meuPerfilId,
     estrutura_id: nodeEstrutura ? nodeEstrutura.id : null,
     estrutura_nome: nodeEstrutura ? nodeEstrutura.nome : null,
     email_destino: emailDestino,
   });
   _gerandoConvite = false;
-  if(error){ _erroConvite = 'Não foi possível gerar o convite. Tente novamente.'; render(); return; }
-  if(emailDestino){
+  if (error) {
+    _erroConvite = 'Não foi possível gerar o convite. Tente novamente.';
+    render();
+    return;
+  }
+  if (emailDestino) {
     const enviado = await enviarEmailNotificacao(
       emailDestino,
-      `Você foi convidado para a Plataforma NORTE — ${state.empresa?.nomeFantasia||''}`,
+      `Você foi convidado para a Plataforma NORTE — ${state.empresa?.nomeFantasia || ''}`,
       emailWrapperHTML(
         'Você recebeu um convite',
-        `Você foi convidado para acessar a Plataforma NORTE como <b>${PAPEL_LABEL_UI[_papelNovoConvite]}</b>${nodeEstrutura?` (${nodeEstrutura.nome})`:''}. Use o código abaixo na tela de cadastro:<br><br><span style="font-family:monospace;font-size:18px;letter-spacing:2px;">${codigo}</span>`
+        `Você foi convidado para acessar a Plataforma NORTE como <b>${PAPEL_LABEL_UI[_papelNovoConvite]}</b>${nodeEstrutura ? ` (${escaparHtml(nodeEstrutura.nome)})` : ''}. Use o código abaixo na tela de cadastro:<br><br><span style="font-family:monospace;font-size:18px;letter-spacing:2px;">${codigo}</span>`
       )
     );
-    showToast(enviado ? `Convite gerado e enviado para ${emailDestino}.` : 'Convite gerado, mas não foi possível enviar o e-mail — copie o código manualmente.');
+    showToast(
+      enviado
+        ? `Convite gerado e enviado para ${emailDestino}.`
+        : 'Convite gerado, mas não foi possível enviar o e-mail — copie o código manualmente.'
+    );
   }
   _emailNovoConvite = '';
   await carregarUsuarios();
 }
-function copiarCodigo(codigo){
+function copiarCodigo(codigo) {
   navigator.clipboard?.writeText(codigo);
   showToast('Código copiado!');
 }
-async function alternarAtivoPerfil(perfilId, desativarAgora){
-  if(desativarAgora && !confirm('Deseja realmente remover este usuário? Esta ação não apaga seu histórico (RN025).')) return;
+async function alternarAtivoPerfil(perfilId, desativarAgora) {
+  if (desativarAgora && !confirm('Deseja realmente remover este usuário? Esta ação não apaga seu histórico (RN025).'))
+    return;
   const { error } = await sb.from('perfis').update({ desativado: desativarAgora }).eq('id', perfilId);
-  if(error){ showToast('Não foi possível atualizar o status da conta.'); return; }
+  if (error) {
+    showToast('Não foi possível atualizar o status da conta.');
+    return;
+  }
   registrarAuditoria(desativarAgora ? 'usuario.desativado' : 'usuario.reativado', { perfilId });
-  showToast(desativarAgora ? 'Conta desativada. Todo o histórico de avaliações dessa pessoa continua preservado.' : 'Conta reativada.');
+  showToast(
+    desativarAgora
+      ? 'Conta desativada. Todo o histórico de avaliações dessa pessoa continua preservado.'
+      : 'Conta reativada.'
+  );
   await carregarUsuarios();
 }
-async function mudarPapelPerfil(perfilId, novoPapel){
-  if(!novoPapel) return;
-  const p = _perfisEmpresa.find(pf=>pf.id===perfilId);
-  if(!p) return;
+async function mudarPapelPerfil(perfilId, novoPapel) {
+  if (!novoPapel) return;
+  const p = _perfisEmpresa.find((pf) => pf.id === perfilId);
+  if (!p) return;
   // Mesma regra do convite: só o Administrador pode promover alguém a RH.
-  if(novoPapel === 'rh' && meuPapelReal !== 'owner'){
+  if (novoPapel === 'rh' && meuPapelReal !== 'owner') {
     showToast('Só o Administrador pode promover alguém a RH.');
     render();
     return;
   }
-  if(!confirm(`Mudar o papel de ${p.nome||'esta pessoa'} de ${PAPEL_LABEL_UI[p.papel]||p.papel} para ${PAPEL_LABEL_UI[novoPapel]}?`)) { render(); return; }
+  if (
+    !confirm(
+      `Mudar o papel de ${p.nome || 'esta pessoa'} de ${PAPEL_LABEL_UI[p.papel] || p.papel} para ${PAPEL_LABEL_UI[novoPapel]}?`
+    )
+  ) {
+    render();
+    return;
+  }
   const { error } = await sb.from('perfis').update({ papel: novoPapel }).eq('id', perfilId);
-  if(error){ showToast('Não foi possível mudar o papel.'); return; }
+  if (error) {
+    showToast('Não foi possível mudar o papel.');
+    return;
+  }
   registrarAuditoria('usuario.papel_alterado', { perfilId, papelAnterior: p.papel, papelNovo: novoPapel });
-  showToast(`${p.nome||'Pessoa'} agora é ${PAPEL_LABEL_UI[novoPapel]}.`);
+  showToast(`${p.nome || 'Pessoa'} agora é ${PAPEL_LABEL_UI[novoPapel]}.`);
   await carregarUsuarios();
   render();
 }
-async function alternarEscopoEstendido(perfilId, concederAgora){
+async function alternarEscopoEstendido(perfilId, concederAgora) {
   const { error } = await sb.from('perfis').update({ escopo_estendido: concederAgora }).eq('id', perfilId);
-  if(error){ showToast('Não foi possível atualizar a permissão.'); return; }
+  if (error) {
+    showToast('Não foi possível atualizar a permissão.');
+    return;
+  }
   registrarAuditoria(concederAgora ? 'escopo_estendido.concedido' : 'escopo_estendido.revogado', { perfilId });
-  showToast(concederAgora ? 'Escopo estendido concedido — este Gestor agora vê o dashboard consolidado da empresa toda (exceção explícita do Administrador).' : 'Escopo estendido revogado — o Gestor volta a ver só a própria equipe.');
+  showToast(
+    concederAgora
+      ? 'Escopo estendido concedido — este Gestor agora vê o dashboard consolidado da empresa toda (exceção explícita do Administrador).'
+      : 'Escopo estendido revogado — o Gestor volta a ver só a própria equipe.'
+  );
   await carregarUsuarios();
 }
-function pageUsuarios(){
+function pageUsuarios() {
   const souOwner = meuPapelReal === 'owner';
   const opcoesPapel = souOwner
-    ? [['colaborador','Colaborador'],['lider','Gestor/Líder'],['rh','RH']]
-    : [['colaborador','Colaborador'],['lider','Gestor/Líder']];
+    ? [
+        ['colaborador', 'Colaborador'],
+        ['lider', 'Gestor/Líder'],
+        ['rh', 'RH'],
+      ]
+    : [
+        ['colaborador', 'Colaborador'],
+        ['lider', 'Gestor/Líder'],
+      ];
   return `
     <div class="page-head">
       <div class="eyebrow">Fundação</div>
       <h1>Usuários & Acesso</h1>
-      <p class="page-desc">Convide RH, Gestores e Colaboradores para acessar esta empresa, cada um com o papel correto e (opcionalmente) já vinculado a uma unidade/setor.${souOwner?'':' Como RH, você pode convidar Gestores e Colaboradores — apenas o Administrador pode criar outro usuário de RH.'}</p>
+      <p class="page-desc">Convide RH, Gestores e Colaboradores para acessar esta empresa, cada um com o papel correto e (opcionalmente) já vinculado a uma unidade/setor.${souOwner ? '' : ' Como RH, você pode convidar Gestores e Colaboradores — apenas o Administrador pode criar outro usuário de RH.'}</p>
     </div>
 
     <div class="card">
@@ -116,86 +189,114 @@ function pageUsuarios(){
       <table>
         <thead><tr><th>Nome</th><th>Papel</th><th>Vínculo na estrutura</th><th>Status</th><th>Escopo estendido</th><th>Último acesso</th><th></th></tr></thead>
         <tbody>
-          ${_perfisEmpresa.map(p => `
-            <tr style="${p.desativado?'opacity:.55;':''}">
-              <td>${p.nome || '(sem nome)'}${p.id === meuPerfilId ? ' (você)' : ''}</td>
+          ${_perfisEmpresa
+            .map(
+              (p) => `
+            <tr style="${p.desativado ? 'opacity:.55;' : ''}">
+              <td>${escaparHtml(p.nome) || '(sem nome)'}${p.id === meuPerfilId ? ' (você)' : ''}</td>
               <td><span class="tag">${PAPEL_LABEL_UI[p.papel] || p.papel}</span></td>
               <td class="small-muted">${p.estrutura_nome || '—'}</td>
               <td>${p.desativado ? '<span class="pill pill-iniciar">Desativado</span>' : '<span class="pill pill-alavancar">Ativo</span>'}</td>
-              <td class="small-muted">${p.papel==='lider' ? (p.escopo_estendido ? '<span class="pill pill-alavancar">Estendido (empresa toda)</span>' : 'Própria equipe') : '—'}</td>
+              <td class="small-muted">${p.papel === 'lider' ? (p.escopo_estendido ? '<span class="pill pill-alavancar">Estendido (empresa toda)</span>' : 'Própria equipe') : '—'}</td>
               <td class="small-muted">${formatarDataHora(ultimoAcessoDe(p.id)) || 'nunca'}</td>
               <td>
-                ${p.id !== meuPerfilId ? `
-                  <button class="btn btn-ghost btn-sm" onclick="alternarAtivoPerfil('${p.id}', ${!p.desativado})">${p.desativado?'Reativar':'Desativar'}</button>
-                  ${souOwner && p.papel==='lider' ? `<button class="btn btn-ghost btn-sm" onclick="alternarEscopoEstendido('${p.id}', ${!p.escopo_estendido})">${p.escopo_estendido?'Revogar escopo estendido':'Conceder escopo estendido'}</button>` : ''}
-                  ${p.papel !== 'owner' ? `
+                ${
+                  p.id !== meuPerfilId
+                    ? `
+                  <button class="btn btn-ghost btn-sm" onclick="alternarAtivoPerfil('${p.id}', ${!p.desativado})">${p.desativado ? 'Reativar' : 'Desativar'}</button>
+                  ${souOwner && p.papel === 'lider' ? `<button class="btn btn-ghost btn-sm" onclick="alternarEscopoEstendido('${p.id}', ${!p.escopo_estendido})">${p.escopo_estendido ? 'Revogar escopo estendido' : 'Conceder escopo estendido'}</button>` : ''}
+                  ${
+                    p.papel !== 'owner'
+                      ? `
                     <select onchange="mudarPapelPerfil('${p.id}', this.value)" style="padding:4px 8px;font-size:12px;">
                       <option value="">Mudar papel para…</option>
-                      ${['rh','lider','colaborador'].filter(papel=>papel!==p.papel && (souOwner || papel!=='rh')).map(papel=>`<option value="${papel}">${PAPEL_LABEL_UI[papel]}</option>`).join('')}
+                      ${['rh', 'lider', 'colaborador']
+                        .filter((papel) => papel !== p.papel && (souOwner || papel !== 'rh'))
+                        .map((papel) => `<option value="${papel}">${PAPEL_LABEL_UI[papel]}</option>`)
+                        .join('')}
                     </select>
-                  ` : ''}
-                ` : ''}
+                  `
+                      : ''
+                  }
+                `
+                    : ''
+                }
               </td>
             </tr>
-          `).join('')}
+          `
+            )
+            .join('')}
         </tbody>
       </table>
       <div class="notice" style="margin-top:12px;">RN025: desativar uma conta nunca apaga dados — todo o histórico de avaliações em que essa pessoa participou (como avaliador ou avaliado) permanece intacto. A pessoa só perde o acesso ao sistema.</div>
       <div class="notice info">Por padrão, todo Gestor só vê dados agregados da própria equipe. O Administrador pode conceder, caso a caso, uma exceção explícita (escopo estendido) para um Gestor ver o dashboard consolidado da empresa toda.</div>
     </div>
 
-    ${souOwner && _historicoAcessos.length ? `
+    ${
+      souOwner && _historicoAcessos.length
+        ? `
     <div class="card">
       <h3>Histórico de acessos recentes <small>Últimos 50 logins — quem entrou e quando (não pode ser apagado nem editado)</small></h3>
       <table>
         <thead><tr><th>Pessoa</th><th>Papel</th><th>Data/hora</th></tr></thead>
         <tbody>
-          ${_historicoAcessos.map(a=>{
-            const p = _perfisEmpresa.find(pf=>pf.id===a.criado_por);
-            return `<tr><td>${p?p.nome:'(pessoa removida)'}</td><td><span class="tag">${p?PAPEL_LABEL_UI[p.papel]:'—'}</span></td><td class="small-muted">${formatarDataHora(a.criado_em)}</td></tr>`;
-          }).join('')}
+          ${_historicoAcessos
+            .map((a) => {
+              const p = _perfisEmpresa.find((pf) => pf.id === a.criado_por);
+              return `<tr><td>${p ? escaparHtml(p.nome) : '(pessoa removida)'}</td><td><span class="tag">${p ? PAPEL_LABEL_UI[p.papel] : '—'}</span></td><td class="small-muted">${formatarDataHora(a.criado_em)}</td></tr>`;
+            })
+            .join('')}
         </tbody>
       </table>
-    </div>` : ''}
+    </div>`
+        : ''
+    }
 
     <div class="card">
       <h3>Convidar nova pessoa <small>Gere um código e compartilhe por WhatsApp/e-mail — ou preencha o e-mail abaixo e o sistema manda pra pessoa automaticamente.</small></h3>
       <div class="grid3" style="align-items:end;">
         <div class="field" style="margin:0;"><label>Papel</label>
           <select onchange="_papelNovoConvite=this.value;">
-            ${opcoesPapel.map(([v,l])=>`<option value="${v}" ${_papelNovoConvite===v?'selected':''}>${l}</option>`).join('')}
+            ${opcoesPapel.map(([v, l]) => `<option value="${v}" ${_papelNovoConvite === v ? 'selected' : ''}>${l}</option>`).join('')}
           </select>
         </div>
         <div class="field" style="margin:0;"><label>Vínculo na estrutura <small>(opcional)</small></label>
           <select onchange="_estruturaNovoConvite=this.value;">
             <option value="">— sem vínculo —</option>
-            ${state.estrutura.map(n=>`<option value="${n.id}" ${_estruturaNovoConvite===n.id?'selected':''}>${n.nome} (${NIVEL_LABEL[n.tipo]})</option>`).join('')}
+            ${state.estrutura.map((n) => `<option value="${n.id}" ${_estruturaNovoConvite === n.id ? 'selected' : ''}>${escaparHtml(n.nome)} (${NIVEL_LABEL[n.tipo]})</option>`).join('')}
           </select>
         </div>
         <div class="field" style="margin:0;"><label>E-mail da pessoa <small>(opcional — envia o código automaticamente)</small></label>
           <input type="email" id="email_novo_convite" placeholder="pessoa@empresa.com" oninput="_emailNovoConvite=this.value;">
         </div>
       </div>
-      <button class="btn btn-primary" style="margin-top:12px;" onclick="gerarConvite()" ${_gerandoConvite?'disabled':''}>Gerar convite</button>
+      <button class="btn btn-primary" style="margin-top:12px;" onclick="gerarConvite()" ${_gerandoConvite ? 'disabled' : ''}>Gerar convite</button>
       ${_erroConvite ? `<p style="color:var(--iniciar);font-size:12.5px;margin-top:8px;">${_erroConvite}</p>` : ''}
-      ${_convitesEmpresa.length ? `
+      ${
+        _convitesEmpresa.length
+          ? `
         <table style="margin-top:14px;">
           <thead><tr><th>Código</th><th>Papel</th><th>Vínculo</th><th></th></tr></thead>
           <tbody>
-            ${_convitesEmpresa.map(c => `
+            ${_convitesEmpresa
+              .map(
+                (c) => `
               <tr>
                 <td style="font-family:var(--mono);">${c.codigo}</td>
                 <td><span class="tag">${PAPEL_LABEL_UI[c.papel] || c.papel}</span></td>
                 <td class="small-muted">${c.estrutura_nome || '—'}</td>
                 <td><button class="btn btn-sm btn-ghost" onclick="copiarCodigo('${c.codigo}')">Copiar</button></td>
               </tr>
-            `).join('')}
+            `
+              )
+              .join('')}
           </tbody>
         </table>
-      ` : '<div class="empty" style="margin-top:14px;">Nenhum convite pendente.</div>'}
+      `
+          : '<div class="empty" style="margin-top:14px;">Nenhum convite pendente.</div>'
+      }
     </div>
 
     <div class="notice info">Um usuário pode existir sem estar vinculado a um cargo (ex.: um Administrador puramente técnico). Mas todo Colaborador só participa de um ciclo de avaliação depois de ter um cargo vinculado — isso é garantido na aba <b>Colaboradores</b> (critério de aceite do módulo, PRD Cap. 5).</div>
   `;
 }
-
