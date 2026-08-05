@@ -3,6 +3,32 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.22.2 — Bug corrigido: texto dos botões ficava ilegível com cores escuras (white-label)
+A funcionalidade de white-label na interface (v0.21.1) mudava a cor de
+fundo dos botões principais, mas o texto tinha uma cor **fixa e escura**
+— pensada só pra funcionar com a cor padrão (dourado, um tom claro). Se a
+empresa escolhesse uma cor escura pra Identidade Visual, o resultado era
+texto escuro em cima de fundo escuro — praticamente ilegível.
+
+Corrigido em `js/02-core-helpers.js` e `css/style.css`: agora calcula
+automaticamente o contraste (luminância) da cor escolhida e usa texto
+claro ou escuro, o que fizer mais sentido. Testei com a própria cor azul
+marinho padrão do sistema (bem escura) e confirmei que o texto vira claro
+automaticamente — o cenário exato que causava o bug.
+
+## v0.22.1 — Webhooks: formato amigável pro Slack
+O Slack só entende mensagens no formato `{"text": "..."}` — diferente do
+JSON genérico que os outros webhooks recebem. Agora o gatilho detecta
+sozinho se a URL cadastrada é do Slack (contém `hooks.slack.com`) e, nesse
+caso, manda uma mensagem de texto legível em vez do JSON bruto. Pra
+qualquer outra URL, continua mandando o mesmo JSON de sempre — nada muda
+pra quem já está usando (testado com webhook.site na conversa).
+
+- **`sql/19-webhooks-formato-slack.sql`** (rodar depois do
+  `18-webhooks-eventos-dominio.sql`).
+- Tela de cadastro de webhook agora mostra um aviso "✅ URL do Slack
+  detectada" assim que você cola uma URL do Slack no campo.
+
 ## v0.22.0 — Webhooks públicos sobre eventos de domínio
 Reaproveita o barramento de eventos de domínio que já existe desde a
 v0.7.0 (`eventos_dominio` — ciclo.aberto, pdi.aprovado, diagnostico.gerado

@@ -87,7 +87,8 @@ function pageWebhooks(){
       <h3>Novo webhook</h3>
       ${!_webhookNovoAberto ? `<button class="btn btn-primary" onclick="_webhookNovoAberto=true; render();">+ Cadastrar webhook</button>` : `
         <div class="field"><label>Nome (rótulo interno)</label><input value="${_webhookNovoNome}" oninput="_webhookNovoNome=this.value;" placeholder="Ex: Slack do RH"></div>
-        <div class="field"><label>URL</label><input value="${_webhookNovoUrl}" oninput="_webhookNovoUrl=this.value;" placeholder="https://..."></div>
+        <div class="field"><label>URL</label><input id="webhook_novo_url_input" value="${_webhookNovoUrl}" oninput="_webhookNovoUrl=this.value; document.getElementById('aviso_slack_detectado').style.display = /hooks\.slack\.com/i.test(this.value) ? '' : 'none';" placeholder="https://..."></div>
+        <p id="aviso_slack_detectado" class="small-muted" style="color:var(--alavancar);margin-top:-8px;display:${/hooks\.slack\.com/i.test(_webhookNovoUrl) ? '' : 'none'};">✅ URL do Slack detectada — a mensagem vai chegar formatada como texto, não como JSON bruto.</p>
         <div class="field"><label>Eventos <small>(nenhum marcado = recebe todos)</small></label>
           <div class="chip-row">
             ${EVENTOS_DOMINIO_DISPONIVEIS.map(ev=>`

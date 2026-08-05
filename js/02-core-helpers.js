@@ -509,4 +509,13 @@ function aplicarTemaCoresInterface(corPrimaria){
   const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
   document.documentElement.style.setProperty('--gold', corPrimaria);
   document.documentElement.style.setProperty('--gold-soft', `rgba(${r},${g},${b},.16)`);
+  // BUG CORRIGIDO: o texto do botão principal (.btn-primary) tinha uma cor
+  // fixa e escura, pensada só pra funcionar com a cor padrão (dourado). Se
+  // a empresa escolhesse uma cor escura pra Identidade Visual, o texto
+  // escuro ficava quase invisível em cima de um botão também escuro (texto
+  // preto sobre fundo escuro). Agora calcula o contraste (luminância) da
+  // cor escolhida e usa texto claro ou escuro, o que fizer mais sentido.
+  const luminancia = (0.299*r + 0.587*g + 0.114*b) / 255;
+  const corTexto = luminancia > 0.6 ? '#1a1305' : '#ffffff';
+  document.documentElement.style.setProperty('--gold-text', corTexto);
 }
