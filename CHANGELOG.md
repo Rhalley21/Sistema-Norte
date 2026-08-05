@@ -3,6 +3,24 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.22.3 — Segundo bug de contraste corrigido (texto sumindo no menu "Ver como")
+A correção da v0.22.2 resolveu o botão principal (fundo mudava de cor
+junto com o texto), mas não cobria outro caso: em vários lugares — menu
+"Ver como (pré-visualização)", abas de avaliador, rótulos "eyebrow" — a
+mesma cor personalizável era usada como texto em cima do fundo **escuro e
+fixo** da barra lateral (que nunca muda). Se a empresa escolhesse uma cor
+também escura (ou parecida com o próprio fundo escuro do sistema), o
+texto ficava invisível — o "algumas cores brancas... desaparecem" que foi
+relatado.
+
+Corrigido em `js/02-core-helpers.js` e `css/style.css`: nova variável
+`--gold-on-dark`, calculada a partir da cor escolhida — se ela for escura
+demais pra contrastar com o fundo fixo, usa uma versão clareada
+automaticamente só nesses lugares específicos (menu de papéis, abas,
+rótulos, badges). Testei com a cor exata do próprio fundo do sistema
+(`#0a2647`) e com preto puro — os dois casos agora geram uma versão clara
+e legível, em vez de ficarem invisíveis.
+
 ## v0.22.2 — Bug corrigido: texto dos botões ficava ilegível com cores escuras (white-label)
 A funcionalidade de white-label na interface (v0.21.1) mudava a cor de
 fundo dos botões principais, mas o texto tinha uma cor **fixa e escura**

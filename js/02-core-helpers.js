@@ -518,4 +518,22 @@ function aplicarTemaCoresInterface(corPrimaria){
   const luminancia = (0.299*r + 0.587*g + 0.114*b) / 255;
   const corTexto = luminancia > 0.6 ? '#1a1305' : '#ffffff';
   document.documentElement.style.setProperty('--gold-text', corTexto);
+  // BUG CORRIGIDO (segundo caso): em vários lugares (menu de "ver como",
+  // abas de avaliador, rótulos "eyebrow"), a MESMA cor customizável era
+  // usada como texto em cima do fundo ESCURO E FIXO da barra lateral —
+  // diferente do botão (onde o fundo também muda de cor), aqui o fundo
+  // nunca muda, só o texto. Se a empresa escolhesse uma cor também escura
+  // (ou muito parecida com o fundo escuro do sistema), o texto ficava
+  // invisível — texto escuro sobre fundo escuro que nunca muda. Agora, se
+  // a cor escolhida for escura demais pra contrastar com esse fundo fixo,
+  // a versão usada nesses lugares é clareada automaticamente.
+  let corParaFundoEscuro = corPrimaria;
+  if(luminancia < 0.4){
+    const clarear = (v) => Math.round(v + (255-v)*0.55);
+    corParaFundoEscuro = rgbParaHexLocal(clarear(r), clarear(g), clarear(b));
+  }
+  document.documentElement.style.setProperty('--gold-on-dark', corParaFundoEscuro);
+}
+function rgbParaHexLocal(r,g,b){
+  return '#' + [r,g,b].map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('');
 }
