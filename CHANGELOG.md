@@ -3,6 +3,18 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.24.1 — Natureza do cargo agora é editável no Desenho de Cargo
+Lacuna encontrada: o campo "Natureza" (Operacional / Apoio / Estratégica)
+só era definido na hora de importar um cargo da Base CBO ou criar do
+zero — depois disso, não existia nenhum jeito de mudar, mesmo sendo
+exibido na tela de Desenho de Cargo. Isso impedia, por exemplo, promover
+um cargo pra "Estratégica" depois de já criado — necessário pra ele
+aparecer no Mapa de Sucessão (v0.21.0), que só considera posições-chave
+com essa natureza.
+
+Adicionado um campo de seleção editável na seção "1. Identificação do
+Cargo", salvo tanto ao gravar rascunho quanto ao publicar uma nova versão.
+
 ## v0.24.0 — CI: sintaxe, lint e formatação em todo push/PR
 Até agora, nada impedia um código quebrado de ir pra `main` — cada
 verificação dependia de eu (ou você) lembrar de testar manualmente antes

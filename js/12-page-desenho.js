@@ -36,6 +36,11 @@ function pageDesenho() {
         <div class="field"><label>Local de Trabalho</label><input id="d_local" value="${escaparHtml(d.localTrabalho)}" placeholder="Ex: Sede da empresa / Modelo híbrido"></div>
         <div class="field"><label>Subordinação (reporta-se a)</label><input id="d_subordinacao" value="${escaparHtml(d.subordinacao)}" placeholder="Ex: Coordenador(a) de Dados"></div>
         <div class="field"><label>Subordinados Diretos</label><input id="d_subordinados" value="${escaparHtml(d.subordinadosDiretos)}" placeholder="Ex: Nenhum"></div>
+        <div class="field"><label>Natureza do cargo <small>(usada no Mapa de Sucessão — só cargos "Estratégica" viram posição-chave)</small></label>
+          <select id="d_natureza">
+            ${['Operacional', 'Apoio', 'Estratégica'].map((n) => `<option ${cargo.natureza === n ? 'selected' : ''}>${n}</option>`).join('')}
+          </select>
+        </div>
       </div>
 
       <div class="small-muted" style="text-transform:uppercase;letter-spacing:.06em;font-size:11px;margin:16px 0 8px;">2. Missão do Cargo</div>
@@ -251,6 +256,7 @@ function addIndicadorCargo(cargoId, key, pilar) {
 function salvarRascunhoDesenho(cargoId, silencioso) {
   const cargo = state.cargos.find((c) => c.id === cargoId);
   const d = cargo.desenho;
+  cargo.natureza = document.getElementById('d_natureza').value;
   d.area = document.getElementById('d_area').value;
   d.nivelHierarquico = document.getElementById('d_nivel').value;
   d.regimeTrabalho = document.getElementById('d_regime').value;
