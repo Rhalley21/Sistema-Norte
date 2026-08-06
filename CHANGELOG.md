@@ -3,6 +3,78 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.25.1 — Revisão de código: 4 bugs reais encontrados e corrigidos
+Pedido de revisão geral em cima da v0.25.0 (modelo "Ao Vivo"). Usei o CI
+(sintaxe + ESLint) como primeira passada, depois revisão manual dos
+pontos de maior risco — telas e funções que assumiam o fluxo de 3 etapas
+do modelo assíncrono, sem considerar o modelo novo.
+
+1. **Ciclo extraordinário (RN016) e dados de teste** desatualizados — o
+   ciclo agendado automaticamente após uma promoção, e o gerador de dados
+   de teste, ainda criavam o objeto de ciclo no formato antigo (sem
+   `tipoAvaliacao` e sem `notas.consolidado`). Não quebrava nada na hora,
+   mas deixava esses ciclos inconsistentes com o resto do sistema.
+
+2. **Tela de "Pendência de Avaliador" com mensagem errada pra Ao Vivo** —
+   quando o prazo de um ciclo Ao Vivo vencia, a tela mostrava a mensagem
+   do modelo assíncrono ("etapa X não concluiu"), e oferecia "registrar
+   ausência formal com redistribuição de peso" — um conceito que não
+   existe no Ao Vivo (a sessão precisa dos 3 presentes, não tem como
+   redistribuir peso de quem faltou). Agora mostra mensagem própria, só
+   com a opção de estender o prazo e reagendar.
+
+3. **RH nunca via ciclos Ao Vivo como pendência no Dashboard** — o
+   cartão de "suas pendências" do RH filtrava por `etapa === 'rh'`, mas
+   um ciclo Ao Vivo nunca muda de etapa (esse conceito não existe nesse
+   modelo) — então o RH podia ter ciclos Ao Vivo esperando a nota
+   combinada há dias, sem nenhum aviso no Dashboard.
+
+4. **Colaborador via um botão sem saída em ciclo Ao Vivo** — o Dashboard
+   do Colaborador mostrava "Sua autoavaliação está aguardando você" com
+   um botão "Responder" também para ciclos Ao Vivo — mas ao clicar, a
+   tela não deixa o Colaborador editar nada (só o RH registra a nota
+   combinada nesse modelo). Removido esse aviso enganoso para Ao Vivo.
+
+De brinde, corrigidos 2 campos de texto livre que tinham passado sem
+escape na varredura de segurança da v0.23.0 (nome de colaborador na
+lista de ciclos, e motivo de ausência formal).
+
+Testei cada correção isoladamente (filtros de pendência com cenários
+mistos dos dois modelos, incluindo retrocompatibilidade com ciclos
+antigos sem `tipoAvaliacao` definido) antes de fechar. CI completo
+(sintaxe + ESLint + Prettier) passando limpo.
+
+## v0.25.0 — Novo modelo de avaliação: "Ao Vivo"
+Até agora só existia um jeito de avaliar: 3 etapas separadas (Colaborador
+→ Líder → RH), cada uma em um momento diferente, com média ponderada
+25/50/25 (RN003). Agora existe um segundo modelo, escolhido na hora de
+abrir cada ciclo — os dois convivem no sistema, empresa por empresa,
+ciclo por ciclo.
+
+**Modelo "Ao Vivo"**: os mesmos indicadores e a mesma escala IDA de
+sempre, mas numa sessão presencial — Colaborador, Líder e RH se reúnem,
+discutem cada indicador juntos, e chegam numa nota já combinada. Só o RH
+(ou Administrador) registra essa nota no sistema — não existem 3 notas
+separadas nem cálculo de peso aqui, é uma nota só, já acordada pelos 3.
+
+- **Abrir novo ciclo**: novo campo "Modelo de avaliação" (Assíncrono ou
+  Ao Vivo).
+- **Tela Ao Vivo**: registro simples da sessão (data + confirmação de
+  presença dos 3, não vinculante — só apoio de auditoria) antes de liberar
+  a consolidação, e o lançamento da nota combinada por indicador.
+- **Cálculo do diagnóstico**: para ciclos Ao Vivo, usa a nota combinada
+  diretamente — o cálculo de peso 25/50/25 (RN003) não se aplica a esse
+  modelo, por desenho, não é uma variação dele.
+- **Lista de ciclos**: nova coluna "Modelo", mostrando Assíncrono ou Ao
+  Vivo em cada linha.
+- De brinde, corrigido um nome de colaborador que não estava escapado
+  nessa mesma lista (risco de XSS que passou despercebido na varredura da
+  v0.23.0).
+
+Testei a lógica de cálculo isolada nos dois modelos (incluindo o caso de
+um ciclo Ao Vivo ainda sem nenhuma nota lançada) — nenhum comportamento
+antigo do modelo Assíncrono foi alterado.
+
 ## v0.24.1 — Natureza do cargo agora é editável no Desenho de Cargo
 Lacuna encontrada: o campo "Natureza" (Operacional / Apoio / Estratégica)
 só era definido na hora de importar um cargo da Base CBO ou criar do

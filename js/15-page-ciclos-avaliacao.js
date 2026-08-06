@@ -48,6 +48,12 @@ function pageCiclos() {
         <div class="field"><label>Prazo final da avaliação <small>(lembretes em D-5, D-2 e D-0)</small></label>
           <input id="cy_prazo" type="date" value="${dataPadraoPrazo}">
         </div>
+        <div class="field"><label>Modelo de avaliação</label>
+          <select id="cy_tipo">
+            <option value="assincrono">Assíncrono — 3 etapas (Colaborador → Líder → RH), pesos 25/50/25</option>
+            <option value="ao_vivo">Ao Vivo — sessão presencial, nota combinada pelos 3, sem etapas</option>
+          </select>
+        </div>
       </div>
       <button class="btn btn-primary" onclick="abrirNovoCiclo()">Abrir ciclo de avaliação</button>
       `
@@ -170,16 +176,18 @@ function reabrirCiclo(cicloId) {
 }
 function renderCiclosTableInteractive(lista) {
   const ETAPA_LABEL = { colaborador: 'Aguardando Colaborador', lider: 'Aguardando Líder', rh: 'Aguardando RH' };
-  return `<table><thead><tr><th>Colaborador</th><th>Estado</th><th>Etapa atual</th><th></th></tr></thead><tbody>
+  return `<table><thead><tr><th>Colaborador</th><th>Estado</th><th>Modelo</th><th>Etapa atual</th><th></th></tr></thead><tbody>
     ${lista
       .map((c) => {
         const p = state.colaboradores.find((x) => x.id === c.colaboradorId);
         const emAndamento = c.estado === 'Aberto' || c.estado === 'Em Consolidação';
         const pendente = c.estado === 'Pendência de Avaliador';
+        const aoVivo = c.tipoAvaliacao === 'ao_vivo';
         return `<tr>
-        <td><b>${p ? p.nome : '—'}</b>${c.extraordinario ? ' <span class="tag" style="background:var(--gold-soft);color:var(--gold);">Extraordinário</span>' : ''}</td>
+        <td><b>${p ? escaparHtml(p.nome) : '—'}</b>${c.extraordinario ? ' <span class="tag" style="background:var(--gold-soft);color:var(--gold);">Extraordinário</span>' : ''}</td>
         <td><span class="pill ${pendente ? 'pill-iniciar' : 'pill-neutral'}">${c.estado}</span></td>
-        <td class="small-muted">${emAndamento || pendente ? ETAPA_LABEL[c.etapa || 'colaborador'] : '—'}</td>
+        <td class="small-muted">${aoVivo ? 'Ao Vivo' : 'Assíncrono'}</td>
+        <td class="small-muted">${aoVivo ? (emAndamento ? 'Sessão presencial' : '—') : emAndamento || pendente ? ETAPA_LABEL[c.etapa || 'colaborador'] : '—'}</td>
         <td><button class="btn btn-sm" onclick="abrirCiclo('${c.id}')">Abrir ciclo →</button></td>
       </tr>`;
       })
@@ -235,6 +243,7 @@ function abrirCiclo(id) {
 function abrirNovoCiclo() {
   const colabId = document.getElementById('cy_colab').value;
   const prazo = document.getElementById('cy_prazo').value;
+  const tipoAvaliacao = document.getElementById('cy_tipo')?.value || 'assincrono';
   const p = state.colaboradores.find((x) => x.id === colabId);
   const cargo = state.cargos.find((c) => c.id === p.cargoId);
   const ciclo = {
@@ -242,11 +251,12 @@ function abrirNovoCiclo() {
     colaboradorId: p.id,
     cargoId: p.cargoId,
     estado: 'Aberto',
-    etapa: 'colaborador', // colaborador -> lider -> rh -> (consolidado via consolidarCiclo)
+    etapa: 'colaborador', // colaborador -> lider -> rh -> (consolidado via consolidarCiclo) — só se aplica ao modelo assíncrono
+    tipoAvaliacao, // 'assincrono' (padrão, 3 etapas com pesos 25/50/25) ou 'ao_vivo' (sessão presencial, nota combinada)
     dataAbertura: new Date().toISOString().slice(0, 10),
     prazoLimite: prazo || null,
     ausencias: [],
-    notas: { colaborador: {}, gestor: {}, rh: {} },
+    notas: { colaborador: {}, gestor: {}, rh: {}, consolidado: {} },
     // Extensão do princípio de versionamento (RN024): retrato congelado dos indicadores válidos no momento da abertura.
     // Mudanças futuras na Cultura Organizacional ou no Desenho de Cargo não
     // afetam este ciclo — só valem a partir do próximo ciclo aberto depois da alteração.
@@ -346,6 +356,9 @@ function pageAvaliacao(ciclo) {
     return notaTransicaoHTML + renderPendenciaAvaliador(ciclo, p, cargo);
   }
   if (ciclo.estado === 'Aberto' || ciclo.estado === 'Em Consolidação') {
+    if (ciclo.tipoAvaliacao === 'ao_vivo') {
+      return notaTransicaoHTML + renderAoVivo(ciclo, p, cargo, indicadores);
+    }
     return notaTransicaoHTML + renderEtapaSequencial(ciclo, p, cargo, indicadores);
   }
   return (
@@ -367,6 +380,7 @@ function pageAvaliacao(ciclo) {
 const ETAPA_NOME_PENDENTE = { colaborador: 'o Colaborador', lider: 'o Líder Direto', rh: 'o RH' };
 function renderPendenciaAvaliador(ciclo, p, cargo) {
   const souAdminOuRh = meuPapelReal === 'owner' || meuPapelReal === 'rh';
+  const aoVivo = ciclo.tipoAvaliacao === 'ao_vivo';
   return `
     <div class="page-head">
       <div class="eyebrow">Ciclo de Avaliação · Pendência de Avaliador</div>
@@ -374,7 +388,24 @@ function renderPendenciaAvaliador(ciclo, p, cargo) {
       <button class="btn btn-ghost btn-sm" onclick="state.cicloAtivo=null; render();">← Voltar para lista de ciclos</button>
     </div>
     ${renderFlowCiclo(ciclo)}
-    <div class="notice" style="border-left-color:var(--iniciar);">
+    ${
+      aoVivo
+        ? `<div class="notice" style="border-left-color:var(--iniciar);">
+      O prazo desta avaliação venceu (${ciclo.prazoLimite}) e a sessão presencial ainda não aconteceu (ou não foi consolidada).
+      Diferente do modelo assíncrono, aqui não existe "ausência formal" de um avaliador — a sessão precisa dos 3 juntos. A única opção é estender o prazo e reagendar.
+    </div>
+    ${
+      souAdminOuRh
+        ? `
+      <div class="card">
+        <h3>Estender o prazo</h3>
+        <div class="field"><label>Novo prazo final</label><input id="novo_prazo_ciclo" type="date"></div>
+        <button class="btn btn-primary" onclick="estenderPrazoCiclo('${ciclo.id}')">Estender prazo e retomar o ciclo</button>
+      </div>
+    `
+        : `<div class="empty">Aguardando o RH estender o prazo e reagendar a sessão presencial.</div>`
+    }`
+        : `<div class="notice" style="border-left-color:var(--iniciar);">
       O prazo desta avaliação venceu (${ciclo.prazoLimite}) e ${ETAPA_NOME_PENDENTE[ciclo.etapa]} ainda não concluiu sua etapa.
       O ciclo não avança para o Diagnóstico automaticamente até essa pendência ser resolvida.
     </div>
@@ -397,13 +428,14 @@ function renderPendenciaAvaliador(ciclo, p, cargo) {
           ? `
         <div class="card">
           <h3>Ausências já registradas neste ciclo</h3>
-          ${ciclo.ausencias.map((a) => `<div class="small-muted" style="padding:6px 0;border-bottom:1px dashed var(--line);">${a.data} — etapa "${a.etapa}": ${a.motivo}</div>`).join('')}
+          ${ciclo.ausencias.map((a) => `<div class="small-muted" style="padding:6px 0;border-bottom:1px dashed var(--line);">${a.data} — etapa "${a.etapa}": ${escaparHtml(a.motivo)}</div>`).join('')}
         </div>
       `
           : ''
       }
     `
         : `<div class="empty">Aguardando o RH decidir entre estender o prazo ou registrar a ausência formalmente.</div>`
+    }`
     }
   `;
 }
@@ -574,6 +606,107 @@ function renderEtapaSequencial(ciclo, p, cargo, indicadores) {
   `;
 }
 
+/* =========================================================
+   MODELO "AO VIVO" — avaliação presencial, nota combinada
+   -----------------------------------------------------------
+   Diferente do modelo assíncrono (3 etapas, 3 notas separadas, média
+   ponderada 25/50/25), aqui Colaborador, Líder e RH se reúnem
+   presencialmente, discutem cada indicador juntos, e chegam numa nota
+   já combinada — só o RH digita no sistema. Não existe "etapa" nem
+   pesos aqui: é uma sessão única. Escolhido na hora de abrir o ciclo,
+   convivendo com o modelo assíncrono (não substitui um pelo outro).
+   ========================================================= */
+function podeEditarAoVivo() {
+  return meuPapelReal === 'owner' || meuPapelReal === 'rh';
+}
+function lancarNotaAoVivo(cicloId, indicadorId, valor) {
+  const ciclo = state.ciclos.find((c) => c.id === cicloId);
+  if (!podeEditarAoVivo()) return;
+  ciclo.notas.consolidado = ciclo.notas.consolidado || {};
+  ciclo.notas.consolidado[indicadorId] = valor;
+  agendarSalvamento();
+  render();
+}
+function confirmarSessaoAoVivo(cicloId) {
+  const ciclo = state.ciclos.find((c) => c.id === cicloId);
+  ciclo.aoVivo = ciclo.aoVivo || {};
+  ciclo.aoVivo.dataSessao = document.getElementById('av_data_sessao').value;
+  ciclo.aoVivo.presencaConfirmada = document.getElementById('av_presenca').checked;
+  agendarSalvamento();
+  render();
+}
+function renderAoVivo(ciclo, p, cargo, indicadores) {
+  const notasAtual = ciclo.notas.consolidado || {};
+  const totalPreenchido = Object.keys(notasAtual).length;
+  const completo = totalPreenchido === indicadores.length;
+  const editavel = podeEditarAoVivo();
+  ciclo.aoVivo = ciclo.aoVivo || {};
+  const presencaOk = !!ciclo.aoVivo.presencaConfirmada && !!ciclo.aoVivo.dataSessao;
+
+  return `
+    <div class="page-head">
+      <div class="eyebrow">Ciclo de Avaliação · Ao Vivo · ${ciclo.estado}</div>
+      <h1>${escaparHtml(p.nome)} <span style="color:var(--ink-faint);font-weight:400;font-size:18px;">— ${escaparHtml(cargo.nome)}</span></h1>
+      <button class="btn btn-ghost btn-sm" onclick="state.cicloAtivo=null; render();">← Voltar para lista de ciclos</button>
+      <button class="btn btn-ghost btn-sm" onclick="atualizarDadosAoVivo()" style="margin-left:8px;">↻ Atualizar</button>
+    </div>
+
+    <div class="notice info">Avaliação presencial — Colaborador, Líder Direto e RH discutem cada indicador juntos e chegam numa nota combinada. Sem etapas separadas nem pesos: o RH registra a nota já acordada pelos 3.</div>
+
+    <div class="card">
+      <h3>Sessão presencial <small>Registro simples de quando e com quem aconteceu — não é vinculante, só apoio de auditoria</small></h3>
+      <div class="grid2">
+        <div class="field"><label>Data da sessão</label><input id="av_data_sessao" type="date" value="${escaparHtml(ciclo.aoVivo.dataSessao)}" ${editavel ? `onchange="confirmarSessaoAoVivo('${ciclo.id}')"` : 'disabled'}></div>
+        <div class="field" style="display:flex;align-items:center;gap:8px;margin-top:22px;">
+          <input id="av_presenca" type="checkbox" ${ciclo.aoVivo.presencaConfirmada ? 'checked' : ''} ${editavel ? `onchange="confirmarSessaoAoVivo('${ciclo.id}')"` : 'disabled'}>
+          <label style="margin:0;">Colaborador, Líder e RH participaram da sessão</label>
+        </div>
+      </div>
+      ${!presencaOk ? '<div class="notice" style="border-left-color:var(--iniciar);">Preencha a data e confirme a presença dos 3 antes de consolidar.</div>' : ''}
+    </div>
+
+    ${!editavel ? '<div class="notice">Só o RH (ou Administrador) registra a nota combinada — você pode acompanhar, mas não editar aqui.</div>' : ''}
+
+    <div class="card">
+      <h3>Nota combinada — Escala IDA <small>Iniciar · Desenvolver · Alavancar, por indicador, já acordada pelos 3</small></h3>
+      ${['N', 'O', 'R', 'T', 'E']
+        .map((pilar) => {
+          const doGrupo = indicadores.filter((ind) => ind.pilar === pilar);
+          if (!doGrupo.length) return '';
+          return `
+        <div class="pilar-grupo">
+          <div class="pilar-grupo-titulo">
+            <span class="tag tag-${pilar.toLowerCase()}">${pilar}</span> ${PILAR_LABEL[pilar]} <small>${PILAR_TAGLINE[pilar]}</small>
+          </div>
+          ${doGrupo
+            .map(
+              (ind) => `
+            <div class="ida-row">
+              <div class="ida-info"><b>${escaparHtml(ind.nome)}</b></div>
+              <div class="ida-choices">
+                ${['I', 'D', 'A']
+                  .map(
+                    (v) => `
+                  <button class="ida-choice sel-${v.toLowerCase()} ${notasAtual[ind.id] === v ? 'active' : ''}" ${editavel ? '' : 'disabled style="opacity:.5;cursor:not-allowed;"'}
+                    onclick="${editavel ? `lancarNotaAoVivo('${ciclo.id}','${ind.id}','${v}')` : ''}">${v}</button>
+                `
+                  )
+                  .join('')}
+              </div>
+            </div>
+          `
+            )
+            .join('')}
+        </div>`;
+        })
+        .join('')}
+      <hr class="sep">
+      <div class="small-muted">${totalPreenchido}/${indicadores.length} indicadores preenchidos.</div>
+      ${completo && editavel ? `<button class="btn btn-primary" style="margin-top:14px;" ${presencaOk ? '' : 'disabled title="Preencha a sessão presencial primeiro"'} onclick="consolidarCiclo('${ciclo.id}')">Consolidar avaliação e gerar Diagnóstico</button>` : ''}
+    </div>
+  `;
+}
+
 function avancarEtapa(cicloId) {
   const ciclo = state.ciclos.find((c) => c.id === cicloId);
   const info = ETAPA_INFO[ciclo.etapa || 'colaborador'];
@@ -603,19 +736,29 @@ function consolidarCiclo(cicloId) {
   const porIndicador = {};
   const porPilar = { N: [], O: [], R: [], T: [], E: [] };
   indicadores.forEach((ind) => {
-    const vc = IDA_VAL[ciclo.notas.colaborador[ind.id]];
-    const vg = IDA_VAL[ciclo.notas.gestor[ind.id]];
-    const vr = IDA_VAL[ciclo.notas.rh[ind.id]];
-    // RN003: média ponderada 25/50/25. Se algum avaliador ficou sem nota
-    // (ausência formal registrada), o peso dele é redistribuído
-    // proporcionalmente entre quem de fato avaliou, em vez de quebrar o cálculo.
-    const pesos = [
-      { valor: vc, peso: 0.25 },
-      { valor: vg, peso: 0.5 },
-      { valor: vr, peso: 0.25 },
-    ].filter((p) => p.valor !== undefined);
-    const pesoTotal = pesos.reduce((a, p) => a + p.peso, 0);
-    const media = pesoTotal > 0 ? pesos.reduce((a, p) => a + p.valor * p.peso, 0) / pesoTotal : null;
+    let media;
+    if (ciclo.tipoAvaliacao === 'ao_vivo') {
+      // Modelo Ao Vivo (avaliação presencial): não há 3 notas separadas pra
+      // ponderar — os 3 avaliadores já discutiram e chegaram numa nota só,
+      // registrada pelo RH. Usa ela direto, sem cálculo de peso (RN003 não
+      // se aplica aqui, por desenho — é um modelo diferente, não uma
+      // variação do mesmo cálculo).
+      media = IDA_VAL[ciclo.notas.consolidado?.[ind.id]] ?? null;
+    } else {
+      const vc = IDA_VAL[ciclo.notas.colaborador[ind.id]];
+      const vg = IDA_VAL[ciclo.notas.gestor[ind.id]];
+      const vr = IDA_VAL[ciclo.notas.rh[ind.id]];
+      // RN003: média ponderada 25/50/25. Se algum avaliador ficou sem nota
+      // (ausência formal registrada), o peso dele é redistribuído
+      // proporcionalmente entre quem de fato avaliou, em vez de quebrar o cálculo.
+      const pesos = [
+        { valor: vc, peso: 0.25 },
+        { valor: vg, peso: 0.5 },
+        { valor: vr, peso: 0.25 },
+      ].filter((p) => p.valor !== undefined);
+      const pesoTotal = pesos.reduce((a, p) => a + p.peso, 0);
+      media = pesoTotal > 0 ? pesos.reduce((a, p) => a + p.valor * p.peso, 0) / pesoTotal : null;
+    }
     const sigla = media !== null ? classificar(media) : null;
     porIndicador[ind.id] = { nome: ind.nome, pilar: ind.pilar, competencia: ind.competencia, media, sigla };
     if (media !== null) porPilar[ind.pilar].push(media);

@@ -353,7 +353,11 @@
     "XLSX": "writable",
     "window": "writable",
     "document": "writable",
-    "STEPS": "writable"
+    "STEPS": "writable",
+    "podeEditarAoVivo": "writable",
+    "renderAoVivo": "writable",
+    "lancarNotaAoVivo": "writable",
+    "confirmarSessaoAoVivo": "writable"
   },
   "rules": {
     "no-unused-vars": "off",

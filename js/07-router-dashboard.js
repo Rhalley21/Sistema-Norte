@@ -104,7 +104,9 @@ function diasDesdeAbertura(ciclo) {
 }
 function renderPendenciasRH() {
   const aguardandoRH = state.ciclos.filter(
-    (c) => c.etapa === 'rh' && (c.estado === 'Aberto' || c.estado === 'Em Consolidação')
+    (c) =>
+      (c.estado === 'Aberto' || c.estado === 'Em Consolidação') &&
+      (c.tipoAvaliacao === 'ao_vivo' ? true : c.etapa === 'rh')
   );
   const pendencias = state.ciclos.filter((c) => c.estado === 'Pendência de Avaliador');
   const semCiclo = state.colaboradores.filter((p) => {
@@ -189,7 +191,10 @@ function renderPendenciasColaborador() {
   if (!meuRegistro) return '';
   const meusCiclos = state.ciclos.filter((c) => c.colaboradorId === meuRegistro.id);
   const minhaAutoavaliacao = meusCiclos.filter(
-    (c) => c.etapa === 'colaborador' && (c.estado === 'Aberto' || c.estado === 'Em Consolidação')
+    (c) =>
+      c.etapa === 'colaborador' &&
+      c.tipoAvaliacao !== 'ao_vivo' &&
+      (c.estado === 'Aberto' || c.estado === 'Em Consolidação')
   );
   const semFeedback = meusCiclos.filter((c) => c.diagnostico && !c.reuniaoFeedback?.realizada);
   if (!minhaAutoavaliacao.length && !semFeedback.length) return '';
