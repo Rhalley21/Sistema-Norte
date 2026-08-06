@@ -16,6 +16,7 @@ jobs:
   verificacoes:
     name: Sintaxe, Lint e Formatação
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Baixa o código
         uses: actions/checkout@v4
