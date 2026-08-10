@@ -473,6 +473,21 @@ function renderDashboardRH() {
     return dias > 365;
   });
 
+  const comDiagRH = state.ciclos.filter((c) => c.diagnostico && c.diagnostico.geral);
+  const contagemIdaRH = { I: 0, D: 0, A: 0 };
+  comDiagRH.forEach((c) => contagemIdaRH[c.diagnostico.geral]++);
+  const totalIdaRH = contagemIdaRH.I + contagemIdaRH.D + contagemIdaRH.A;
+  const totalColabAtivos = state.colaboradores.filter((p) => !p.inativo).length;
+  const pctSemRisco = totalColabAtivos
+    ? Math.round(((totalColabAtivos - colaboradoresEmRisco.length) / totalColabAtivos) * 100)
+    : 100;
+
+  _dadosGraficosDashboardRH = {
+    ida: [contagemIdaRH.I, contagemIdaRH.D, contagemIdaRH.A],
+    criticas: criticasOrdenadas.slice(0, 6),
+    pctSemRisco,
+  };
+
   return `
     <div class="kpi-grid">
       <div class="kpi"><div class="n">${emAndamento.length}</div><div class="l">Avaliações em andamento</div></div>
@@ -480,10 +495,39 @@ function renderDashboardRH() {
       <div class="kpi"><div class="n">${pdisAtivos.length}</div><div class="l">PDIs ativos</div></div>
       <div class="kpi"><div class="n">${criticasOrdenadas.length}</div><div class="l">Competências críticas distintas</div></div>
     </div>
-    <div class="card">
-      <h3>Distribuição por classificação IDA <small>% de colaboradores por classificação — consolidado de todos os ciclos com diagnóstico</small></h3>
-      ${renderDistribuicaoIDA()}
+
+    <div class="painel-visao-geral">
+      <div class="grafico-card">
+        <h4>Classificação geral <small>${totalIdaRH} colaboradores com diagnóstico</small></h4>
+        ${
+          totalIdaRH
+            ? `<div class="grafico-donut-wrap">
+          <div class="grafico-donut-canvas"><canvas id="rhDonutIda" role="img" aria-label="Rosca com a distribuição geral: ${contagemIdaRH.I} Iniciar, ${contagemIdaRH.D} Desenvolver, ${contagemIdaRH.A} Alavancar"></canvas>
+            <div class="grafico-donut-centro">${totalColabAtivos}</div>
+          </div>
+          <div class="grafico-legenda">
+            <span><span class="dot" style="background:#e34948;"></span>Iniciar ${Math.round((contagemIdaRH.I / totalIdaRH) * 100)}%</span>
+            <span><span class="dot" style="background:#eda100;"></span>Desenvolver ${Math.round((contagemIdaRH.D / totalIdaRH) * 100)}%</span>
+            <span><span class="dot" style="background:#1baf7a;"></span>Alavancar ${Math.round((contagemIdaRH.A / totalIdaRH) * 100)}%</span>
+          </div>
+        </div>`
+            : '<div class="empty">Sem diagnósticos ainda.</div>'
+        }
+      </div>
+
+      <div class="grafico-card" style="align-items:center;display:flex;flex-direction:column;">
+        <h4 style="align-self:flex-start;">Colaboradores sem risco <small>Fora do critério 7.2 (2 ciclos abaixo de Alavancar)</small></h4>
+        <div class="grafico-gauge-wrap"><canvas id="rhGaugeRisco" role="img" aria-label="Medidor mostrando ${pctSemRisco}% dos colaboradores sem risco identificado"></canvas>
+          <div class="grafico-gauge-numero">${pctSemRisco}%</div>
+        </div>
+      </div>
+
+      <div class="grafico-card">
+        <h4>Competências críticas mais recorrentes <small>Base pra priorizar ações de desenvolvimento</small></h4>
+        ${criticasOrdenadas.length ? '<div class="grafico-canvas-lg"><canvas id="rhBarCriticas" role="img" aria-label="Ranking das competências críticas mais recorrentes entre os diagnósticos"></canvas></div>' : '<div class="empty">Nenhuma competência crítica recorrente identificada ainda.</div>'}
+      </div>
     </div>
+
     ${
       pendentes.length
         ? `
@@ -539,7 +583,7 @@ function renderDashboardRH() {
         : ''
     }
     <div class="card">
-      <h3>Competências críticas mais recorrentes <small>Base para priorizar ações de desenvolvimento (relatório de desenvolvimento)</small></h3>
+      <h3>Competências críticas — detalhe <small>Base para priorizar ações de desenvolvimento (relatório de desenvolvimento)</small></h3>
       ${
         criticasOrdenadas.length
           ? `
@@ -567,6 +611,23 @@ function renderDashboardGestor() {
     (c) => c.diagnostico && pdiMentalidadeNaoIniciado(c) && c.estado !== 'Encerrado'
   ).length;
 
+  const comDiagEquipe = meusCiclos.filter((c) => c.diagnostico && c.diagnostico.geral);
+  const contagemIdaEquipe = { I: 0, D: 0, A: 0 };
+  comDiagEquipe.forEach((c) => contagemIdaEquipe[c.diagnostico.geral]++);
+  const totalIdaEquipe = contagemIdaEquipe.I + contagemIdaEquipe.D + contagemIdaEquipe.A;
+
+  // Ranking da equipe por Potencial (última medição) — mesma lógica do Mapa de Sucessão.
+  const potencialEquipe = minhaEquipe
+    .map((p) => ({ nome: p.nome, potencial: ultimoPotencialDoColaborador(p.id) }))
+    .filter((p) => p.potencial !== null)
+    .sort((a, b) => b.potencial - a.potencial)
+    .slice(0, 6);
+
+  _dadosGraficosDashboardGestor = {
+    ida: [contagemIdaEquipe.I, contagemIdaEquipe.D, contagemIdaEquipe.A],
+    potencial: potencialEquipe,
+  };
+
   return `
     <div class="kpi-grid">
       <div class="kpi"><div class="n">${minhaEquipe.length}</div><div class="l">Colaboradores na minha equipe</div></div>
@@ -574,6 +635,32 @@ function renderDashboardGestor() {
       <div class="kpi"><div class="n">${pdisEquipe.length}</div><div class="l">PDIs ativos na equipe</div></div>
     </div>
     ${mentalidadePendentes ? `<div class="notice" style="border-left-color:var(--iniciar);">⚠ ${mentalidadePendentes} PDI(s) de Mentalidade pendente(s) — obrigatórios em todo ciclo (RN020).</div>` : ''}
+
+    <div class="painel-visao-geral">
+      <div class="grafico-card">
+        <h4>Classificação da minha equipe <small>${totalIdaEquipe} avaliações com diagnóstico</small></h4>
+        ${
+          totalIdaEquipe
+            ? `<div class="grafico-donut-wrap">
+          <div class="grafico-donut-canvas"><canvas id="gestorDonutIda" role="img" aria-label="Rosca com a distribuição da equipe: ${contagemIdaEquipe.I} Iniciar, ${contagemIdaEquipe.D} Desenvolver, ${contagemIdaEquipe.A} Alavancar"></canvas>
+            <div class="grafico-donut-centro">${minhaEquipe.length}</div>
+          </div>
+          <div class="grafico-legenda">
+            <span><span class="dot" style="background:#e34948;"></span>Iniciar ${Math.round((contagemIdaEquipe.I / totalIdaEquipe) * 100)}%</span>
+            <span><span class="dot" style="background:#eda100;"></span>Desenvolver ${Math.round((contagemIdaEquipe.D / totalIdaEquipe) * 100)}%</span>
+            <span><span class="dot" style="background:#1baf7a;"></span>Alavancar ${Math.round((contagemIdaEquipe.A / totalIdaEquipe) * 100)}%</span>
+          </div>
+        </div>`
+            : '<div class="empty">Sem diagnósticos ainda.</div>'
+        }
+      </div>
+
+      <div class="grafico-card">
+        <h4>Potencial da equipe <small>Ranking pela última Dimensão de Potencial medida</small></h4>
+        ${potencialEquipe.length ? '<div class="grafico-canvas-lg"><canvas id="gestorBarPotencial" role="img" aria-label="Ranking dos colaboradores da equipe por Potencial"></canvas></div>' : '<div class="empty">Nenhum colaborador da equipe com diagnóstico ainda.</div>'}
+      </div>
+    </div>
+
     <div class="card">
       <h3>Desempenho e evolução da equipe <small>Última classificação de cada colaborador, comparada com o ciclo anterior</small></h3>
       <table><thead><tr><th>Colaborador</th><th>Cargo</th><th>Ciclo anterior</th><th>Ciclo atual</th><th>Evolução</th><th>PDI</th></tr></thead><tbody>
@@ -631,6 +718,13 @@ function renderDashboardColaborador() {
   const cicloAtual = meusCiclos.find((c) => c.estado !== 'Encerrado') || meusCiclos[meusCiclos.length - 1];
   const historico = meusCiclos.filter((c) => c.diagnostico);
 
+  let pctPdiPessoal = null;
+  if (cicloAtual?.pdiDesenvolvimento?.length) {
+    const concluidas = cicloAtual.pdiDesenvolvimento.filter((a) => !!a.validadoEm).length;
+    pctPdiPessoal = Math.round((concluidas / cicloAtual.pdiDesenvolvimento.length) * 100);
+  }
+  _dadosGraficosDashboardColaborador = { pctPdiPessoal };
+
   return `
     <div class="card">
       <h3>${escaparHtml(meuRegistro.nome)} <small>${meuCargo ? escaparHtml(meuCargo.nome) : '—'}</small></h3>
@@ -644,6 +738,17 @@ function renderDashboardColaborador() {
           : '<div class="empty">Nenhum ciclo de avaliação aberto no momento.</div>'
       }
     </div>
+    ${
+      pctPdiPessoal !== null
+        ? `
+    <div class="card" style="align-items:center;display:flex;flex-direction:column;">
+      <h4 style="align-self:flex-start;margin-bottom:8px;">Meu PDI de Desenvolvimento <small>Ações já concluídas no ciclo atual</small></h4>
+      <div class="grafico-gauge-wrap"><canvas id="colabGaugePdi" role="img" aria-label="Medidor mostrando ${pctPdiPessoal}% das ações do meu PDI já concluídas"></canvas>
+        <div class="grafico-gauge-numero">${pctPdiPessoal}%</div>
+      </div>
+    </div>`
+        : ''
+    }
     ${
       historico.length > 1
         ? `

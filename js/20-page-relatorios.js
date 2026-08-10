@@ -21,6 +21,76 @@ let _tipoRelatorio = 'avaliacao';
 // usava a imagem — só as cores (corPrimaria/corSecundaria) eram aplicadas.
 // Esta função tenta desenhar o logotipo no topo do PDF, no canto superior
 // direito, ao lado do título.
+/* =========================================================
+   GRÁFICOS DENTRO DO PDF — v0.28.0
+   -----------------------------------------------------------
+   jsPDF não sabe desenhar um <canvas> do Chart.js diretamente — ele só
+   aceita imagens (PNG/JPEG). Por isso: cria um canvas temporário (nunca
+   aparece na tela), desenha o gráfico nele com animation:false (pra
+   garantir que o desenho fica pronto de uma vez, sem depender da
+   animação terminar), tira uma "foto" (toBase64Image) e destrói o
+   gráfico — sobra só a imagem, pronta pra colar no PDF com
+   doc.addImage().
+   ========================================================= */
+function gerarImagemGrafico(config, largura, altura) {
+  const canvas = document.createElement('canvas');
+  canvas.width = largura;
+  canvas.height = altura;
+  const chart = new Chart(canvas, {
+    ...config,
+    options: { ...config.options, responsive: false, animation: false },
+  });
+  const imagem = chart.toBase64Image('image/png', 1);
+  chart.destroy();
+  return imagem;
+}
+function gerarImagemDimensoes(d) {
+  const cores = { Resultado: '#4a9b6e', Comportamento: '#e99610', Potencial: '#c1584c' };
+  const labels = Object.keys(d.dimensaoMedia).filter((k) => d.dimensaoMedia[k] !== null);
+  return gerarImagemGrafico(
+    {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            data: labels.map((l) => Number(d.dimensaoMedia[l].toFixed(2))),
+            backgroundColor: labels.map((l) => cores[l]),
+            borderRadius: 4,
+          },
+        ],
+      },
+      options: {
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: { y: { min: 0, max: 1, ticks: { stepSize: 0.25 } } },
+      },
+    },
+    500,
+    260
+  );
+}
+function gerarImagemPilares(d) {
+  const labels = ['N', 'O', 'R', 'T', 'E'].filter((p) => d.pilarMedia[p] !== null);
+  return gerarImagemGrafico(
+    {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { data: labels.map((p) => Number(d.pilarMedia[p].toFixed(2))), backgroundColor: '#2a78d6', borderRadius: 4 },
+        ],
+      },
+      options: {
+        indexAxis: 'y',
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: { x: { min: 0, max: 1, ticks: { stepSize: 0.25 } } },
+      },
+    },
+    500,
+    220
+  );
+}
+
 function desenharLogoNoPDF(doc, x, y, larguraMax, alturaMax) {
   const logo = state.configuracoes?.identidadeVisual?.logoUrl || state.empresa?.logotipo || '';
   if (!logo) return;
@@ -187,7 +257,15 @@ function exportarAvaliacaoPDF(cicloId) {
   const linhasResumo = doc.splitTextToSize(d.resumoExecutivo, 180);
   doc.text(linhasResumo, 14, 68);
 
-  const y0 = 68 + linhasResumo.length * 5 + 8;
+  let y0 = 68 + linhasResumo.length * 5 + 8;
+
+  doc.setFontSize(11);
+  doc.text('As 3 Dimensões', 14, y0);
+  doc.addImage(gerarImagemDimensoes(d), 'PNG', 14, y0 + 4, 85, 44);
+  doc.text('Médias por pilar (N·O·R·T·E)', 108, y0);
+  doc.addImage(gerarImagemPilares(d), 'PNG', 108, y0 + 4, 88, 39);
+  y0 += 4 + 48;
+
   doc.autoTable({
     startY: y0,
     head: [['Indicador', 'Pilar', 'Classificação']],

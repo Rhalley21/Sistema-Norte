@@ -3,6 +3,57 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.28.0 — Relatório de avaliação em PDF agora com gráficos
+O PDF de "Avaliação de Desempenho" (exportado depois de consolidar um
+ciclo) só tinha texto e tabela. Agora inclui 2 gráficos, gerados a partir
+do mesmo diagnóstico:
+
+- **As 3 Dimensões** — barras com Resultado, Comportamento e Potencial.
+- **Médias por pilar (N·O·R·T·E)** — ranking horizontal.
+
+Como o jsPDF não sabe desenhar um gráfico do Chart.js diretamente (só
+aceita imagens), a solução foi: desenhar o gráfico num `<canvas>`
+temporário que nunca aparece na tela, "fotografar" esse desenho como PNG,
+e colar essa imagem no PDF — o gráfico nunca existe de fato na interface,
+só dentro do arquivo final.
+
+Se algum pilar ou Dimensão não tiver indicador aplicável naquele cargo
+(ex.: um cargo sem nenhum indicador do pilar E), ele simplesmente não
+aparece no gráfico — em vez de mostrar uma barra zerada, que pareceria
+uma nota ruim quando na real é "não se aplica". Testei esse cenário
+isoladamente antes de fechar.
+
+## v0.27.0 — Gráficos em todos os dashboards (RH, Gestor e Colaborador)
+O painel visual com gráficos da v0.26.0 era só do Administrador. Agora
+todo papel tem sua própria versão, com dados relevantes pro que cada um
+precisa decidir — e cada dashboard ganhou pelo menos um gráfico novo que
+não existia nem como tabela antes.
+
+- **RH**: rosca de classificação geral, medidor de "% colaboradores sem
+  risco" (novo — antes só existia a lista, sem visão consolidada), e
+  ranking das competências críticas mais recorrentes (antes só tabela).
+- **Gestor**: rosca de classificação da própria equipe (nova visão — antes
+  só existia a tabela linha a linha), e ranking da equipe por Potencial
+  (novo — reaproveita o mesmo cálculo que já alimenta o Mapa de Sucessão,
+  agora também visível aqui).
+- **Colaborador**: medidor mostrando quantas ações do próprio PDI de
+  Desenvolvimento já foram concluídas no ciclo atual (novo).
+
+Na implementação, encontrei um campo (`status` no PDI de Desenvolvimento)
+que parecia ser o jeito certo de checar conclusão, mas na real nunca é
+usado em lugar nenhum do sistema — a conclusão de verdade é marcada por
+`validadoEm` (a data em que o Gestor/RH valida a evidência). Usei o campo
+certo; o `status`/`atualizarStatusPDI()` parecem ser código morto de uma
+versão anterior — não removi agora, mas vale uma limpeza futura.
+
+Todos os gráficos novos passam pela mesma função central
+(`inicializarGraficosDashboard`) — ela já verifica sozinha quais telas
+estão na tela antes de montar cada gráfico, então não há conflito entre
+os 4 dashboards.
+
+Testei os cálculos de ranking (Gestor) e percentual de conclusão
+(Colaborador) isoladamente antes de fechar.
+
 ## v0.26.0 — Dashboard do Administrador com gráficos de verdade
 O dashboard do Administrador, que antes só mostrava tabelas, agora tem uma
 seção visual com 6 gráficos — baseado num modelo de referência (estilo

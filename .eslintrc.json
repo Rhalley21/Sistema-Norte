@@ -362,7 +362,13 @@
     "inicializarGraficosDashboard": "writable",
     "destruirGraficosAtivos": "writable",
     "_chartsAtivos": "writable",
-    "Chart": "readonly"
+    "Chart": "readonly",
+    "_dadosGraficosDashboardRH": "writable",
+    "_dadosGraficosDashboardGestor": "writable",
+    "_dadosGraficosDashboardColaborador": "writable",
+    "gerarImagemGrafico": "writable",
+    "gerarImagemDimensoes": "writable",
+    "gerarImagemPilares": "writable"
   },
   "rules": {
     "no-unused-vars": "off",
