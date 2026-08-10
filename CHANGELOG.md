@@ -3,6 +3,57 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.26.0 — Dashboard do Administrador com gráficos de verdade
+O dashboard do Administrador, que antes só mostrava tabelas, agora tem uma
+seção visual com 6 gráficos — baseado num modelo de referência (estilo
+"painel de controle" escuro, com medidor semicircular, rosca com total no
+centro, ranking horizontal), adaptado com a identidade visual do próprio
+NORTE (mesmo azul marinho e dourado já usados no sistema).
+
+- **Classificação geral** — rosca com o total de colaboradores no centro,
+  dividida por Iniciar/Desenvolver/Alavancar.
+- **Ciclos: trimestre atual vs anterior** — barras comparando volume.
+- **Evolução da média geral** — linha com os últimos 6 meses com
+  diagnóstico.
+- **Cargos com mais "Iniciar"** — ranking horizontal (indicador 7.5).
+- **PDIs aprovados** — medidor semicircular com o percentual.
+- **Cobertura por Unidade** — barras de progresso, % já avaliado.
+
+Adicionado o **Chart.js** ao sistema (`index.html`) — nenhuma biblioteca
+de gráficos existia até agora. Como gráficos precisam de código
+JavaScript executado depois que o HTML já está na tela (diferente de
+texto/tabela, que só precisa existir no HTML), foi criada uma função
+(`inicializarGraficosDashboard`) chamada automaticamente pelo próprio
+`render()` — sem isso, os `<canvas>` apareceriam vazios.
+
+Nenhum cálculo foi refeito do zero — todos os números continuam vindo da
+mesma lógica que já existia (distribuição IDA, cargos em risco, evolução
+mensal), só reorganizados visualmente. As tabelas antigas equivalentes
+foram substituídas pelos gráficos correspondentes.
+
+**Sobre o PDI de Mentalidade no modelo Ao Vivo**: já corrigido na v0.25.2
+(RH ganhou permissão de escrever, não só aprovar) — incluído nesta mesma
+entrega. Se ainda aparecer bloqueado depois de atualizar pra esta versão,
+é um problema novo, não o mesmo de antes — nesse caso, avise com um print
+de qual campo especificamente.
+
+## v0.25.2 — Bug corrigido: PDI de Mentalidade bloqueado no modelo Ao Vivo
+No modelo assíncrono, quem escreve o PDI (Desenvolvimento e Mentalidade) é
+o Colaborador e o Líder — o RH só aprova depois. A função que decide quem
+pode editar (`podeConstruirPDI`) nunca incluía o RH, porque isso nunca
+tinha sido necessário. No modelo Ao Vivo, porém, não existe essa fase
+separada — os 3 decidem juntos na sessão presencial, e é o RH quem
+registra tudo no sistema (a mesma pessoa que já lança a nota combinada).
+Resultado: os campos do PDI de Mentalidade apareciam bloqueados pro RH,
+sem ninguém conseguir preencher.
+
+Corrigido em `js/15-page-ciclos-avaliacao.js`: RH também pode construir e
+aprovar o PDI (Desenvolvimento e Mentalidade) quando o ciclo é do modelo
+Ao Vivo — no modelo assíncrono, nada muda, continua exatamente como
+antes. Testei os 4 cenários relevantes (RH em Ao Vivo, RH em Assíncrono,
+Líder em Assíncrono, e PDI já aprovado bloqueando todo mundo) antes de
+fechar.
+
 ## v0.25.1 — Revisão de código: 4 bugs reais encontrados e corrigidos
 Pedido de revisão geral em cima da v0.25.0 (modelo "Ao Vivo"). Usei o CI
 (sintaxe + ESLint) como primeira passada, depois revisão manual dos

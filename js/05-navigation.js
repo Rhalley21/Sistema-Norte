@@ -92,6 +92,11 @@ function render() {
   _ultimaRotaRenderizada = state.route;
   _ultimoCicloAtivoRenderizado = state.cicloAtivo;
   agendarSalvamento();
+  // Gráficos (Chart.js) precisam ser montados depois do HTML já estar na
+  // tela — inicializarGraficosDashboard() sozinha detecta se os canvas
+  // existem (só quando estamos no dashboard do Administrador) e não faz
+  // nada nas outras telas.
+  inicializarGraficosDashboard();
 }
 
 function logoEmpresaAtual() {

@@ -837,3 +837,162 @@ function escaparParaOnclick(texto) {
   const jsEscapado = String(texto).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '');
   return escaparHtml(jsEscapado);
 }
+
+/* =========================================================
+   GRÁFICOS DO DASHBOARD (Chart.js) — v0.26.0
+   -----------------------------------------------------------
+   Scripts dentro de innerHTML não executam sozinhos — por isso os
+   gráficos são montados aqui, chamados pelo próprio render() (ver
+   05-navigation.js) depois que o HTML já está de verdade na tela. Os
+   dados são calculados dentro de renderDashboardAdmin() e guardados em
+   _dadosGraficosDashboardAdmin pra essa função ler.
+   ========================================================= */
+let _dadosGraficosDashboardAdmin = null;
+let _chartsAtivos = [];
+
+function destruirGraficosAtivos() {
+  _chartsAtivos.forEach((c) => c.destroy());
+  _chartsAtivos = [];
+}
+
+function inicializarGraficosDashboard() {
+  destruirGraficosAtivos();
+  if (!_dadosGraficosDashboardAdmin || !document.getElementById('donutIda')) return;
+  const d = _dadosGraficosDashboardAdmin;
+  const corGrade = 'rgba(255,255,255,0.06)';
+  const corEixo = '#6c7f9a';
+  const corTexto = '#9fb0c7';
+
+  if (document.getElementById('donutIda')) {
+    _chartsAtivos.push(
+      new Chart(document.getElementById('donutIda'), {
+        type: 'doughnut',
+        data: {
+          datasets: [
+            { data: d.ida, backgroundColor: ['#e34948', '#eda100', '#1baf7a'], borderWidth: 3, borderColor: '#13345f' },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '72%',
+          plugins: { legend: { display: false } },
+        },
+      })
+    );
+  }
+
+  if (document.getElementById('barTrimestre')) {
+    _chartsAtivos.push(
+      new Chart(document.getElementById('barTrimestre'), {
+        type: 'bar',
+        data: {
+          labels: ['Trimestre anterior', 'Trimestre atual'],
+          datasets: [
+            { data: d.trimestres, backgroundColor: ['#2c5c8a', '#1baf7a'], borderRadius: 4, maxBarThickness: 46 },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { ticks: { color: corEixo, font: { size: 10 } }, grid: { color: corGrade } },
+            x: { ticks: { color: corTexto, font: { size: 11 } }, grid: { display: false } },
+          },
+        },
+      })
+    );
+  }
+
+  if (document.getElementById('areaEvolucao') && d.meses.length) {
+    _chartsAtivos.push(
+      new Chart(document.getElementById('areaEvolucao'), {
+        type: 'line',
+        data: {
+          labels: d.meses.map((m) => m.mes.slice(5, 7) + '/' + m.mes.slice(2, 4)),
+          datasets: [
+            {
+              data: d.meses.map((m) => Number(m.media.toFixed(2))),
+              borderColor: '#e99610',
+              backgroundColor: 'rgba(233,150,16,0.15)',
+              borderWidth: 2,
+              pointRadius: 3,
+              pointBackgroundColor: '#e99610',
+              fill: true,
+              tension: 0.3,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: {
+              min: 0,
+              max: 1,
+              ticks: { color: corEixo, font: { size: 10 }, stepSize: 0.5 },
+              grid: { color: corGrade },
+            },
+            x: { ticks: { color: corTexto, font: { size: 10 } }, grid: { display: false } },
+          },
+        },
+      })
+    );
+  }
+
+  if (document.getElementById('barCargos') && d.cargosRisco.length) {
+    _chartsAtivos.push(
+      new Chart(document.getElementById('barCargos'), {
+        type: 'bar',
+        data: {
+          labels: d.cargosRisco.map((c) => c.nome),
+          datasets: [
+            {
+              data: d.cargosRisco.map((c) => c.percentual),
+              backgroundColor: '#e34948',
+              borderRadius: 4,
+              maxBarThickness: 18,
+            },
+          ],
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { min: 0, max: 100, ticks: { color: corEixo, font: { size: 10 } }, grid: { color: corGrade } },
+            y: { ticks: { color: corTexto, font: { size: 10 } }, grid: { display: false } },
+          },
+        },
+      })
+    );
+  }
+
+  if (document.getElementById('gaugePdi')) {
+    _chartsAtivos.push(
+      new Chart(document.getElementById('gaugePdi'), {
+        type: 'doughnut',
+        data: {
+          datasets: [
+            {
+              data: [d.pctPdiNoPrazo, 100 - d.pctPdiNoPrazo],
+              backgroundColor: ['#1baf7a', '#22436b'],
+              borderWidth: 0,
+              circumference: 180,
+              rotation: 270,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '75%',
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        },
+      })
+    );
+  }
+}

@@ -1026,6 +1026,12 @@ function editarReuniaoFeedback(cicloId) {
 function podeConstruirPDI(ciclo) {
   if (ciclo.pdiAprovado) return false;
   if (meuPapelReal === 'owner') return true;
+  // Modelo Ao Vivo: não existe fase separada de Colaborador/Líder escrevendo
+  // por conta própria — os 3 discutem juntos na sessão presencial, e é o RH
+  // quem registra tudo no sistema (mesma pessoa que já lança a nota
+  // combinada). Por isso o RH também pode construir o PDI aqui, diferente
+  // do modelo assíncrono, onde o RH só aprova o que já foi escrito.
+  if (ciclo.tipoAvaliacao === 'ao_vivo' && meuPapelReal === 'rh') return true;
   const colaborador = state.colaboradores.find((c) => c.id === ciclo.colaboradorId);
   if (meuPapelReal === 'lider') return colaborador?.gestorPerfilId === meuPerfilId;
   if (meuPapelReal === 'colaborador') return colaborador?.perfilId === meuPerfilId;
@@ -1034,6 +1040,7 @@ function podeConstruirPDI(ciclo) {
 function podeAprovarPDI(ciclo) {
   if (ciclo.pdiAprovado) return false;
   if (meuPapelReal === 'owner') return true;
+  if (ciclo.tipoAvaliacao === 'ao_vivo' && meuPapelReal === 'rh') return true;
   const colaborador = state.colaboradores.find((c) => c.id === ciclo.colaboradorId);
   return meuPapelReal === 'lider' && colaborador?.gestorPerfilId === meuPerfilId;
 }

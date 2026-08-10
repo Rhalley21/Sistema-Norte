@@ -251,7 +251,7 @@ function pageDashboard() {
 function renderDashboardAdmin(abertos, pdisAtivos, encerrados) {
   const unidades = state.estrutura.filter((n) => n.tipo === 'unidade');
   const porUnidade = unidades.map((u) => {
-    const colabs = state.colaboradores.filter((p) => p.unidadeId === u.id);
+    const colabs = state.colaboradores.filter((p) => p.unidadeId === u.id && !p.inativo);
     const comDiag = colabs
       .map((p) => {
         const ultimo = state.ciclos
@@ -263,7 +263,13 @@ function renderDashboardAdmin(abertos, pdisAtivos, encerrados) {
       })
       .filter(Boolean);
     const alavancar = comDiag.filter((g) => g === 'A').length;
-    return { nome: u.nome, total: colabs.length, avaliados: comDiag.length, alavancar };
+    return {
+      nome: u.nome,
+      total: colabs.length,
+      avaliados: comDiag.length,
+      alavancar,
+      coberturaPct: colabs.length ? Math.round((comDiag.length / colabs.length) * 100) : 0,
+    };
   });
 
   // 7.5 — Indicadores Organizacionais: cargos com maior concentração de "Iniciar".
@@ -302,6 +308,42 @@ function renderDashboardAdmin(abertos, pdisAtivos, encerrados) {
     });
   const meses = Object.keys(porMes).sort();
 
+  // Distribuição geral por classificação IDA (mesmo cálculo do renderDistribuicaoIDA).
+  const comDiagGeral = state.ciclos.filter((c) => c.diagnostico && c.diagnostico.geral);
+  const contagemIda = { I: 0, D: 0, A: 0 };
+  comDiagGeral.forEach((c) => contagemIda[c.diagnostico.geral]++);
+  const totalIda = contagemIda.I + contagemIda.D + contagemIda.A;
+
+  // Ciclos abertos neste trimestre vs trimestre anterior (comparação de volume).
+  function trimestreDe(dataISO) {
+    const [ano, mes] = dataISO.split('-').map(Number);
+    return ano * 4 + Math.floor((mes - 1) / 3);
+  }
+  const trimestreAtual = trimestreDe(new Date().toISOString().slice(0, 10));
+  let ciclosTrimAtual = 0,
+    ciclosTrimAnterior = 0;
+  state.ciclos.forEach((c) => {
+    const t = trimestreDe(c.dataAbertura);
+    if (t === trimestreAtual) ciclosTrimAtual++;
+    else if (t === trimestreAtual - 1) ciclosTrimAnterior++;
+  });
+
+  // PDIs concluídos dentro do prazo: dos ciclos com PDI gerado, quantos já foram aprovados.
+  const ciclosComPdi = state.ciclos.filter((c) => c.pdiDesenvolvimento);
+  const pdisAprovadosCount = ciclosComPdi.filter((c) => c.pdiAprovado).length;
+  const pctPdiNoPrazo = ciclosComPdi.length ? Math.round((pdisAprovadosCount / ciclosComPdi.length) * 100) : 0;
+
+  // Guarda os dados calculados pra os gráficos serem montados depois que o
+  // HTML já estiver na tela (ver inicializarGraficosDashboard em 02-core-helpers.js)
+  _dadosGraficosDashboardAdmin = {
+    ida: [contagemIda.I, contagemIda.D, contagemIda.A],
+    trimestres: [ciclosTrimAnterior, ciclosTrimAtual],
+    meses: meses.slice(-6).map((m) => ({ mes: m, media: porMes[m].reduce((a, b) => a + b, 0) / porMes[m].length })),
+    cargosRisco: porCargo.slice(0, 4),
+    pctPdiNoPrazo,
+    unidadesCobertura: porUnidade.slice(0, 5),
+  };
+
   return `
     ${
       meuPapelReal === 'owner'
@@ -319,49 +361,70 @@ function renderDashboardAdmin(abertos, pdisAtivos, encerrados) {
       <div class="kpi"><div class="n">${pdisAtivos}</div><div class="l">PDIs ativos</div></div>
       <div class="kpi"><div class="n">${encerrados}</div><div class="l">Ciclos com diagnóstico gerado</div></div>
     </div>
-    <div class="card">
-      <h3>Distribuição por classificação IDA <small>Consolidado de todos os ciclos com diagnóstico — indicador estratégico</small></h3>
-      ${renderDistribuicaoIDA()}
+
+    <div class="painel-visao-geral">
+      <div class="grafico-card">
+        <h4>Classificação geral <small>${totalIda} colaboradores com diagnóstico</small></h4>
+        ${
+          totalIda
+            ? `<div class="grafico-donut-wrap">
+          <div class="grafico-donut-canvas"><canvas id="donutIda" role="img" aria-label="Rosca com a distribuição geral: ${contagemIda.I} Iniciar, ${contagemIda.D} Desenvolver, ${contagemIda.A} Alavancar"></canvas>
+            <div class="grafico-donut-centro">${state.colaboradores.length}</div>
+          </div>
+          <div class="grafico-legenda">
+            <span><span class="dot" style="background:#e34948;"></span>Iniciar ${Math.round((contagemIda.I / totalIda) * 100)}%</span>
+            <span><span class="dot" style="background:#eda100;"></span>Desenvolver ${Math.round((contagemIda.D / totalIda) * 100)}%</span>
+            <span><span class="dot" style="background:#1baf7a;"></span>Alavancar ${Math.round((contagemIda.A / totalIda) * 100)}%</span>
+          </div>
+        </div>`
+            : '<div class="empty">Sem diagnósticos ainda.</div>'
+        }
+      </div>
+
+      <div class="grafico-card">
+        <h4>Ciclos: trimestre atual vs anterior</h4>
+        <div class="grafico-canvas-md"><canvas id="barTrimestre" role="img" aria-label="Comparação de ciclos abertos: ${ciclosTrimAnterior} no trimestre anterior, ${ciclosTrimAtual} no atual"></canvas></div>
+      </div>
+
+      <div class="grafico-card">
+        <h4>Evolução da média geral <small>Últimos ${_dadosGraficosDashboardAdmin.meses.length} meses com diagnóstico</small></h4>
+        ${_dadosGraficosDashboardAdmin.meses.length ? '<div class="grafico-canvas-md"><canvas id="areaEvolucao" role="img" aria-label="Linha com a evolução mensal da média geral da empresa"></canvas></div>' : '<div class="empty">Sem histórico suficiente ainda.</div>'}
+      </div>
+
+      <div class="grafico-card">
+        <h4>Cargos com mais "Iniciar" <small>Pode sinalizar problema do cargo/treinamento (7.5)</small></h4>
+        ${porCargo.length ? '<div class="grafico-canvas-lg"><canvas id="barCargos" role="img" aria-label="Ranking dos cargos com maior porcentagem de colaboradores em Iniciar"></canvas></div>' : '<div class="empty">Nenhum cargo em risco no momento.</div>'}
+      </div>
+
+      <div class="grafico-card" style="align-items:center;display:flex;flex-direction:column;">
+        <h4 style="align-self:flex-start;">PDIs aprovados <small>${ciclosComPdi.length} PDIs gerados no total</small></h4>
+        ${
+          ciclosComPdi.length
+            ? `<div class="grafico-gauge-wrap"><canvas id="gaugePdi" role="img" aria-label="Medidor mostrando ${pctPdiNoPrazo}% dos PDIs já aprovados"></canvas>
+          <div class="grafico-gauge-numero">${pctPdiNoPrazo}%</div></div>`
+            : '<div class="empty">Nenhum PDI gerado ainda.</div>'
+        }
+      </div>
+
+      <div class="grafico-card">
+        <h4>Cobertura por Unidade <small>% de colaboradores já avaliados</small></h4>
+        ${
+          porUnidade.length
+            ? porUnidade
+                .slice(0, 5)
+                .map(
+                  (u) => `
+          <div class="grafico-barra-linha">
+            <div class="grafico-barra-label"><span>${escaparHtml(u.nome)}</span><span>${u.coberturaPct}%</span></div>
+            <div class="grafico-barra-trilha"><div class="grafico-barra-fill" style="width:${u.coberturaPct}%;"></div></div>
+          </div>`
+                )
+                .join('')
+            : '<div class="empty">Nenhuma unidade cadastrada ainda.</div>'
+        }
+      </div>
     </div>
-    ${
-      unidades.length
-        ? `
-    <div class="card">
-      <h3>Indicadores estratégicos por Unidade</h3>
-      <table><thead><tr><th>Unidade</th><th>Colaboradores</th><th>Já avaliados</th><th>Em Alavancar</th></tr></thead><tbody>
-        ${porUnidade.map((u) => `<tr><td><b>${escaparHtml(u.nome)}</b></td><td class="small-muted">${u.total}</td><td class="small-muted">${u.avaliados}</td><td class="small-muted">${u.alavancar}</td></tr>`).join('')}
-      </tbody></table>
-    </div>`
-        : ''
-    }
-    ${
-      porCargo.length
-        ? `
-    <div class="card">
-      <h3>Cargos com maior concentração de "Iniciar" <small>Indicador organizacional (7.5) — pode sinalizar problema do cargo/treinamento, não só da pessoa</small></h3>
-      <table><thead><tr><th>Cargo</th><th>Colaboradores avaliados</th><th>Em Iniciar</th><th>%</th></tr></thead><tbody>
-        ${porCargo.map((c) => `<tr><td><b>${escaparHtml(c.nome)}</b></td><td class="small-muted">${c.avaliados}</td><td class="small-muted">${c.iniciar}</td><td><span class="pill pill-iniciar">${c.percentual}%</span></td></tr>`).join('')}
-      </tbody></table>
-    </div>`
-        : ''
-    }
-    ${
-      meses.length
-        ? `
-    <div class="card">
-      <h3>Evolução organizacional consolidada <small>Média geral ponderada, por mês de abertura do ciclo</small></h3>
-      <table><thead><tr><th>Mês</th><th>Ciclos com diagnóstico</th><th>Média geral</th><th>Classificação</th></tr></thead><tbody>
-        ${meses
-          .map((m) => {
-            const arr = porMes[m];
-            const media = arr.reduce((a, b) => a + b, 0) / arr.length;
-            return `<tr><td>${m}</td><td class="small-muted">${arr.length}</td><td class="small-muted">${media.toFixed(2)}</td><td><span class="pill ${pillClass(classificar(media))}">${pillLabel(classificar(media))}</span></td></tr>`;
-          })
-          .join('')}
-      </tbody></table>
-    </div>`
-        : ''
-    }
+
     <div class="card">
       <h3>Ciclos recentes</h3>
       ${state.ciclos.length ? renderCiclosTable() : '<div class="empty">Nenhum ciclo aberto ainda. Vá em <b>Ciclos de Avaliação</b> para iniciar o primeiro.</div>'}

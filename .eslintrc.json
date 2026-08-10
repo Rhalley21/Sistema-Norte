@@ -357,7 +357,12 @@
     "podeEditarAoVivo": "writable",
     "renderAoVivo": "writable",
     "lancarNotaAoVivo": "writable",
-    "confirmarSessaoAoVivo": "writable"
+    "confirmarSessaoAoVivo": "writable",
+    "_dadosGraficosDashboardAdmin": "writable",
+    "inicializarGraficosDashboard": "writable",
+    "destruirGraficosAtivos": "writable",
+    "_chartsAtivos": "writable",
+    "Chart": "readonly"
   },
   "rules": {
     "no-unused-vars": "off",
