@@ -393,7 +393,7 @@ function renderDashboardAdmin(abertos, pdisAtivos, encerrados) {
 
       <div class="grafico-card">
         <h4>Cargos com mais "Iniciar" <small>Pode sinalizar problema do cargo/treinamento (7.5)</small></h4>
-        ${porCargo.length ? '<div class="grafico-canvas-lg"><canvas id="barCargos" role="img" aria-label="Ranking dos cargos com maior porcentagem de colaboradores em Iniciar"></canvas></div>' : '<div class="empty">Nenhum cargo em risco no momento.</div>'}
+        ${porCargo.length ? `<div class="grafico-canvas-lg" style="height:${Math.max(110, porCargo.length * 34)}px;"><canvas id="barCargos" role="img" aria-label="Ranking dos cargos com maior porcentagem de colaboradores em Iniciar"></canvas></div>` : '<div class="empty">Nenhum cargo em risco no momento.</div>'}
       </div>
 
       <div class="grafico-card" style="align-items:center;display:flex;flex-direction:column;">
@@ -524,7 +524,7 @@ function renderDashboardRH() {
 
       <div class="grafico-card">
         <h4>Competências críticas mais recorrentes <small>Base pra priorizar ações de desenvolvimento</small></h4>
-        ${criticasOrdenadas.length ? '<div class="grafico-canvas-lg"><canvas id="rhBarCriticas" role="img" aria-label="Ranking das competências críticas mais recorrentes entre os diagnósticos"></canvas></div>' : '<div class="empty">Nenhuma competência crítica recorrente identificada ainda.</div>'}
+        ${criticasOrdenadas.length ? `<div class="grafico-canvas-lg" style="height:${Math.max(110, Math.min(criticasOrdenadas.length, 6) * 34)}px;"><canvas id="rhBarCriticas" role="img" aria-label="Ranking das competências críticas mais recorrentes entre os diagnósticos"></canvas></div>` : '<div class="empty">Nenhuma competência crítica recorrente identificada ainda.</div>'}
       </div>
     </div>
 
@@ -657,7 +657,7 @@ function renderDashboardGestor() {
 
       <div class="grafico-card">
         <h4>Potencial da equipe <small>Ranking pela última Dimensão de Potencial medida</small></h4>
-        ${potencialEquipe.length ? '<div class="grafico-canvas-lg"><canvas id="gestorBarPotencial" role="img" aria-label="Ranking dos colaboradores da equipe por Potencial"></canvas></div>' : '<div class="empty">Nenhum colaborador da equipe com diagnóstico ainda.</div>'}
+        ${potencialEquipe.length ? `<div class="grafico-canvas-lg" style="height:${Math.max(110, potencialEquipe.length * 34)}px;"><canvas id="gestorBarPotencial" role="img" aria-label="Ranking dos colaboradores da equipe por Potencial"></canvas></div>` : '<div class="empty">Nenhum colaborador da equipe com diagnóstico ainda.</div>'}
       </div>
     </div>
 

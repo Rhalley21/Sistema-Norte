@@ -109,7 +109,7 @@ function pageEstrutura() {
           </div>
         </div>
         ${
-          expandido
+          expandido && n.tipo !== 'unidade'
             ? `
           <div class="tree-node-colaboradores">
             ${
@@ -120,7 +120,7 @@ function pageEstrutura() {
                       return `<div class="tree-node-colaborador"><span class="tree-node-avatar">${iniciaisNome(p.nome)}</span><span>${escaparHtml(p.nome)}</span><span class="small-muted">${cargo ? escaparHtml(cargo.nome) : '—'}</span></div>`;
                     })
                     .join('')
-                : `<div class="small-muted" style="padding:6px 2px;">Nenhum colaborador vinculado ${n.tipo === 'unidade' || n.tipo === 'setor' ? 'aqui' : 'em nenhum Setor dentro deste nível'} ainda.</div>`
+                : `<div class="small-muted" style="padding:6px 2px;">Nenhum colaborador vinculado ${n.tipo === 'setor' ? 'aqui' : 'em nenhum Setor dentro deste nível'} ainda.</div>`
             }
           </div>
         `
@@ -142,7 +142,7 @@ function pageEstrutura() {
         `
             : ''
         }
-        ${children.length ? `<div class="tree-children">${children.map((c) => nodeHTML(c, depth + 1)).join('')}</div>` : ''}
+        ${expandido && children.length ? `<div class="tree-children">${children.map((c) => nodeHTML(c, depth + 1)).join('')}</div>` : ''}
       </div>
     `;
   }

@@ -3,6 +3,41 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.32.0 — Árvore organizacional: navegação progressiva (só Unidade de cara)
+Ajuste na árvore, refinando a v0.31.0: agora, ao abrir a tela, **só as
+Unidades aparecem** — Departamento, Setor e Equipe ficam escondidos até
+alguém clicar pra expandir. Antes, a árvore inteira já vinha toda aberta
+de uma vez, o que ficava poluído em empresas com muitos níveis.
+
+- Clicar numa **Unidade** revela o que tem dentro dela (Departamento,
+  Setor, Equipe) — mas não mostra colaboradores direto nesse nível, já
+  que Unidade é só o local físico (reforçado na v0.31.0).
+- Clicar num **Departamento, Setor ou Equipe** revela os colaboradores
+  vinculados ali (e, se tiver, os níveis ainda mais internos).
+
+O contador de colaboradores no cabeçalho de cada nó continua aparecendo
+sempre, mesmo fechado — só a lista detalhada é que fica escondida até
+expandir.
+
+Confirmei visualmente o comportamento (estado inicial só com Unidades, e
+o passo a passo de expansão) renderizando o HTML/CSS de verdade num
+navegador antes de fechar.
+
+## v0.31.1 — Bug corrigido: gráfico de barras cortando informação
+No dashboard do RH, "Competências críticas mais recorrentes" (e também,
+pelo mesmo motivo, "Cargos com mais Iniciar" no Admin e "Potencial da
+equipe" no Gestor) usava uma altura fixa de 150px pro gráfico, pensada
+pra poucos itens — mas esses gráficos podem mostrar até 6 barras, com
+nomes de competência que costumam ser frases longas. Resultado: barras
+espremidas e informação cortada.
+
+Corrigido: a altura do gráfico agora é calculada de acordo com a
+quantidade real de itens (mínimo de 110px, crescendo conforme mais
+barras aparecem), em vez de um valor fixo pra todo caso. Renderizei o
+Chart.js de verdade, comparando lado a lado a versão antiga (fixa) com a
+nova (dinâmica), usando nomes de competência realistas, pra confirmar a
+diferença antes de fechar.
+
 ## v0.31.0 — Árvore organizacional: clique pra ver colaboradores + clareza sobre "Unidade"
 Dois ajustes na Estrutura Organizacional, a partir de um print real do
 sistema em uso:
