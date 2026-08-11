@@ -3,6 +3,61 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.31.0 — Árvore organizacional: clique pra ver colaboradores + clareza sobre "Unidade"
+Dois ajustes na Estrutura Organizacional, a partir de um print real do
+sistema em uso:
+
+**1) Clicar em qualquer nó agora mostra os colaboradores dele.** Cada
+nível (Unidade, Departamento, Setor, Equipe) ganhou um contador
+("· 3 colaboradores") e expande a lista com nome, iniciais e cargo ao
+clicar. Como colaboradores só se vinculam diretamente a Unidade e Setor
+(Departamento e Equipe são níveis puramente estruturais), clicar num
+Departamento ou Equipe junta automaticamente todos os colaboradores dos
+Setores dentro dele — não precisa entrar setor por setor pra ver o
+time completo. Testei essa lógica isoladamente nos 4 tipos de nível
+antes de fechar, incluindo o caso de colaboradores inativos (não contam)
+e Equipe sem Setor descendente (mostra vazio, comportamento esperado
+dado como o vínculo funciona hoje).
+
+**2) "Unidade" deixou de sugerir nome confuso.** O campo de nome agora
+muda o texto de exemplo dependendo do tipo escolhido — pra Unidade,
+sugere um local físico de verdade (ex: "Matriz São Paulo") em vez do
+antigo "Unidade Rio de Janeiro", que incentivava repetir a palavra
+"Unidade" dentro do próprio nome (a origem da confusão vista no print).
+A descrição da página também reforça: Unidade é o local físico onde a
+empresa funciona — os demais níveis organizam quem trabalha dentro dela.
+
+Isso não renomeia nada que já existe — cargos/nomes já cadastrados
+continuam como estão até alguém editar manualmente.
+
+## v0.30.0 — Correção de performance: sistema demorando pra abrir
+Relato: o NORTE começou a demorar mais pra abrir. Causa raiz encontrada:
+4 bibliotecas externas pesadas (XLSX, jsPDF, jsPDF-autotable, Chart.js)
+eram baixadas em **todo carregamento da página, pra todo mundo** — mesmo
+um Colaborador que só ia responder uma autoavaliação e nunca exportaria
+Excel/PDF nem veria um gráfico naquela sessão.
+
+Corrigido: essas 4 bibliotecas agora carregam **sob demanda**, só no
+momento em que a funcionalidade correspondente é realmente usada:
+- Exportar Excel (Consolidado, Comparativo, importação em lote de
+  colaboradores) → carrega XLSX nesse momento.
+- Gerar qualquer PDF (Avaliação, PDI, Institucional, Dossiê) → carrega
+  jsPDF nesse momento.
+- Entrar num dashboard com gráfico (Admin, RH, Gestor, Colaborador) →
+  carrega Chart.js nesse momento — o resto da tela já aparece normal,
+  só os gráficos surgem com uma pequena espera na primeira vez daquela
+  sessão (depois fica em cache do navegador, sem baixar de novo).
+
+O Supabase continua carregando sempre, sem essa otimização — login e
+dados básicos dependem dele em toda tela, então não faria sentido
+adiar.
+
+Implementado com `carregarScript()` (cria a tag `<script>` só quando
+chamado, e guarda em cache pra nunca baixar a mesma biblioteca duas
+vezes, mesmo se duas funções pedirem ao mesmo tempo — testei essa parte
+isoladamente) + 3 funções de conveniência (`garantirXLSX`,
+`garantirJsPDF`, `garantirChart`).
+
 ## v0.29.0 — Árvore Organizacional redesenhada
 A árvore em Estrutura Organizacional era só uma lista de caixas simples,
 com indentação e linha pontilhada. Redesenhada com visual de organograma

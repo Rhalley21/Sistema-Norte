@@ -21,9 +21,41 @@ function causariaCiclo(nodeId, novoPaiId) {
   return false;
 }
 
+// Colaboradores só se vinculam diretamente a Unidade e Setor (não a
+// Departamento/Equipe, que são níveis puramente estruturais/intermediários).
+// Por isso, pra saber "quem pertence a este nó" quando o nó é um
+// Departamento ou uma Equipe, é preciso descer a árvore até achar todos os
+// Setores descendentes, e então juntar os colaboradores desses Setores.
+function setoresDescendentesDe(nodeId) {
+  const diretos = state.estrutura.filter((n) => n.paiId === nodeId);
+  let setores = diretos.filter((n) => n.tipo === 'setor').map((n) => n.id);
+  diretos.forEach((filho) => {
+    setores = setores.concat(setoresDescendentesDe(filho.id));
+  });
+  return setores;
+}
+function colaboradoresDoNo(node) {
+  if (node.tipo === 'unidade') {
+    return state.colaboradores.filter((p) => p.unidadeId === node.id && !p.inativo);
+  }
+  if (node.tipo === 'setor') {
+    return state.colaboradores.filter((p) => p.setorId === node.id && !p.inativo);
+  }
+  // Departamento ou Equipe: todos os colaboradores cujo Setor está dentro deste nó.
+  const setoresIds = setoresDescendentesDe(node.id);
+  return state.colaboradores.filter((p) => setoresIds.includes(p.setorId) && !p.inativo);
+}
+
 let _tipoNovoEstrutura = 'unidade';
 let _paiNovoEstrutura = '';
 let _moverEstruturaId = null;
+let _expandidosEstrutura = new Set();
+
+function toggleExpandirEstrutura(nodeId) {
+  if (_expandidosEstrutura.has(nodeId)) _expandidosEstrutura.delete(nodeId);
+  else _expandidosEstrutura.add(nodeId);
+  render();
+}
 
 function pageEstrutura() {
   const roots = state.estrutura.filter((n) => !n.paiId);
@@ -52,27 +84,48 @@ function pageEstrutura() {
   function nodeHTML(n, depth) {
     const children = state.estrutura.filter((c) => c.paiId === n.id);
     const emMovimento = _moverEstruturaId === n.id;
+    const expandido = _expandidosEstrutura.has(n.id);
     const opcoesPai = state.estrutura.filter(
       (x) => x.id !== n.id && NIVEL_RANK[x.tipo] === NIVEL_RANK[n.tipo] - 1 && !causariaCiclo(n.id, x.id)
     );
     const nomeResp = n.responsavelId ? nomeResponsavel(n.responsavelId) : null;
+    const colaboradoresDoNode = colaboradoresDoNo(n);
     return `
       <div class="tree-node-wrap">
-        <div class="tree-node" style="--nivel-cor:${NIVEL_COR_VAR[n.tipo]};--nivel-cor-soft:${NIVEL_COR_SOFT_VAR[n.tipo]};">
+        <div class="tree-node" style="--nivel-cor:${NIVEL_COR_VAR[n.tipo]};--nivel-cor-soft:${NIVEL_COR_SOFT_VAR[n.tipo]};cursor:pointer;" onclick="toggleExpandirEstrutura('${n.id}')">
           <div class="tree-node-info">
+            <span class="tree-node-chevron ${expandido ? 'aberto' : ''}">▸</span>
             <div class="tree-node-icone">${NIVEL_ICONE[n.tipo]}</div>
             <div class="tree-node-textos">
               <span class="tree-node-nome">${escaparHtml(n.nome)}</span>
-              <span class="tree-node-tipo">${NIVEL_LABEL[n.tipo]}</span>
+              <span class="tree-node-tipo">${NIVEL_LABEL[n.tipo]} <span class="tree-node-contagem">· ${colaboradoresDoNode.length} colaborador${colaboradoresDoNode.length === 1 ? '' : 'es'}</span></span>
             </div>
           </div>
           <div class="tree-node-resp">
             ${nomeResp ? `<span class="tree-node-avatar">${iniciaisNome(nomeResp)}</span><span>${escaparHtml(nomeResp)}</span>` : '<span>sem responsável</span>'}
           </div>
-          <div class="tree-node-acoes">
+          <div class="tree-node-acoes" onclick="event.stopPropagation();">
             ${n.tipo !== 'unidade' ? `<button class="btn btn-ghost btn-sm" onclick="_moverEstruturaId='${emMovimento ? '' : n.id}';render();">${emMovimento ? 'Cancelar' : 'Mover'}</button>` : ''}
           </div>
         </div>
+        ${
+          expandido
+            ? `
+          <div class="tree-node-colaboradores">
+            ${
+              colaboradoresDoNode.length
+                ? colaboradoresDoNode
+                    .map((p) => {
+                      const cargo = state.cargos.find((c) => c.id === p.cargoId);
+                      return `<div class="tree-node-colaborador"><span class="tree-node-avatar">${iniciaisNome(p.nome)}</span><span>${escaparHtml(p.nome)}</span><span class="small-muted">${cargo ? escaparHtml(cargo.nome) : '—'}</span></div>`;
+                    })
+                    .join('')
+                : `<div class="small-muted" style="padding:6px 2px;">Nenhum colaborador vinculado ${n.tipo === 'unidade' || n.tipo === 'setor' ? 'aqui' : 'em nenhum Setor dentro deste nível'} ainda.</div>`
+            }
+          </div>
+        `
+            : ''
+        }
         ${
           emMovimento
             ? `
@@ -100,13 +153,22 @@ function pageEstrutura() {
     <div class="page-head">
       <div class="eyebrow">Etapa 02 · Fundação</div>
       <h1>Estrutura Organizacional</h1>
-      <p class="page-desc">Hierarquia sequencial: Unidade → Departamento → Setor → Equipe. Cada nível só pode ficar diretamente dentro do nível imediatamente acima — não é possível pular etapas (ex: um Setor precisa estar dentro de um Departamento, não direto na Unidade).</p>
+      <p class="page-desc">Hierarquia sequencial: Unidade → Departamento → Setor → Equipe. <b>Unidade é o local físico</b> onde a empresa funciona (ex: a matriz, uma filial) — os demais níveis organizam quem trabalha dentro dela. Cada nível só pode ficar diretamente dentro do nível imediatamente acima — não é possível pular etapas (ex: um Setor precisa estar dentro de um Departamento, não direto na Unidade).</p>
     </div>
 
     <div class="card">
       <h3>Adicionar nível hierárquico</h3>
       <div class="grid3">
-        <div class="field"><label>Nome</label><input id="e_nome" placeholder="Ex: Unidade Rio de Janeiro"></div>
+        <div class="field"><label>Nome ${_tipoNovoEstrutura === 'unidade' ? '<small>(o local físico onde a empresa funciona — não repita a palavra "Unidade" no nome)</small>' : ''}</label>
+          <input id="e_nome" placeholder="${
+            {
+              unidade: 'Ex: Matriz São Paulo, Filial Centro',
+              departamento: 'Ex: Comercial',
+              setor: 'Ex: Vendas Internas',
+              equipe: 'Ex: Equipe de Prospecção',
+            }[_tipoNovoEstrutura]
+          }">
+        </div>
         <div class="field"><label>Tipo</label>
           <select id="e_tipo" onchange="_tipoNovoEstrutura=this.value; _paiNovoEstrutura=''; render();">
             ${Object.keys(NIVEL_LABEL)

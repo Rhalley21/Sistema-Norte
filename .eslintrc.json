@@ -368,7 +368,16 @@
     "_dadosGraficosDashboardColaborador": "writable",
     "gerarImagemGrafico": "writable",
     "gerarImagemDimensoes": "writable",
-    "gerarImagemPilares": "writable"
+    "gerarImagemPilares": "writable",
+    "garantirJsPDF": "writable",
+    "_scriptsCarregados": "writable",
+    "garantirXLSX": "writable",
+    "garantirChart": "writable",
+    "carregarScript": "writable",
+    "toggleExpandirEstrutura": "writable",
+    "colaboradoresDoNo": "writable",
+    "setoresDescendentesDe": "writable",
+    "_expandidosEstrutura": "writable"
   },
   "rules": {
     "no-unused-vars": "off",

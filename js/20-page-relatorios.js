@@ -230,7 +230,9 @@ function pageRelatorios() {
   `;
 }
 
-function exportarAvaliacaoPDF(cicloId) {
+async function exportarAvaliacaoPDF(cicloId) {
+  await garantirJsPDF();
+  await garantirChart();
   const ciclo = state.ciclos.find((c) => c.id === cicloId);
   const p = state.colaboradores.find((x) => x.id === ciclo.colaboradorId);
   const cargo = state.cargos.find((c) => c.id === ciclo.cargoId);
@@ -288,7 +290,8 @@ function exportarAvaliacaoPDF(cicloId) {
   showToast('PDF da avaliação exportado.');
 }
 
-function exportarPDIPDF(cicloId) {
+async function exportarPDIPDF(cicloId) {
+  await garantirJsPDF();
   const ciclo = state.ciclos.find((c) => c.id === cicloId);
   const p = state.colaboradores.find((x) => x.id === ciclo.colaboradorId);
   const cargo = state.cargos.find((c) => c.id === ciclo.cargoId);
@@ -345,7 +348,8 @@ function exportarPDIPDF(cicloId) {
   showToast('PDF do PDI exportado.');
 }
 
-function exportarRelatorioInstitucionalPDF() {
+async function exportarRelatorioInstitucionalPDF() {
+  await garantirJsPDF();
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   const corPrimaria = hexParaRgb(state.configuracoes?.identidadeVisual?.corPrimaria);
@@ -491,7 +495,8 @@ function exportarRelatorioInstitucionalPDF() {
   showToast('Relatório Institucional Consolidado exportado.');
 }
 
-function exportarDossiePDF(cicloId) {
+async function exportarDossiePDF(cicloId) {
+  await garantirJsPDF();
   const ciclo = state.ciclos.find((c) => c.id === cicloId);
   const p = state.colaboradores.find((x) => x.id === ciclo.colaboradorId);
   const cargo = state.cargos.find((c) => c.id === ciclo.cargoId);
@@ -668,7 +673,8 @@ function exportarDossiePDF(cicloId) {
   showToast('Dossiê completo (Desenho + Avaliação + PDI) exportado em PDF.');
 }
 
-function exportarConsolidadoExcel() {
+async function exportarConsolidadoExcel() {
+  await garantirXLSX();
   const unidadeId = document.getElementById('rel_unidade').value;
   const setorId = document.getElementById('rel_setor').value;
   let lista = state.colaboradores;
@@ -702,7 +708,8 @@ function exportarConsolidadoExcel() {
   showToast('Relatório consolidado exportado em Excel.');
 }
 
-function exportarComparativoExcel(colabId) {
+async function exportarComparativoExcel(colabId) {
+  await garantirXLSX();
   const p = state.colaboradores.find((x) => x.id === colabId);
   const ciclosDoColab = state.ciclos
     .filter((c) => c.colaboradorId === colabId && c.diagnostico)

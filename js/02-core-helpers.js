@@ -847,6 +847,48 @@ function escaparParaOnclick(texto) {
    dados são calculados dentro de renderDashboardAdmin() e guardados em
    _dadosGraficosDashboardAdmin pra essa função ler.
    ========================================================= */
+/* =========================================================
+   CARREGAMENTO SOB DEMANDA — v0.30.0
+   -----------------------------------------------------------
+   PROBLEMA DE PERFORMANCE CORRIGIDO: até aqui, 4 bibliotecas pesadas
+   (XLSX, jsPDF + autotable, Chart.js) eram baixadas em TODO carregamento
+   da página, pra TODO mundo — mesmo um Colaborador que só vai responder
+   uma autoavaliação e nunca vai exportar Excel, PDF ou ver um gráfico
+   naquela sessão. Isso deixava o sistema mais lento pra abrir sem
+   necessidade.
+
+   Agora essas 4 bibliotecas só são baixadas no exato momento em que a
+   funcionalidade correspondente é usada de verdade (clicar em
+   "Exportar Excel", gerar um PDF, ou entrar numa tela com gráfico) — o
+   Supabase continua carregando sempre, porque login e dados básicos
+   dependem dele em toda tela.
+   ========================================================= */
+const _scriptsCarregados = {};
+function carregarScript(url) {
+  if (_scriptsCarregados[url]) return _scriptsCarregados[url];
+  _scriptsCarregados[url] = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = url;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Falha ao carregar biblioteca externa: ' + url));
+    document.head.appendChild(script);
+  });
+  return _scriptsCarregados[url];
+}
+async function garantirXLSX() {
+  if (window.XLSX) return;
+  await carregarScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+}
+async function garantirJsPDF() {
+  if (window.jspdf) return;
+  await carregarScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
+  await carregarScript('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js');
+}
+async function garantirChart() {
+  if (window.Chart) return;
+  await carregarScript('https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js');
+}
+
 let _dadosGraficosDashboardAdmin = null;
 let _dadosGraficosDashboardRH = null;
 let _dadosGraficosDashboardGestor = null;
@@ -859,6 +901,21 @@ function destruirGraficosAtivos() {
 }
 
 function inicializarGraficosDashboard() {
+  // Se alguma tela com gráfico está na página, mas o Chart.js ainda não
+  // foi baixado, carrega agora (só nesse momento) e reexecuta essa mesma
+  // função quando terminar — o resto da tela já está interativa nesse
+  // meio-tempo, só os gráficos aparecem com um pequeno atraso na primeira
+  // vez que alguém entra numa tela com gráfico naquela sessão.
+  const temTelaComGrafico =
+    document.getElementById('donutIda') ||
+    document.getElementById('rhDonutIda') ||
+    document.getElementById('gestorDonutIda') ||
+    document.getElementById('colabGaugePdi');
+  if (temTelaComGrafico && !window.Chart) {
+    garantirChart().then(() => inicializarGraficosDashboard());
+    return;
+  }
+  if (!window.Chart) return;
   destruirGraficosAtivos();
   const corGrade = 'rgba(255,255,255,0.06)';
   const corEixo = '#6c7f9a';

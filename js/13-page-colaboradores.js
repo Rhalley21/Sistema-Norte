@@ -16,7 +16,8 @@ function renderImportacaoLote() {
   `;
 }
 
-function baixarModeloImportacao() {
+async function baixarModeloImportacao() {
+  await garantirXLSX();
   const linhas = [
     ['Nome', 'Cargo', 'Unidade', 'Setor', 'Gestor', 'Admissão'],
     ['Maria Silva', 'Analista de Recursos Humanos', 'Unidade Central', 'Setor Financeiro', 'João Souza', '2026-01-15'],
@@ -27,9 +28,10 @@ function baixarModeloImportacao() {
   XLSX.writeFile(wb, 'modelo-importacao-colaboradores.xlsx');
 }
 
-function processarArquivoImportacao(inputEl) {
+async function processarArquivoImportacao(inputEl) {
   const arquivo = inputEl.files[0];
   if (!arquivo) return;
+  await garantirXLSX();
   const leitor = new FileReader();
   leitor.onload = (e) => {
     const dados = new Uint8Array(e.target.result);
