@@ -249,7 +249,11 @@ function exportarAvaliacaoPDF(cicloId) {
   doc.text(`Colaborador: ${p.nome}`, 14, 34);
   doc.text(`Cargo: ${cargo.nome} (versão ${p.versaoCargoVinculada || ciclo.cargoId})`, 14, 40);
   doc.text(`Ciclo aberto em: ${ciclo.dataAbertura}    Estado: ${ciclo.estado}`, 14, 46);
-  doc.text(`Classificação geral: ${pillLabel(d.geral)}`, 14, 52);
+  doc.text(
+    `Classificação geral: ${pillLabel(d.geral)} (${d.geralMedia !== null ? d.geralMedia.toFixed(2) : '—'} / 1,00)`,
+    14,
+    52
+  );
 
   doc.setFontSize(11);
   doc.text('Resumo executivo', 14, 62);
@@ -268,8 +272,13 @@ function exportarAvaliacaoPDF(cicloId) {
 
   doc.autoTable({
     startY: y0,
-    head: [['Indicador', 'Pilar', 'Classificação']],
-    body: Object.values(d.porIndicador).map((i) => [i.nome, i.pilar, i.sigla ? pillLabel(i.sigla) : '—']),
+    head: [['Indicador', 'Pilar', 'Nota', 'Classificação']],
+    body: Object.values(d.porIndicador).map((i) => [
+      i.nome,
+      i.pilar,
+      i.media !== null ? i.media.toFixed(2) : '—',
+      i.sigla ? pillLabel(i.sigla) : '—',
+    ]),
     styles: { fontSize: 9 },
     headStyles: { fillColor: hexParaRgb(state.configuracoes?.identidadeVisual?.corPrimaria) },
   });
@@ -580,11 +589,15 @@ function exportarDossiePDF(cicloId) {
   }
   y = tituloSecao('2. Avaliação de Desempenho — Diagnóstico', y);
   doc.setFontSize(10);
-  doc.text(`Classificação geral: ${pillLabel(d.geral)}`, 14, y);
+  doc.text(
+    `Classificação geral: ${pillLabel(d.geral)} (${d.geralMedia !== null ? d.geralMedia.toFixed(2) : '—'} / 1,00)`,
+    14,
+    y
+  );
   y += 6;
   if (d.dimensaoSigla) {
     doc.text(
-      `Resultado: ${d.dimensaoSigla.Resultado ? pillLabel(d.dimensaoSigla.Resultado) : '—'}   Comportamento: ${d.dimensaoSigla.Comportamento ? pillLabel(d.dimensaoSigla.Comportamento) : '—'}   Potencial: ${d.dimensaoSigla.Potencial ? pillLabel(d.dimensaoSigla.Potencial) : '—'}`,
+      `Resultado: ${d.dimensaoSigla.Resultado ? `${pillLabel(d.dimensaoSigla.Resultado)} (${d.dimensaoMedia.Resultado.toFixed(2)})` : '—'}   Comportamento: ${d.dimensaoSigla.Comportamento ? `${pillLabel(d.dimensaoSigla.Comportamento)} (${d.dimensaoMedia.Comportamento.toFixed(2)})` : '—'}   Potencial: ${d.dimensaoSigla.Potencial ? `${pillLabel(d.dimensaoSigla.Potencial)} (${d.dimensaoMedia.Potencial.toFixed(2)})` : '—'}`,
       14,
       y
     );
@@ -592,8 +605,13 @@ function exportarDossiePDF(cicloId) {
   }
   doc.autoTable({
     startY: y,
-    head: [['Indicador', 'Pilar', 'Classificação']],
-    body: Object.values(d.porIndicador).map((i) => [i.nome, i.pilar, i.sigla ? pillLabel(i.sigla) : '—']),
+    head: [['Indicador', 'Pilar', 'Nota', 'Classificação']],
+    body: Object.values(d.porIndicador).map((i) => [
+      i.nome,
+      i.pilar,
+      i.media !== null ? i.media.toFixed(2) : '—',
+      i.sigla ? pillLabel(i.sigla) : '—',
+    ]),
     styles: { fontSize: 9 },
     headStyles: { fillColor: corPrimaria },
   });

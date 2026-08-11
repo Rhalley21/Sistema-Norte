@@ -30,35 +30,67 @@ function pageEstrutura() {
   const responsaveis = _perfisEmpresa.filter((p) => ['owner', 'rh', 'lider'].includes(p.papel));
   const nomeResponsavel = (id) => _perfisEmpresa.find((p) => p.id === id)?.nome || '—';
 
+  const NIVEL_ICONE = { unidade: 'U', departamento: 'D', setor: 'S', equipe: 'E' };
+  const NIVEL_COR_VAR = {
+    unidade: 'var(--nivel-unidade)',
+    departamento: 'var(--nivel-departamento)',
+    setor: 'var(--nivel-setor)',
+    equipe: 'var(--nivel-equipe)',
+  };
+  const NIVEL_COR_SOFT_VAR = {
+    unidade: 'var(--nivel-unidade-soft)',
+    departamento: 'var(--nivel-departamento-soft)',
+    setor: 'var(--nivel-setor-soft)',
+    equipe: 'var(--nivel-equipe-soft)',
+  };
+  function iniciaisNome(nome) {
+    if (!nome) return '?';
+    const partes = nome.trim().split(/\s+/);
+    return ((partes[0]?.[0] || '') + (partes[1]?.[0] || '')).toUpperCase() || '?';
+  }
+
   function nodeHTML(n, depth) {
     const children = state.estrutura.filter((c) => c.paiId === n.id);
     const emMovimento = _moverEstruturaId === n.id;
     const opcoesPai = state.estrutura.filter(
       (x) => x.id !== n.id && NIVEL_RANK[x.tipo] === NIVEL_RANK[n.tipo] - 1 && !causariaCiclo(n.id, x.id)
     );
+    const nomeResp = n.responsavelId ? nomeResponsavel(n.responsavelId) : null;
     return `
-      <div class="tree-node">
-        <span><b>${escaparHtml(n.nome)}</b> <span class="tag">${NIVEL_LABEL[n.tipo]}</span></span>
-        <span class="small-muted">${n.responsavelId ? nomeResponsavel(n.responsavelId) : 'sem responsável vinculado'}</span>
-        ${n.tipo !== 'unidade' ? `<button class="btn btn-ghost btn-sm" onclick="_moverEstruturaId='${emMovimento ? '' : n.id}';render();">${emMovimento ? 'Cancelar' : 'Mover'}</button>` : ''}
-      </div>
-      ${
-        emMovimento
-          ? `
-        <div class="tree-node" style="background:var(--surface-2);">
-          <div class="field" style="margin:0;flex:1;">
-            <label style="font-size:11px;">Novo nível superior</label>
-            <select id="novo_pai_${n.id}">
-              <option value="">— nenhum (torna raiz) —</option>
-              ${opcoesPai.map((p) => `<option value="${p.id}">${escaparHtml(p.nome)} (${NIVEL_LABEL[p.tipo]})</option>`).join('')}
-            </select>
+      <div class="tree-node-wrap">
+        <div class="tree-node" style="--nivel-cor:${NIVEL_COR_VAR[n.tipo]};--nivel-cor-soft:${NIVEL_COR_SOFT_VAR[n.tipo]};">
+          <div class="tree-node-info">
+            <div class="tree-node-icone">${NIVEL_ICONE[n.tipo]}</div>
+            <div class="tree-node-textos">
+              <span class="tree-node-nome">${escaparHtml(n.nome)}</span>
+              <span class="tree-node-tipo">${NIVEL_LABEL[n.tipo]}</span>
+            </div>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="moverEstrutura('${n.id}')">Confirmar</button>
+          <div class="tree-node-resp">
+            ${nomeResp ? `<span class="tree-node-avatar">${iniciaisNome(nomeResp)}</span><span>${escaparHtml(nomeResp)}</span>` : '<span>sem responsável</span>'}
+          </div>
+          <div class="tree-node-acoes">
+            ${n.tipo !== 'unidade' ? `<button class="btn btn-ghost btn-sm" onclick="_moverEstruturaId='${emMovimento ? '' : n.id}';render();">${emMovimento ? 'Cancelar' : 'Mover'}</button>` : ''}
+          </div>
         </div>
-      `
-          : ''
-      }
-      ${children.length ? `<div class="tree-children">${children.map((c) => nodeHTML(c, depth + 1)).join('')}</div>` : ''}
+        ${
+          emMovimento
+            ? `
+          <div class="tree-node" style="background:var(--surface);margin-left:38px;">
+            <div class="field" style="margin:0;flex:1;">
+              <label style="font-size:11px;">Novo nível superior</label>
+              <select id="novo_pai_${n.id}">
+                <option value="">— nenhum (torna raiz) —</option>
+                ${opcoesPai.map((p) => `<option value="${p.id}">${escaparHtml(p.nome)} (${NIVEL_LABEL[p.tipo]})</option>`).join('')}
+              </select>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="moverEstrutura('${n.id}')">Confirmar</button>
+          </div>
+        `
+            : ''
+        }
+        ${children.length ? `<div class="tree-children">${children.map((c) => nodeHTML(c, depth + 1)).join('')}</div>` : ''}
+      </div>
     `;
   }
 
@@ -103,7 +135,21 @@ function pageEstrutura() {
 
     <div class="card">
       <h3>Árvore organizacional</h3>
-      ${roots.length ? `<div class="tree">${roots.map((r) => nodeHTML(r, 0)).join('')}</div>` : '<div class="empty">Nenhum nível cadastrado ainda. Comece criando uma Unidade.</div>'}
+      ${
+        roots.length
+          ? `
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;font-size:11.5px;color:var(--ink-faint);">
+          ${Object.entries(NIVEL_LABEL)
+            .map(
+              ([tipo, label]) =>
+                `<span style="display:flex;align-items:center;gap:5px;"><span style="width:9px;height:9px;border-radius:3px;background:${NIVEL_COR_VAR[tipo]};display:inline-block;"></span>${label}</span>`
+            )
+            .join('')}
+        </div>
+        <div class="tree">${roots.map((r) => nodeHTML(r, 0)).join('')}</div>
+      `
+          : '<div class="empty">Nenhum nível cadastrado ainda. Comece criando uma Unidade.</div>'
+      }
     </div>
   `;
 }

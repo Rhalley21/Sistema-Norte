@@ -947,8 +947,9 @@ function diagnosticoSummaryHTML(ciclo) {
   const d = ciclo.diagnostico;
   const DIMENSAO_LABEL = { Resultado: 'Resultado', Comportamento: 'Comportamento', Potencial: 'Potencial' };
   return `
-    <div style="margin:14px 0;">
+    <div style="margin:14px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <span class="pill ${pillClass(d.geral)}" style="font-size:13px;padding:6px 14px;">Classificação geral: ${pillLabel(d.geral)}</span>
+      <span class="small-muted" style="font-family:var(--mono);font-size:13px;">${d.geralMedia !== null ? d.geralMedia.toFixed(2) : '—'} / 1,00</span>
     </div>
     <div class="grid3">
       ${Object.entries(d.dimensaoSigla || {})
@@ -958,6 +959,7 @@ function diagnosticoSummaryHTML(ciclo) {
         <div class="card" style="margin-bottom:0;padding:14px;">
           <div style="font-family:var(--serif-display);font-size:14px;">${DIMENSAO_LABEL[dim]}</div>
           <span class="pill ${pillClass(sig)}" style="margin-top:8px;">${pillLabel(sig)}</span>
+          <span class="small-muted" style="font-family:var(--mono);font-size:12px;margin-left:6px;">${d.dimensaoMedia[dim].toFixed(2)}</span>
         </div>
       `
             : ''
@@ -974,6 +976,7 @@ function diagnosticoSummaryHTML(ciclo) {
           <div class="tag tag-${p.toLowerCase()}">${p}</div>
           <div style="font-family:var(--serif-display);font-size:14px;margin-top:6px;">${PILAR_LABEL[p]}</div>
           <span class="pill ${pillClass(sig)}" style="margin-top:8px;">${pillLabel(sig)}</span>
+          <span class="small-muted" style="font-family:var(--mono);font-size:12px;margin-left:6px;">${d.pilarMedia[p].toFixed(2)}</span>
         </div>
       `
             : ''

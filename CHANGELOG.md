@@ -3,6 +3,53 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.29.0 — Árvore Organizacional redesenhada
+A árvore em Estrutura Organizacional era só uma lista de caixas simples,
+com indentação e linha pontilhada. Redesenhada com visual de organograma
+de verdade:
+
+- **Ícone colorido por nível** (U/D/S/E) — cada tipo (Unidade,
+  Departamento, Setor, Equipe) tem sua própria cor, com legenda no topo.
+- **Conectores visuais** — linha vertical guia + "cotovelo" horizontal
+  ligando cada nó ao pai, como um organograma de verdade, não só
+  indentação com borda pontilhada.
+- **Responsável com avatar** — iniciais num círculo, em vez de só texto.
+- **Cartões com hover** — feedback visual mais claro de qual nível está
+  sendo olhado.
+
+**Testei visualmente antes de fechar** — renderizei o CSS de verdade num
+navegador headless (Puppeteer) com dados de exemplo, em telas desktop e
+mobile, pra confirmar que os conectores alinham certinho e nada quebra
+em tela estreita.
+
+Nesse processo, encontrei e corrigi um problema de acessibilidade que eu
+mesmo ia introduzir: a primeira versão escondia o botão "Mover" até
+passar o mouse por cima (hover) — funciona bem no computador, mas
+**não existe hover em celular/tablet**, o que deixaria esse botão
+impossível de encontrar em quem usa o sistema pelo celular. Corrigido
+antes de fechar: o botão agora fica sempre visível.
+
+## v0.28.1 — Nota numérica (0 a 1) agora aparece junto da classificação
+Até agora, ao terminar uma avaliação, só a classificação (Iniciar /
+Desenvolver / Alavancar) aparecia na tela e nos PDFs — a nota numérica de
+0 a 1 já era calculada internamente pra decidir essa classificação, mas
+nunca era mostrada pra ninguém.
+
+Corrigido em 4 lugares, todos lendo o mesmo valor que já era calculado
+(nenhum cálculo novo foi criado):
+- **Tela de resultado do ciclo** (`diagnosticoSummaryHTML`) — geral, as 3
+  Dimensões e os 5 pilares agora mostram a nota ao lado da classificação.
+  Essa mesma função também é usada no dashboard do Colaborador, então o
+  ajuste vale nos dois lugares.
+- **PDF de Avaliação individual** — classificação geral com a nota, e
+  nova coluna "Nota" na tabela de indicadores.
+- **PDF do Dossiê completo** — mesmo ajuste, nas 3 Dimensões e na tabela
+  de indicadores.
+
+Quando um indicador não tem nota aplicável (ex.: ausência formal do
+avaliador sem substituto), continua mostrando "—" em vez de um número
+que não existe de fato — testei esse caso isoladamente antes de fechar.
+
 ## v0.28.0 — Relatório de avaliação em PDF agora com gráficos
 O PDF de "Avaliação de Desempenho" (exportado depois de consolidar um
 ciclo) só tinha texto e tabela. Agora inclui 2 gráficos, gerados a partir

@@ -15,6 +15,14 @@
   --desenvolver-soft: rgba(233, 150, 16, 0.16);
   --alavancar: #4a9b6e;
   --alavancar-soft: rgba(74, 155, 110, 0.16);
+  --nivel-unidade: #e99610;
+  --nivel-unidade-soft: rgba(233, 150, 16, 0.18);
+  --nivel-departamento: #4f8fd1;
+  --nivel-departamento-soft: rgba(79, 143, 209, 0.18);
+  --nivel-setor: #4a9b6e;
+  --nivel-setor-soft: rgba(74, 155, 110, 0.18);
+  --nivel-equipe: #9b6fd6;
+  --nivel-equipe-soft: rgba(155, 111, 214, 0.18);
   --radius: 10px;
   --serif-display: 'Space Grotesk', sans-serif;
   --body: 'Inter', sans-serif;
@@ -707,22 +715,115 @@ tr:hover td {
 .tree {
   padding-left: 0;
 }
+.tree-node-wrap {
+  position: relative;
+}
 .tree-node {
-  margin: 4px 0;
-  padding: 8px 10px;
+  margin: 6px 0;
+  padding: 10px 12px;
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-left: 3px solid var(--nivel-cor, var(--line));
+  border-radius: 9px;
   background: var(--surface-2);
   font-size: 12.5px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+.tree-node:hover {
+  background: var(--surface);
+}
+.tree-node-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.tree-node-icone {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--nivel-cor-soft, var(--gold-soft));
+  color: var(--nivel-cor, var(--gold));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.tree-node-textos {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.tree-node-nome {
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tree-node-tipo {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--nivel-cor, var(--ink-faint));
+  font-weight: 600;
+}
+.tree-node-resp {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+.tree-node-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--ink-dim);
+  flex-shrink: 0;
+}
+.tree-node-acoes {
+  flex-shrink: 0;
 }
 .tree-children {
-  margin-left: 22px;
-  border-left: 1px dashed var(--line);
-  padding-left: 14px;
-  margin-top: 4px;
+  margin-left: 13px;
+  padding-left: 20px;
+  margin-top: 2px;
+  position: relative;
+}
+.tree-children::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -8px;
+  bottom: 14px;
+  width: 1px;
+  background: var(--line);
+}
+.tree-children > .tree-node-wrap::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: 20px;
+  width: 20px;
+  height: 1px;
+  background: var(--line);
 }
 
 .action-card {
@@ -1203,4 +1304,19 @@ hr.sep {
   height: 100%;
   background: var(--gold);
   border-radius: 4px;
+}
+
+/* Árvore organizacional em telas estreitas — evita informação cortada/empilhada demais */
+@media (max-width: 640px) {
+  .tree-node {
+    flex-wrap: wrap;
+  }
+  .tree-node-resp {
+    order: 3;
+    width: 100%;
+    padding-left: 38px;
+  }
+  .tree-children {
+    padding-left: 14px;
+  }
 }
