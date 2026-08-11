@@ -80,6 +80,22 @@ function pillLabel(sig) {
   return IDA_LABEL[sig] || 'Sem dado';
 }
 
+/* Explicação da escala IDA, mostrada no início de toda tela onde alguém vai
+   de fato lançar uma nota — pra quem nunca usou o sistema (ou esqueceu)
+   entender o que cada letra significa antes de começar a avaliar. */
+function explicacaoEscalaIDA() {
+  return `
+    <div class="notice" style="border-left-color:var(--gold);">
+      <b>Como funciona a escala IDA</b> — cada indicador é classificado em um destes 3 níveis:
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;">
+        <span><span class="pill pill-iniciar">I</span> <b>Iniciar</b> — a competência ainda não é demonstrada de forma consistente.</span>
+        <span><span class="pill pill-desenvolver">D</span> <b>Desenvolver</b> — existe base, mas ainda em construção.</span>
+        <span><span class="pill pill-alavancar">A</span> <b>Alavancar</b> — ponto forte já consolidado.</span>
+      </div>
+    </div>
+  `;
+}
+
 /* ---------- Estado inicial em branco (dados reais vêm do Supabase) ---------- */
 /* ---------- RN026: campos de auditoria padrão em toda entidade principal ----------
    criado_por / criado_em / atualizado_por / atualizado_em + vínculo ao tenant. */

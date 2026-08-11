@@ -564,6 +564,8 @@ function renderEtapaSequencial(ciclo, p, cargo, indicadores) {
 
     ${resumosAnteriores}
 
+    ${explicacaoEscalaIDA()}
+
     <div class="card">
       <h3>Lançamento de notas — Escala IDA <small>Iniciar · Desenvolver · Alavancar, por indicador</small></h3>
       ${['N', 'O', 'R', 'T', 'E']
@@ -666,6 +668,8 @@ function renderAoVivo(ciclo, p, cargo, indicadores) {
     </div>
 
     ${!editavel ? '<div class="notice">Só o RH (ou Administrador) registra a nota combinada — você pode acompanhar, mas não editar aqui.</div>' : ''}
+
+    ${explicacaoEscalaIDA()}
 
     <div class="card">
       <h3>Nota combinada — Escala IDA <small>Iniciar · Desenvolver · Alavancar, por indicador, já acordada pelos 3</small></h3>

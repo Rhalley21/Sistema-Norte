@@ -378,7 +378,8 @@
     "colaboradoresDoNo": "writable",
     "setoresDescendentesDe": "writable",
     "_expandidosEstrutura": "writable",
-    "truncarRotuloEixo": "writable"
+    "truncarRotuloEixo": "writable",
+    "explicacaoEscalaIDA": "writable"
   },
   "rules": {
     "no-unused-vars": "off",

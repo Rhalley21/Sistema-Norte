@@ -3,6 +3,16 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.33.0 — Explicação da escala IDA na tela de avaliação
+Antes de lançar as notas (Iniciar/Desenvolver/Alavancar), a tela agora
+mostra um aviso explicando o que cada letra significa — pra quem nunca
+usou o sistema (ou esqueceu) entender antes de começar a avaliar, em vez
+de precisar adivinhar ou perguntar pra alguém.
+
+Adicionado nos dois modelos de avaliação (Assíncrono e Ao Vivo), como uma
+função reutilizável (`explicacaoEscalaIDA()`) — se o texto precisar
+mudar no futuro, é um lugar só pra ajustar, não dois.
+
 ## v0.32.1 — Bug corrigido: nomes longos cortados nos gráficos de barra
 Reportado com print real do dashboard do RH: nomes de competência
 ("Colaboração e trabalho em equipe", "Ética nas relações de trabalho"
