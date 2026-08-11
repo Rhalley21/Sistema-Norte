@@ -3,6 +3,26 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.32.1 — Bug corrigido: nomes longos cortados nos gráficos de barra
+Reportado com print real do dashboard do RH: nomes de competência
+("Colaboração e trabalho em equipe", "Ética nas relações de trabalho"
+etc.) apareciam cortados no meio do texto — o espaço da coluna do
+gráfico não é largo o suficiente pra caber o nome inteiro, e o Chart.js
+desenhava só o que cabia, sem nenhum aviso visual de que faltava parte
+do nome. Esse era um bug diferente do da v0.31.1 (aquele era sobre
+altura, esse é sobre largura).
+
+Corrigido nos 3 gráficos de barra horizontal que podem ter nomes longos
+(Competências críticas do RH, Cargos em risco do Admin, Potencial da
+equipe do Gestor): o texto agora é encurtado de forma controlada, sempre
+com "…" no final quando não cabe tudo — nunca mais corta no meio de uma
+palavra sem aviso. **O nome completo continua aparecendo ao passar o
+mouse** sobre a barra (o tooltip usa o texto original, não o encurtado).
+
+Testei a lógica de truncamento isoladamente com os nomes reais do print,
+e depois renderizei o Chart.js de verdade na mesma largura de cartão
+usada no sistema, pra confirmar visualmente antes de fechar.
+
 ## v0.32.0 — Árvore organizacional: navegação progressiva (só Unidade de cara)
 Ajuste na árvore, refinando a v0.31.0: agora, ao abrir a tela, **só as
 Unidades aparecem** — Departamento, Setor e Equipe ficam escondidos até

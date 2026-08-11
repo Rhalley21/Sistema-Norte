@@ -900,6 +900,19 @@ function destruirGraficosAtivos() {
   _chartsAtivos = [];
 }
 
+// BUG CORRIGIDO: nomes longos (competência, cargo, colaborador) nas
+// barras horizontais dos dashboards estavam sendo cortados no MEIO do
+// texto — o espaço da coluna do gráfico não é largo o suficiente pra
+// caber tudo, e o Chart.js simplesmente desenhava o que cabia, sem
+// nenhum aviso visual de que faltava texto. Agora o rótulo do eixo é
+// encurtado de forma controlada (com "…" no final), e o nome completo
+// continua aparecendo ao passar o mouse (tooltip usa o texto original,
+// não o encurtado).
+function truncarRotuloEixo(texto, maximo = 24) {
+  if (!texto || texto.length <= maximo) return texto;
+  return texto.slice(0, maximo - 1) + '…';
+}
+
 function inicializarGraficosDashboard() {
   // Se alguma tela com gráfico está na página, mas o Chart.js ainda não
   // foi baixado, carrega agora (só nesse momento) e reexecuta essa mesma
@@ -1019,7 +1032,16 @@ function inicializarGraficosDashboard() {
             plugins: { legend: { display: false } },
             scales: {
               x: { min: 0, max: 100, ticks: { color: corEixo, font: { size: 10 } }, grid: { color: corGrade } },
-              y: { ticks: { color: corTexto, font: { size: 10 } }, grid: { display: false } },
+              y: {
+                ticks: {
+                  color: corTexto,
+                  font: { size: 10 },
+                  callback: function (valor, indice) {
+                    return truncarRotuloEixo(this.getLabelForValue(indice));
+                  },
+                },
+                grid: { display: false },
+              },
             },
           },
         })
@@ -1117,7 +1139,16 @@ function inicializarGraficosDashboard() {
             plugins: { legend: { display: false } },
             scales: {
               x: { ticks: { color: corEixo, font: { size: 10 } }, grid: { color: corGrade } },
-              y: { ticks: { color: corTexto, font: { size: 10 } }, grid: { display: false } },
+              y: {
+                ticks: {
+                  color: corTexto,
+                  font: { size: 10 },
+                  callback: function (valor, indice) {
+                    return truncarRotuloEixo(this.getLabelForValue(indice));
+                  },
+                },
+                grid: { display: false },
+              },
             },
           },
         })
@@ -1172,7 +1203,16 @@ function inicializarGraficosDashboard() {
             plugins: { legend: { display: false } },
             scales: {
               x: { min: 0, max: 1, ticks: { color: corEixo, font: { size: 10 } }, grid: { color: corGrade } },
-              y: { ticks: { color: corTexto, font: { size: 10 } }, grid: { display: false } },
+              y: {
+                ticks: {
+                  color: corTexto,
+                  font: { size: 10 },
+                  callback: function (valor, indice) {
+                    return truncarRotuloEixo(this.getLabelForValue(indice));
+                  },
+                },
+                grid: { display: false },
+              },
             },
           },
         })

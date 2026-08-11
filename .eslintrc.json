@@ -377,7 +377,8 @@
     "toggleExpandirEstrutura": "writable",
     "colaboradoresDoNo": "writable",
     "setoresDescendentesDe": "writable",
-    "_expandidosEstrutura": "writable"
+    "_expandidosEstrutura": "writable",
+    "truncarRotuloEixo": "writable"
   },
   "rules": {
     "no-unused-vars": "off",
