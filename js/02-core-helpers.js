@@ -1023,7 +1023,7 @@ function inicializarGraficosDashboard() {
             datasets: [
               {
                 data: d.ida,
-                backgroundColor: ['#e34948', '#eda100', '#1baf7a'],
+                backgroundColor: ['#ef4444', '#f59e0b', '#16a34a'],
                 borderWidth: 3,
                 borderColor: '#ffffff',
               },
@@ -1038,61 +1038,42 @@ function inicializarGraficosDashboard() {
         })
       );
     }
-    if (document.getElementById('rhGaugeRisco')) {
-      _chartsAtivos.push(
-        new Chart(document.getElementById('rhGaugeRisco'), {
-          type: 'doughnut',
-          data: {
-            datasets: [
-              {
-                data: [d.pctSemRisco, 100 - d.pctSemRisco],
-                backgroundColor: ['#16a34a', '#e5e7eb'],
-                borderWidth: 0,
-                circumference: 180,
-                rotation: 270,
-              },
-            ],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '75%',
-            plugins: { legend: { display: false }, tooltip: { enabled: false } },
-          },
-        })
-      );
-    }
-    if (document.getElementById('rhBarCriticas') && d.criticas.length) {
-      _chartsAtivos.push(
-        new Chart(document.getElementById('rhBarCriticas'), {
-          type: 'bar',
-          data: {
-            labels: d.criticas.map((c) => c[0]),
-            datasets: [
-              { data: d.criticas.map((c) => c[1]), backgroundColor: '#eda100', borderRadius: 4, maxBarThickness: 18 },
-            ],
-          },
-          options: {
-            indexAxis: 'y',
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-              x: { ticks: { color: corEixo, font: { size: 10 } }, grid: { color: corGrade } },
-              y: {
-                ticks: {
-                  color: corTexto,
-                  font: { size: 10 },
-                  callback: function (valor, indice) {
-                    return truncarRotuloEixo(this.getLabelForValue(indice));
-                  },
+    if (document.getElementById('radarRH')) {
+      const labels = ['N', 'O', 'R', 'T', 'E'].filter((p) => d.pilares[p] !== null && d.pilares[p] !== undefined);
+      if (labels.length) {
+        _chartsAtivos.push(
+          new Chart(document.getElementById('radarRH'), {
+            type: 'radar',
+            data: {
+              labels: labels.map((p) => PILAR_LABEL[p] || p),
+              datasets: [
+                {
+                  data: labels.map((p) => Number(d.pilares[p].toFixed(2))),
+                  borderColor: '#2563eb',
+                  backgroundColor: 'rgba(37,99,235,0.12)',
+                  pointBackgroundColor: '#2563eb',
+                  borderWidth: 2,
                 },
-                grid: { display: false },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                r: {
+                  min: 0,
+                  max: 1,
+                  ticks: { stepSize: 0.25, color: corEixo, backdropColor: 'transparent', font: { size: 9 } },
+                  grid: { color: corGrade },
+                  angleLines: { color: corGrade },
+                  pointLabels: { color: corTexto, font: { size: 11 } },
+                },
               },
             },
-          },
-        })
-      );
+          })
+        );
+      }
     }
   }
 
@@ -1106,7 +1087,7 @@ function inicializarGraficosDashboard() {
             datasets: [
               {
                 data: d.ida,
-                backgroundColor: ['#e34948', '#eda100', '#1baf7a'],
+                backgroundColor: ['#ef4444', '#f59e0b', '#16a34a'],
                 borderWidth: 3,
                 borderColor: '#ffffff',
               },
@@ -1120,6 +1101,43 @@ function inicializarGraficosDashboard() {
           },
         })
       );
+    }
+    if (document.getElementById('radarGestor')) {
+      const labels = ['N', 'O', 'R', 'T', 'E'].filter((p) => d.pilares[p] !== null && d.pilares[p] !== undefined);
+      if (labels.length) {
+        _chartsAtivos.push(
+          new Chart(document.getElementById('radarGestor'), {
+            type: 'radar',
+            data: {
+              labels: labels.map((p) => PILAR_LABEL[p] || p),
+              datasets: [
+                {
+                  data: labels.map((p) => Number(d.pilares[p].toFixed(2))),
+                  borderColor: '#2563eb',
+                  backgroundColor: 'rgba(37,99,235,0.12)',
+                  pointBackgroundColor: '#2563eb',
+                  borderWidth: 2,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                r: {
+                  min: 0,
+                  max: 1,
+                  ticks: { stepSize: 0.25, color: corEixo, backdropColor: 'transparent', font: { size: 9 } },
+                  grid: { color: corGrade },
+                  angleLines: { color: corGrade },
+                  pointLabels: { color: corTexto, font: { size: 11 } },
+                },
+              },
+            },
+          })
+        );
+      }
     }
     if (document.getElementById('gestorBarPotencial') && d.potencial.length) {
       _chartsAtivos.push(

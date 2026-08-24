@@ -1419,3 +1419,41 @@ hr.sep {
   color: var(--alavancar);
   font-weight: 500;
 }
+
+/* Cabeçalho de topo (busca, notificações, avatar) — estilo INETRIS (v0.38.0) */
+.topo-pagina-inetris {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.topo-pagina-acoes {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.topo-pagina-busca input {
+  width: 200px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink-dim);
+  font-size: 13px;
+}
+.topo-pagina-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--gold-soft);
+  color: var(--gold-on-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 12.5px;
+  flex-shrink: 0;
+}

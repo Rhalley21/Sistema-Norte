@@ -260,11 +260,29 @@ function pageDashboard() {
       renderMinhaAvaliacaoPendente() + renderPendenciasAdmin() + renderDashboardAdmin(abertos, pdisAtivos, encerrados);
   }
 
+  const meuNome = nomePorPerfilId(meuPerfilId);
+  const iniciaisMeuNome =
+    meuNome && meuNome !== 'Alguém (conta removida)'
+      ? meuNome
+          .trim()
+          .split(/\s+/)
+          .slice(0, 2)
+          .map((p) => p[0])
+          .join('')
+          .toUpperCase()
+      : '—';
+
   return `
-    <div class="page-head">
-      <div class="eyebrow">Dashboard · ${state.role.toUpperCase()}</div>
-      <h1>${roleTitle}</h1>
-      <p class="page-desc">A plataforma organiza, calcula e sugere — a decisão final permanece sempre humana.</p>
+    <div class="topo-pagina-inetris">
+      <div>
+        <h1>${roleTitle}</h1>
+        <p class="page-desc" style="margin:2px 0 0;">A plataforma organiza, calcula e sugere — a decisão final permanece sempre humana.</p>
+      </div>
+      <div class="topo-pagina-acoes">
+        <div class="topo-pagina-busca"><input type="text" placeholder="Buscar..." disabled title="Em breve" /></div>
+        ${renderSinoNotificacoes()}
+        <div class="topo-pagina-avatar" title="${escaparHtml(meuNome)}">${iniciaisMeuNome}</div>
+      </div>
     </div>
     ${body}
   `;
@@ -435,46 +453,60 @@ function renderDashboardAdmin(abertos, pdisAtivos, encerrados) {
       </div>
     </div>
 
-    <div class="card">
-      <h3>Desempenho por pilar</h3>
-      <table><thead><tr><th>Pilar</th><th>Média</th><th>Classificação</th></tr></thead><tbody>
-        ${['N', 'O', 'R', 'T', 'E']
-          .map((p) => {
-            const v = mediaPorPilar[p];
-            return `<tr><td><span class="tag tag-${p.toLowerCase()}">${p}</span> ${PILAR_LABEL[p]}</td><td class="small-muted">${v !== null ? v.toFixed(2) : '—'}</td><td>${v !== null ? `<span class="pill ${pillClass(classificar(v))}">${pillLabel(classificar(v))}</span>` : '<span class="small-muted">Sem dado</span>'}</td></tr>`;
-          })
-          .join('')}
-      </tbody></table>
+    <div class="painel-visao-geral" style="grid-template-columns:1fr 1fr;">
+      <div class="card" style="margin-bottom:0;">
+        <h3>Desempenho por dimensão</h3>
+        <table><thead><tr><th>Dimensão</th><th>Resultado</th><th>Impacto</th></tr></thead><tbody>
+          ${['N', 'O', 'R', 'T', 'E']
+            .map((p) => {
+              const v = mediaPorPilar[p];
+              if (v === null)
+                return `<tr><td>${PILAR_LABEL[p]}</td><td class="small-muted">Sem dado</td><td class="small-muted">—</td></tr>`;
+              const sig = classificar(v);
+              const resultado =
+                sig === 'A' ? 'Domínio consolidado' : sig === 'D' ? 'Em desenvolvimento' : 'Abaixo do esperado';
+              const impacto = sig === 'I' ? 'Alto' : sig === 'D' ? 'Médio' : 'Baixo';
+              return `<tr><td>${PILAR_LABEL[p]}</td><td class="small-muted">${resultado}</td><td><span class="pill ${sig === 'I' ? 'pill-iniciar' : sig === 'D' ? 'pill-desenvolver' : 'pill-alavancar'}">${impacto}</span></td></tr>`;
+            })
+            .join('')}
+        </tbody></table>
+      </div>
+      <div class="card" style="margin-bottom:0;">
+        <h3>Oportunidades de desenvolvimento</h3>
+        <table><thead><tr><th>Dimensão</th><th>Oportunidade</th><th>Prioridade</th></tr></thead><tbody>
+          ${['N', 'O', 'R', 'T', 'E']
+            .map((p) => {
+              const v = mediaPorPilar[p];
+              if (v === null)
+                return `<tr><td>${PILAR_LABEL[p]}</td><td class="small-muted">Sem dado ainda</td><td class="small-muted">—</td></tr>`;
+              const sig = classificar(v);
+              const oportunidade =
+                sig === 'A'
+                  ? 'Manter reconhecimento e continuidade'
+                  : sig === 'D'
+                    ? 'Reforçar ações do Banco de Ações'
+                    : 'Priorizar PDI de Desenvolvimento';
+              const prioridade = sig === 'I' ? 'Alta' : sig === 'D' ? 'Média' : 'Baixa';
+              return `<tr><td>${PILAR_LABEL[p]}</td><td class="small-muted">${oportunidade}</td><td><span class="pill ${sig === 'I' ? 'pill-iniciar' : sig === 'D' ? 'pill-desenvolver' : 'pill-alavancar'}">${prioridade}</span></td></tr>`;
+            })
+            .join('')}
+        </tbody></table>
+      </div>
     </div>
-
-    ${
-      porCargo.length
-        ? `
-    <div class="card">
-      <h3>Oportunidades de desenvolvimento <small>Cargos com maior concentração de "Iniciar" (indicador 7.5)</small></h3>
-      <table><thead><tr><th>Cargo</th><th>Colaboradores avaliados</th><th>Em Iniciar</th><th>Prioridade</th></tr></thead><tbody>
-        ${porCargo
-          .slice(0, 5)
-          .map(
-            (c) =>
-              `<tr><td><b>${escaparHtml(c.nome)}</b></td><td class="small-muted">${c.avaliados}</td><td class="small-muted">${c.iniciar}</td><td><span class="pill ${c.percentual >= 50 ? 'pill-iniciar' : 'pill-desenvolver'}">${c.percentual >= 50 ? 'Alta' : 'Média'}</span></td></tr>`
-          )
-          .join('')}
-      </tbody></table>
-    </div>`
-        : ''
-    }
 
     <div class="card">
       <h3>Avaliações recentes</h3>
       ${
         avaliacoesRecentes.length
-          ? `<table><thead><tr><th>Colaborador</th><th>Cargo</th><th>Avaliador</th><th>Nota</th><th>Status</th><th>Data</th></tr></thead><tbody>
+          ? `<table><thead><tr><th>Colaborador</th><th>Cargo</th><th>Área</th><th>Avaliador</th><th>Dimensão</th><th>Nota</th><th>Status</th><th>Data</th></tr></thead><tbody>
         ${avaliacoesRecentes
-          .map(
-            (a) =>
-              `<tr><td><b>${a.p ? escaparHtml(a.p.nome) : '—'}</b></td><td class="small-muted">${a.cargo ? escaparHtml(a.cargo.nome) : '—'}</td><td class="small-muted">${a.gestor}</td><td class="small-muted" style="font-family:var(--mono);">${a.ciclo.diagnostico.geralMedia !== null ? a.ciclo.diagnostico.geralMedia.toFixed(2) : '—'}</td><td><span class="pill ${pillClass(a.ciclo.diagnostico.geral)}">${pillLabel(a.ciclo.diagnostico.geral)}</span></td><td class="small-muted">${a.ciclo.dataAbertura}</td></tr>`
-          )
+          .map((a) => {
+            const area = state.estrutura.find((n) => n.id === a.p?.setorId)?.nome || '—';
+            const dm = a.ciclo.diagnostico.dimensaoMedia || {};
+            const dimensoesValidas = Object.entries(dm).filter(([, v]) => v !== null);
+            const piorDimensao = dimensoesValidas.length ? dimensoesValidas.sort((x, y) => x[1] - y[1])[0][0] : 'Geral';
+            return `<tr><td><b>${a.p ? escaparHtml(a.p.nome) : '—'}</b></td><td class="small-muted">${a.cargo ? escaparHtml(a.cargo.nome) : '—'}</td><td class="small-muted">${escaparHtml(area)}</td><td class="small-muted">${a.gestor}</td><td class="small-muted">${piorDimensao}</td><td class="small-muted" style="font-family:var(--mono);">${a.ciclo.diagnostico.geralMedia !== null ? a.ciclo.diagnostico.geralMedia.toFixed(2) : '—'}</td><td><span class="pill ${pillClass(a.ciclo.diagnostico.geral)}">${pillLabel(a.ciclo.diagnostico.geral)}</span></td><td class="small-muted">${a.ciclo.dataAbertura}</td></tr>`;
+          })
           .join('')}
       </tbody></table>`
           : '<div class="empty">Nenhum ciclo aberto ainda. Vá em <b>Ciclos de Avaliação</b> para iniciar o primeiro.</div>'
@@ -533,21 +565,67 @@ function renderDashboardRH() {
     ? Math.round(((totalColabAtivos - colaboradoresEmRisco.length) / totalColabAtivos) * 100)
     : 100;
 
+  // Média por pilar (N·O·R·T·E) — mesmo elemento assinatura do Admin,
+  // aqui em nível de toda a empresa (RH também acompanha isso de perto).
+  const somaPorPilarRH = { N: [], O: [], R: [], T: [], E: [] };
+  comDiagRH.forEach((c) => {
+    ['N', 'O', 'R', 'T', 'E'].forEach((p) => {
+      const v = c.diagnostico.pilarMedia?.[p];
+      if (v !== null && v !== undefined) somaPorPilarRH[p].push(v);
+    });
+  });
+  const mediaPorPilarRH = {};
+  ['N', 'O', 'R', 'T', 'E'].forEach((p) => {
+    mediaPorPilarRH[p] = somaPorPilarRH[p].length
+      ? somaPorPilarRH[p].reduce((a, b) => a + b, 0) / somaPorPilarRH[p].length
+      : null;
+  });
+
   _dadosGraficosDashboardRH = {
     ida: [contagemIdaRH.I, contagemIdaRH.D, contagemIdaRH.A],
     criticas: criticasOrdenadas.slice(0, 6),
     pctSemRisco,
+    pilares: mediaPorPilarRH,
   };
 
   return `
-    <div class="kpi-grid">
-      <div class="kpi"><div class="n">${emAndamento.length}</div><div class="l">Avaliações em andamento</div></div>
-      <div class="kpi"><div class="n">${pendentes.length}</div><div class="l">Pendências de avaliador</div></div>
-      <div class="kpi"><div class="n">${pdisAtivos.length}</div><div class="l">PDIs ativos</div></div>
-      <div class="kpi"><div class="n">${criticasOrdenadas.length}</div><div class="l">Competências críticas distintas</div></div>
+    <div class="painel-kpi-inetris">
+      <div class="kpi-card-inetris">
+        <div class="kpi-card-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1M9 12l2 2 4-4"/></svg></div>
+        <div>
+          <div class="kpi-card-label">Avaliações em andamento</div>
+          <div class="kpi-card-valor">${emAndamento.length}</div>
+        </div>
+      </div>
+      <div class="kpi-card-inetris">
+        <div class="kpi-card-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+        <div>
+          <div class="kpi-card-label">Pendências de avaliador</div>
+          <div class="kpi-card-valor">${pendentes.length}</div>
+        </div>
+      </div>
+      <div class="kpi-card-inetris">
+        <div class="kpi-card-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg></div>
+        <div>
+          <div class="kpi-card-label">PDIs ativos</div>
+          <div class="kpi-card-valor">${pdisAtivos.length}</div>
+        </div>
+      </div>
+      <div class="kpi-card-inetris">
+        <div class="kpi-card-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg></div>
+        <div>
+          <div class="kpi-card-label">Colaboradores sem risco</div>
+          <div class="kpi-card-valor">${pctSemRisco}%</div>
+          <div class="kpi-card-nota">Fora do critério 7.2</div>
+        </div>
+      </div>
     </div>
 
-    <div class="painel-visao-geral">
+    <div class="painel-visao-geral" style="grid-template-columns:1.2fr 0.8fr;">
+      <div class="grafico-card">
+        <h4>Desempenho por dimensão <small>Média da empresa, escala 0 a 1</small></h4>
+        ${somaPorPilarRH.N.length ? `<div style="position:relative;width:100%;height:260px;"><canvas id="radarRH" role="img" aria-label="Radar de 5 pilares da empresa"></canvas></div>` : '<div class="empty">Sem diagnósticos ainda.</div>'}
+      </div>
       <div class="grafico-card">
         <h4>Classificação geral <small>${totalIdaRH} colaboradores com diagnóstico</small></h4>
         ${
@@ -557,26 +635,25 @@ function renderDashboardRH() {
             <div class="grafico-donut-centro">${totalColabAtivos}</div>
           </div>
           <div class="grafico-legenda">
-            <span><span class="dot" style="background:#e34948;"></span>Iniciar ${Math.round((contagemIdaRH.I / totalIdaRH) * 100)}%</span>
-            <span><span class="dot" style="background:#eda100;"></span>Desenvolver ${Math.round((contagemIdaRH.D / totalIdaRH) * 100)}%</span>
-            <span><span class="dot" style="background:#1baf7a;"></span>Alavancar ${Math.round((contagemIdaRH.A / totalIdaRH) * 100)}%</span>
+            <span><span class="dot" style="background:var(--iniciar);"></span>Iniciar ${Math.round((contagemIdaRH.I / totalIdaRH) * 100)}%</span>
+            <span><span class="dot" style="background:var(--desenvolver);"></span>Desenvolver ${Math.round((contagemIdaRH.D / totalIdaRH) * 100)}%</span>
+            <span><span class="dot" style="background:var(--alavancar);"></span>Alavancar ${Math.round((contagemIdaRH.A / totalIdaRH) * 100)}%</span>
           </div>
         </div>`
             : '<div class="empty">Sem diagnósticos ainda.</div>'
         }
       </div>
+    </div>
 
-      <div class="grafico-card" style="align-items:center;display:flex;flex-direction:column;">
-        <h4 style="align-self:flex-start;">Colaboradores sem risco <small>Fora do critério 7.2 (2 ciclos abaixo de Alavancar)</small></h4>
-        <div class="grafico-gauge-wrap"><canvas id="rhGaugeRisco" role="img" aria-label="Medidor mostrando ${pctSemRisco}% dos colaboradores sem risco identificado"></canvas>
-          <div class="grafico-gauge-numero">${pctSemRisco}%</div>
-        </div>
-      </div>
-
-      <div class="grafico-card">
-        <h4>Competências críticas mais recorrentes <small>Base pra priorizar ações de desenvolvimento</small></h4>
-        ${criticasOrdenadas.length ? `<div class="grafico-canvas-lg" style="height:${Math.max(110, Math.min(criticasOrdenadas.length, 6) * 34)}px;"><canvas id="rhBarCriticas" role="img" aria-label="Ranking das competências críticas mais recorrentes entre os diagnósticos"></canvas></div>` : '<div class="empty">Nenhuma competência crítica recorrente identificada ainda.</div>'}
-      </div>
+    <div class="card">
+      <h3>Competências críticas mais recorrentes <small>Base pra priorizar ações de desenvolvimento</small></h3>
+      ${
+        criticasOrdenadas.length
+          ? `<table><thead><tr><th>Indicador</th><th>Ocorrências</th></tr></thead><tbody>
+        ${criticasOrdenadas.map(([nome, n]) => `<tr><td>${escaparHtml(nome)}</td><td class="small-muted">${n}</td></tr>`).join('')}
+      </tbody></table>`
+          : '<div class="empty">Nenhuma competência crítica recorrente identificada ainda.</div>'
+      }
     </div>
 
     ${
@@ -674,20 +751,59 @@ function renderDashboardGestor() {
     .sort((a, b) => b.potencial - a.potencial)
     .slice(0, 6);
 
+  // Média por pilar (N·O·R·T·E) da própria equipe — mesmo elemento
+  // assinatura usado no Admin e no RH, aqui restrito a quem o Gestor avalia.
+  const somaPorPilarEquipe = { N: [], O: [], R: [], T: [], E: [] };
+  comDiagEquipe.forEach((c) => {
+    ['N', 'O', 'R', 'T', 'E'].forEach((p) => {
+      const v = c.diagnostico.pilarMedia?.[p];
+      if (v !== null && v !== undefined) somaPorPilarEquipe[p].push(v);
+    });
+  });
+  const mediaPorPilarEquipe = {};
+  ['N', 'O', 'R', 'T', 'E'].forEach((p) => {
+    mediaPorPilarEquipe[p] = somaPorPilarEquipe[p].length
+      ? somaPorPilarEquipe[p].reduce((a, b) => a + b, 0) / somaPorPilarEquipe[p].length
+      : null;
+  });
+
   _dadosGraficosDashboardGestor = {
     ida: [contagemIdaEquipe.I, contagemIdaEquipe.D, contagemIdaEquipe.A],
     potencial: potencialEquipe,
+    pilares: mediaPorPilarEquipe,
   };
 
   return `
-    <div class="kpi-grid">
-      <div class="kpi"><div class="n">${minhaEquipe.length}</div><div class="l">Colaboradores na minha equipe</div></div>
-      <div class="kpi"><div class="n">${abertosEquipe}</div><div class="l">Ciclos em andamento</div></div>
-      <div class="kpi"><div class="n">${pdisEquipe.length}</div><div class="l">PDIs ativos na equipe</div></div>
+    <div class="painel-kpi-inetris">
+      <div class="kpi-card-inetris">
+        <div class="kpi-card-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div>
+          <div class="kpi-card-label">Colaboradores na minha equipe</div>
+          <div class="kpi-card-valor">${minhaEquipe.length}</div>
+        </div>
+      </div>
+      <div class="kpi-card-inetris">
+        <div class="kpi-card-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1M9 12l2 2 4-4"/></svg></div>
+        <div>
+          <div class="kpi-card-label">Ciclos em andamento</div>
+          <div class="kpi-card-valor">${abertosEquipe}</div>
+        </div>
+      </div>
+      <div class="kpi-card-inetris">
+        <div class="kpi-card-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg></div>
+        <div>
+          <div class="kpi-card-label">PDIs ativos na equipe</div>
+          <div class="kpi-card-valor">${pdisEquipe.length}</div>
+        </div>
+      </div>
     </div>
     ${mentalidadePendentes ? `<div class="notice" style="border-left-color:var(--iniciar);">⚠ ${mentalidadePendentes} PDI(s) de Mentalidade pendente(s) — obrigatórios em todo ciclo (RN020).</div>` : ''}
 
-    <div class="painel-visao-geral">
+    <div class="painel-visao-geral" style="grid-template-columns:1.2fr 0.8fr;">
+      <div class="grafico-card">
+        <h4>Desempenho por dimensão <small>Média da equipe, escala 0 a 1</small></h4>
+        ${somaPorPilarEquipe.N.length ? `<div style="position:relative;width:100%;height:260px;"><canvas id="radarGestor" role="img" aria-label="Radar de 5 pilares da equipe"></canvas></div>` : '<div class="empty">Sem diagnósticos ainda.</div>'}
+      </div>
       <div class="grafico-card">
         <h4>Classificação da minha equipe <small>${totalIdaEquipe} avaliações com diagnóstico</small></h4>
         ${
@@ -697,19 +813,19 @@ function renderDashboardGestor() {
             <div class="grafico-donut-centro">${minhaEquipe.length}</div>
           </div>
           <div class="grafico-legenda">
-            <span><span class="dot" style="background:#e34948;"></span>Iniciar ${Math.round((contagemIdaEquipe.I / totalIdaEquipe) * 100)}%</span>
-            <span><span class="dot" style="background:#eda100;"></span>Desenvolver ${Math.round((contagemIdaEquipe.D / totalIdaEquipe) * 100)}%</span>
-            <span><span class="dot" style="background:#1baf7a;"></span>Alavancar ${Math.round((contagemIdaEquipe.A / totalIdaEquipe) * 100)}%</span>
+            <span><span class="dot" style="background:var(--iniciar);"></span>Iniciar ${Math.round((contagemIdaEquipe.I / totalIdaEquipe) * 100)}%</span>
+            <span><span class="dot" style="background:var(--desenvolver);"></span>Desenvolver ${Math.round((contagemIdaEquipe.D / totalIdaEquipe) * 100)}%</span>
+            <span><span class="dot" style="background:var(--alavancar);"></span>Alavancar ${Math.round((contagemIdaEquipe.A / totalIdaEquipe) * 100)}%</span>
           </div>
         </div>`
             : '<div class="empty">Sem diagnósticos ainda.</div>'
         }
       </div>
+    </div>
 
-      <div class="grafico-card">
-        <h4>Potencial da equipe <small>Ranking pela última Dimensão de Potencial medida</small></h4>
-        ${potencialEquipe.length ? `<div class="grafico-canvas-lg" style="height:${Math.max(110, potencialEquipe.length * 34)}px;"><canvas id="gestorBarPotencial" role="img" aria-label="Ranking dos colaboradores da equipe por Potencial"></canvas></div>` : '<div class="empty">Nenhum colaborador da equipe com diagnóstico ainda.</div>'}
-      </div>
+    <div class="card">
+      <h3>Potencial da equipe <small>Ranking pela última Dimensão de Potencial medida</small></h3>
+      ${potencialEquipe.length ? `<div class="grafico-canvas-lg" style="height:${Math.max(110, potencialEquipe.length * 34)}px;"><canvas id="gestorBarPotencial" role="img" aria-label="Ranking dos colaboradores da equipe por Potencial"></canvas></div>` : '<div class="empty">Nenhum colaborador da equipe com diagnóstico ainda.</div>'}
     </div>
 
     <div class="card">

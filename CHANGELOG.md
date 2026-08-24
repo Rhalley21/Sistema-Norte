@@ -3,6 +3,44 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.38.0 — Dashboard mais fiel à referência: cabeçalho, tabelas e colunas exatas
+Ajustes finos pra aproximar ainda mais da imagem de referência enviada:
+
+- **Cabeçalho de topo novo** (só na tela de Dashboard) — título, subtítulo,
+  campo de busca, sino de notificações (reaproveitando o que já existia)
+  e avatar com as iniciais de quem está logado.
+- **"Desempenho por Dimensão" e "Oportunidades de desenvolvimento"**
+  viraram duas tabelas lado a lado, com as colunas exatas da referência
+  (Dimensão/Resultado/Impacto e Dimensão/Oportunidade/Prioridade) — antes
+  eram duas tabelas com estrutura diferente uma da outra.
+- **"Avaliações Recentes"** ganhou as colunas "Área" (setor do
+  colaborador) e "Dimensão" (a dimensão com pior resultado naquele ciclo
+  — Resultado, Comportamento ou Potencial) — antes só tinha
+  Colaborador/Cargo/Avaliador/Nota/Status/Data.
+
+Testei a lógica de "pior dimensão" isoladamente (incluindo o caso de uma
+dimensão sem dado ainda) e renderizei o cabeçalho + tabelas com o CSS
+real antes de fechar.
+
+## v0.37.0 — Dashboards do RH e do Gestor também reconstruídos
+A v0.36.0 só tinha reconstruído o Dashboard do Administrador na estrutura
+da referência — RH e Gestor continuavam com o layout antigo (cartões de
+KPI simples, sem ícone, sem o gráfico de 5 dimensões). Essa versão aplica
+o mesmo tratamento nos outros dois:
+
+- **RH**: cartões de KPI com ícone (Avaliações em andamento, Pendências
+  de avaliador, PDIs ativos, Colaboradores sem risco), gráfico de 5
+  dimensões (empresa toda) ao lado da Classificação Geral, e
+  "Competências críticas" virou tabela (antes era gráfico de barra, que
+  cortava nomes longos).
+- **Gestor**: mesmo padrão, com o gráfico de 5 dimensões calculado só com
+  a própria equipe (não a empresa toda) — o ranking de Potencial e a
+  tabela de evolução da equipe continuam como estavam, sem mudança.
+
+Cores dos gráficos de rosca (Iniciar/Desenvolver/Alavancar) dos dois
+dashboards também corrigidas — ainda usavam os tons antigos (antes da
+v0.35.0), mesmo depois da troca de identidade.
+
 ## v0.36.0 — Dashboard do Administrador reconstruído no layout da referência
 A v0.35.0 trocou as cores, mas o layout continuava o antigo. Essa versão
 reconstrói o Dashboard do Administrador seguindo a estrutura exata da
