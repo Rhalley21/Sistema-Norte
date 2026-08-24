@@ -29,7 +29,7 @@
   --nivel-setor-soft: rgba(22, 163, 74, 0.12);
   --nivel-equipe: #9b6fd6;
   --nivel-equipe-soft: rgba(155, 111, 214, 0.12);
-  --radius: 10px;
+  --radius: 12px;
   --serif-display: 'Inter', sans-serif;
   --body: 'Inter', sans-serif;
   --mono: 'JetBrains Mono', monospace;
@@ -327,7 +327,7 @@ h1 {
   padding: 9px 11px;
   background: var(--surface-2);
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-radius: 10px;
   color: var(--ink);
   font-size: 13.5px;
   outline: none;
@@ -347,7 +347,7 @@ h1 {
   align-items: center;
   gap: 7px;
   padding: 9px 16px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid var(--line);
   background: var(--surface-2);
   color: var(--ink);
@@ -1456,4 +1456,14 @@ hr.sep {
   font-weight: 600;
   font-size: 12.5px;
   flex-shrink: 0;
+}
+.topo-pagina-empresa {
+  font-size: 13px;
+  color: var(--ink-dim);
+  font-weight: 500;
+  padding: 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
 }

@@ -280,6 +280,7 @@ function pageDashboard() {
       </div>
       <div class="topo-pagina-acoes">
         <div class="topo-pagina-busca"><input type="text" placeholder="Buscar..." disabled title="Em breve" /></div>
+        <div class="topo-pagina-empresa" title="Empresa atual">${escaparHtml(state.empresa?.nomeFantasia) || 'Minha empresa'}</div>
         ${renderSinoNotificacoes()}
         <div class="topo-pagina-avatar" title="${escaparHtml(meuNome)}">${iniciaisMeuNome}</div>
       </div>
@@ -404,7 +405,7 @@ function renderDashboardAdmin(abertos, pdisAtivos, encerrados) {
     }
     <div class="painel-kpi-inetris">
       <div class="kpi-card-inetris">
-        <div class="kpi-card-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01z"/></svg></div>
+        <div class="kpi-card-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01z"/></svg></div>
         <div>
           <div class="kpi-card-label">Resultado geral</div>
           <div class="kpi-card-valor">${mediaGeralEmpresa !== null ? mediaGeralEmpresa.toFixed(2) : '—'} <span class="kpi-card-meta">/ 1,00</span></div>

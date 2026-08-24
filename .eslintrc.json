@@ -383,7 +383,8 @@
     "renderMinhaAvaliacaoPendente": "writable",
     "souOGestorDoCiclo": "writable",
     "souOColaboradorDoCiclo": "writable",
-    "_dadosGraficosRadar": "writable"
+    "_dadosGraficosRadar": "writable",
+    "COR_PILAR": "writable"
   },
   "rules": {
     "no-unused-vars": "off",

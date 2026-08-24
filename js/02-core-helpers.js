@@ -48,6 +48,13 @@ const state = {
 };
 
 const PILAR_LABEL = { N: 'Nível Técnico', O: 'Operação', R: 'Resultado', T: 'Time', E: 'Evolução' };
+// Cores por dimensão do gráfico de 5 dimensões — direto do Manual de
+// Marca INETRIS (Nível Técnico: azul · Operacional: azul petróleo ·
+// Resultado: verde · Time: roxo suave · Evolução: verde claro). Aplicado
+// nos marcadores de cada eixo do radar — a linha/preenchimento continua
+// numa cor neutra, só os pontos ficam coloridos por dimensão, senão o
+// gráfico fica poluído.
+const COR_PILAR = { N: '#2563eb', O: '#0f766e', R: '#16a34a', T: '#a78bfa', E: '#86efac' };
 const PILAR_TAGLINE = {
   N: 'O que você precisa saber',
   O: 'O que você precisa executar',
@@ -985,9 +992,9 @@ function inicializarGraficosDashboard() {
               datasets: [
                 {
                   data: labels.map((p) => Number(d.pilares[p].toFixed(2))),
-                  borderColor: '#2563eb',
-                  backgroundColor: 'rgba(37,99,235,0.12)',
-                  pointBackgroundColor: '#2563eb',
+                  borderColor: '#94a3b8',
+                  backgroundColor: 'rgba(148,163,184,0.10)',
+                  pointBackgroundColor: labels.map((p) => COR_PILAR[p] || '#2563eb'),
                   borderWidth: 2,
                 },
               ],
@@ -1049,9 +1056,9 @@ function inicializarGraficosDashboard() {
               datasets: [
                 {
                   data: labels.map((p) => Number(d.pilares[p].toFixed(2))),
-                  borderColor: '#2563eb',
-                  backgroundColor: 'rgba(37,99,235,0.12)',
-                  pointBackgroundColor: '#2563eb',
+                  borderColor: '#94a3b8',
+                  backgroundColor: 'rgba(148,163,184,0.10)',
+                  pointBackgroundColor: labels.map((p) => COR_PILAR[p] || '#2563eb'),
                   borderWidth: 2,
                 },
               ],
@@ -1113,9 +1120,9 @@ function inicializarGraficosDashboard() {
               datasets: [
                 {
                   data: labels.map((p) => Number(d.pilares[p].toFixed(2))),
-                  borderColor: '#2563eb',
-                  backgroundColor: 'rgba(37,99,235,0.12)',
-                  pointBackgroundColor: '#2563eb',
+                  borderColor: '#94a3b8',
+                  backgroundColor: 'rgba(148,163,184,0.10)',
+                  pointBackgroundColor: labels.map((p) => COR_PILAR[p] || '#2563eb'),
                   borderWidth: 2,
                 },
               ],
@@ -1221,9 +1228,9 @@ function inicializarGraficosDashboard() {
           datasets: [
             {
               data: labels.map((p) => Number(pilarMedia[p].toFixed(2))),
-              borderColor: '#2563eb',
-              backgroundColor: 'rgba(37,99,235,0.12)',
-              pointBackgroundColor: '#2563eb',
+              borderColor: '#94a3b8',
+              backgroundColor: 'rgba(148,163,184,0.10)',
+              pointBackgroundColor: labels.map((p) => COR_PILAR[p] || '#2563eb'),
               borderWidth: 2,
             },
           ],

@@ -3,6 +3,27 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.39.0 — Ajustes finos conforme o Manual de Marca INETRIS
+Revisão ponto a ponto contra o Manual de Marca completo (o prompt de
+identidade visual), corrigindo diferenças reais que ainda restavam:
+
+- **Cantos**: cartões agora 12px (estavam 10px), botões e campos de
+  formulário agora 10px (estavam 8px e 7px) — valores exatos do manual.
+- **Gráfico de 5 dimensões, cor por dimensão**: o manual pede uma cor
+  própria pra cada uma das 5 dimensões (Nível Técnico: azul · Operação:
+  azul petróleo · Resultado: verde · Time: roxo suave · Evolução: verde
+  claro) — antes o radar inteiro era só azul. Agora cada ponto do radar
+  tem a cor certa, e a linha que conecta os pontos passou pra um cinza
+  neutro, pra não competir visualmente com as cores dos pontos.
+- **Ícone de estrela**: estava preenchido (sólido) — o manual pede ícones
+  de traço fino (outline), então corrigido pra contorno.
+- **Cabeçalho**: o manual especifica que deve conter busca, notificações,
+  empresa, usuário e avatar — faltava o nome da empresa, adicionado.
+
+Testei a lógica de cor por dimensão isoladamente (incluindo o caso de
+uma dimensão sem dado) e renderizei o radar com as cores reais antes de
+fechar, confirmando visualmente.
+
 ## v0.38.0 — Dashboard mais fiel à referência: cabeçalho, tabelas e colunas exatas
 Ajustes finos pra aproximar ainda mais da imagem de referência enviada:
 
