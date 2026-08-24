@@ -320,7 +320,7 @@ function seed() {
     // Pesos dos avaliadores travados em 25/50/25 (RN003, PRD Documento 04) —
     // não é mais configurável (era uma extensão fora do PRD; removida por decisão de produto).
     notificacoes: { lembretesPrazo: true },
-    identidadeVisual: { logoUrl: '', corPrimaria: '#0a2647', corSecundaria: '#e99610' },
+    identidadeVisual: { logoUrl: '', corPrimaria: '#2563eb', corSecundaria: '#0d1b33' },
     // RNF002 — permissões configuráveis pelo Administrador (exceções ao
     // modelo padrão de papéis; por padrão, tudo desligado = comportamento fixo de sempre).
     permissoesExtras: {
@@ -519,12 +519,12 @@ async function enviarEmailNotificacao(destinatario, assunto, corpoHtml) {
 function emailWrapperHTML(tituloInterno, corpoTexto, botaoTexto, botaoUrl) {
   // Template simples e consistente pra todos os e-mails da plataforma.
   return `
-    <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0a2647;color:#e9edf3;border-radius:8px;">
-      <div style="font-size:20px;font-weight:700;margin-bottom:4px;">NORTE</div>
-      <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#9fb0c7;margin-bottom:20px;">Metodologia NORTE · Instituto INETRIS</div>
-      <h2 style="font-size:17px;margin:0 0 12px;">${tituloInterno}</h2>
-      <p style="font-size:14px;line-height:1.5;color:#e9edf3;">${corpoTexto}</p>
-      ${botaoUrl ? `<a href="${botaoUrl}" style="display:inline-block;margin-top:16px;padding:10px 18px;background:#e99610;color:#0a2647;text-decoration:none;border-radius:6px;font-weight:700;font-size:13px;">${botaoTexto || 'Acessar'}</a>` : ''}
+    <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#ffffff;color:#0d1b33;border-radius:8px;border:1px solid #e5e7eb;">
+      <div style="font-size:20px;font-weight:700;margin-bottom:4px;color:#0d1b33;">NORTE</div>
+      <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#4b5563;margin-bottom:20px;">Metodologia NORTE · Instituto INETRIS</div>
+      <h2 style="font-size:17px;margin:0 0 12px;color:#0d1b33;">${tituloInterno}</h2>
+      <p style="font-size:14px;line-height:1.5;color:#0d1b33;">${corpoTexto}</p>
+      ${botaoUrl ? `<a href="${botaoUrl}" style="display:inline-block;margin-top:16px;padding:10px 18px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:700;font-size:13px;">${botaoTexto || 'Acessar'}</a>` : ''}
     </div>`;
 }
 
@@ -783,19 +783,19 @@ function aplicarTemaCoresInterface(corPrimaria) {
   document.documentElement.style.setProperty('--gold-text', corTexto);
   // BUG CORRIGIDO (segundo caso): em vários lugares (menu de "ver como",
   // abas de avaliador, rótulos "eyebrow"), a MESMA cor customizável era
-  // usada como texto em cima do fundo ESCURO E FIXO da barra lateral —
-  // diferente do botão (onde o fundo também muda de cor), aqui o fundo
-  // nunca muda, só o texto. Se a empresa escolhesse uma cor também escura
-  // (ou muito parecida com o fundo escuro do sistema), o texto ficava
-  // invisível — texto escuro sobre fundo escuro que nunca muda. Agora, se
-  // a cor escolhida for escura demais pra contrastar com esse fundo fixo,
-  // a versão usada nesses lugares é clareada automaticamente.
-  let corParaFundoEscuro = corPrimaria;
-  if (luminancia < 0.4) {
-    const clarear = (v) => Math.round(v + (255 - v) * 0.55);
-    corParaFundoEscuro = rgbParaHexLocal(clarear(r), clarear(g), clarear(b));
+  // usada como texto em cima do fundo FIXO da barra lateral — diferente
+  // do botão (onde o fundo também muda de cor), aqui o fundo nunca muda,
+  // só o texto. Com a identidade INETRIS (v0.35.0), esse fundo fixo virou
+  // BRANCO — antes era escuro. Por isso a lógica agora é o oposto: se a
+  // cor escolhida for CLARA demais pra contrastar com um fundo branco,
+  // ela é escurecida automaticamente (antes, era o contrário: clareava
+  // pra contrastar com um fundo que era escuro).
+  let corParaFundoFixo = corPrimaria;
+  if (luminancia > 0.6) {
+    const escurecer = (v) => Math.round(v * 0.45);
+    corParaFundoFixo = rgbParaHexLocal(escurecer(r), escurecer(g), escurecer(b));
   }
-  document.documentElement.style.setProperty('--gold-on-dark', corParaFundoEscuro);
+  document.documentElement.style.setProperty('--gold-on-light', corParaFundoFixo);
 }
 function rgbParaHexLocal(r, g, b) {
   return (
@@ -909,6 +909,11 @@ let _dadosGraficosDashboardAdmin = null;
 let _dadosGraficosDashboardRH = null;
 let _dadosGraficosDashboardGestor = null;
 let _dadosGraficosDashboardColaborador = null;
+// Gráfico das 5 dimensões (N·O·R·T·E) — elemento visual assinatura da
+// identidade INETRIS (Manual, Seção 10). Guarda os dados de cada ciclo
+// por id, já que a mesma tela (Diagnóstico) pode mostrar vários cartões
+// de ciclo ao mesmo tempo, cada um com seu próprio radar.
+let _dadosGraficosRadar = {};
 let _chartsAtivos = [];
 
 function destruirGraficosAtivos() {
@@ -939,7 +944,8 @@ function inicializarGraficosDashboard() {
     document.getElementById('donutIda') ||
     document.getElementById('rhDonutIda') ||
     document.getElementById('gestorDonutIda') ||
-    document.getElementById('colabGaugePdi');
+    document.getElementById('colabGaugePdi') ||
+    document.querySelector('[id^="radar_"]');
   if (temTelaComGrafico && !window.Chart) {
     garantirChart().then(() => inicializarGraficosDashboard());
     return;
@@ -947,8 +953,8 @@ function inicializarGraficosDashboard() {
   if (!window.Chart) return;
   destruirGraficosAtivos();
   const corGrade = 'rgba(255,255,255,0.06)';
-  const corEixo = '#6c7f9a';
-  const corTexto = '#9fb0c7';
+  const corEixo = '#9ca3af';
+  const corTexto = '#4b5563';
 
   if (_dadosGraficosDashboardAdmin && document.getElementById('donutIda')) {
     const d = _dadosGraficosDashboardAdmin;
@@ -957,7 +963,7 @@ function inicializarGraficosDashboard() {
         type: 'doughnut',
         data: {
           datasets: [
-            { data: d.ida, backgroundColor: ['#e34948', '#eda100', '#1baf7a'], borderWidth: 3, borderColor: '#13345f' },
+            { data: d.ida, backgroundColor: ['#e34948', '#eda100', '#1baf7a'], borderWidth: 3, borderColor: '#ffffff' },
           ],
         },
         options: {
@@ -999,11 +1005,11 @@ function inicializarGraficosDashboard() {
             datasets: [
               {
                 data: d.meses.map((m) => Number(m.media.toFixed(2))),
-                borderColor: '#e99610',
+                borderColor: '#2563eb',
                 backgroundColor: 'rgba(233,150,16,0.15)',
                 borderWidth: 2,
                 pointRadius: 3,
-                pointBackgroundColor: '#e99610',
+                pointBackgroundColor: '#2563eb',
                 fill: true,
                 tension: 0.3,
               },
@@ -1071,7 +1077,7 @@ function inicializarGraficosDashboard() {
             datasets: [
               {
                 data: [d.pctPdiNoPrazo, 100 - d.pctPdiNoPrazo],
-                backgroundColor: ['#1baf7a', '#22436b'],
+                backgroundColor: ['#16a34a', '#e5e7eb'],
                 borderWidth: 0,
                 circumference: 180,
                 rotation: 270,
@@ -1101,7 +1107,7 @@ function inicializarGraficosDashboard() {
                 data: d.ida,
                 backgroundColor: ['#e34948', '#eda100', '#1baf7a'],
                 borderWidth: 3,
-                borderColor: '#13345f',
+                borderColor: '#ffffff',
               },
             ],
           },
@@ -1122,7 +1128,7 @@ function inicializarGraficosDashboard() {
             datasets: [
               {
                 data: [d.pctSemRisco, 100 - d.pctSemRisco],
-                backgroundColor: ['#1baf7a', '#22436b'],
+                backgroundColor: ['#16a34a', '#e5e7eb'],
                 borderWidth: 0,
                 circumference: 180,
                 rotation: 270,
@@ -1184,7 +1190,7 @@ function inicializarGraficosDashboard() {
                 data: d.ida,
                 backgroundColor: ['#e34948', '#eda100', '#1baf7a'],
                 borderWidth: 3,
-                borderColor: '#13345f',
+                borderColor: '#ffffff',
               },
             ],
           },
@@ -1245,7 +1251,7 @@ function inicializarGraficosDashboard() {
           datasets: [
             {
               data: [pct, 100 - pct],
-              backgroundColor: ['#e99610', '#22436b'],
+              backgroundColor: ['#2563eb', '#e5e7eb'],
               borderWidth: 0,
               circumference: 180,
               rotation: 270,
@@ -1261,4 +1267,47 @@ function inicializarGraficosDashboard() {
       })
     );
   }
+
+  // Gráfico das 5 dimensões (N·O·R·T·E) — pode aparecer várias vezes na
+  // mesma tela (um por ciclo, em Diagnóstico & PDI), por isso percorre
+  // todo canvas com esse padrão de id em vez de um id fixo.
+  document.querySelectorAll('[id^="radar_"]').forEach((canvas) => {
+    const cicloId = canvas.id.replace('radar_', '');
+    const pilarMedia = _dadosGraficosRadar[cicloId];
+    if (!pilarMedia) return;
+    const labels = ['N', 'O', 'R', 'T', 'E'].filter((p) => pilarMedia[p] !== null && pilarMedia[p] !== undefined);
+    if (!labels.length) return;
+    _chartsAtivos.push(
+      new Chart(canvas, {
+        type: 'radar',
+        data: {
+          labels: labels.map((p) => PILAR_LABEL[p] || p),
+          datasets: [
+            {
+              data: labels.map((p) => Number(pilarMedia[p].toFixed(2))),
+              borderColor: '#2563eb',
+              backgroundColor: 'rgba(37,99,235,0.12)',
+              pointBackgroundColor: '#2563eb',
+              borderWidth: 2,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            r: {
+              min: 0,
+              max: 1,
+              ticks: { stepSize: 0.25, color: '#9ca3af', backdropColor: 'transparent', font: { size: 9 } },
+              grid: { color: '#e5e7eb' },
+              angleLines: { color: '#e5e7eb' },
+              pointLabels: { color: '#374151', font: { size: 11 } },
+            },
+          },
+        },
+      })
+    );
+  });
 }

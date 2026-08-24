@@ -45,7 +45,7 @@ function gerarImagemGrafico(config, largura, altura) {
   return imagem;
 }
 function gerarImagemDimensoes(d) {
-  const cores = { Resultado: '#4a9b6e', Comportamento: '#e99610', Potencial: '#c1584c' };
+  const cores = { Resultado: '#16a34a', Comportamento: '#f59e0b', Potencial: '#ef4444' };
   const labels = Object.keys(d.dimensaoMedia).filter((k) => d.dimensaoMedia[k] !== null);
   return gerarImagemGrafico(
     {
@@ -748,6 +748,6 @@ function nomeEstruturaPara(id) {
   return state.estrutura.find((n) => n.id === id)?.nome || '—';
 }
 function hexParaRgb(hex) {
-  const h = (hex || '#0a2647').replace('#', '');
+  const h = (hex || '#2563eb').replace('#', '');
   return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
 }

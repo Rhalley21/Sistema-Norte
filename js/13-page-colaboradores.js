@@ -197,7 +197,16 @@ function pageColaboradores() {
   const cargosAprovados = state.cargos.filter((c) => c.desenho.aprovado && !c.descontinuado);
   const unidades = state.estrutura.filter((n) => n.tipo === 'unidade');
   const setores = state.estrutura.filter((n) => n.tipo === 'setor' || n.tipo === 'equipe' || n.tipo === 'departamento');
-  const contasColaborador = _perfisEmpresa.filter((pf) => pf.papel === 'colaborador');
+  // BUG CORRIGIDO: antes, só contas com papel de sistema "colaborador"
+  // podiam ser vinculadas a um registro de colaborador — o que impedia
+  // Líder, RH e Administrador de terem seu próprio ciclo de avaliação
+  // (eles não tinham como ganhar um cargo/unidade/setor/gestor). Agora
+  // qualquer conta pode ser vinculada, contanto que ainda não esteja
+  // vinculada a outro colaborador — o papel de sistema continua sendo o
+  // que decide o que a pessoa PODE FAZER no sistema; ser avaliada é
+  // sobre a pessoa, não sobre esse papel.
+  const perfisJaVinculados = new Set(state.colaboradores.filter((p) => p.perfilId).map((p) => p.perfilId));
+  const contasColaborador = _perfisEmpresa.filter((pf) => !perfisJaVinculados.has(pf.id));
   const contasGestor = _perfisEmpresa.filter((pf) => pf.papel === 'lider' || pf.papel === 'owner' || pf.papel === 'rh');
   const nomePerfil = (id) => _perfisEmpresa.find((pf) => pf.id === id)?.nome || '—';
   const nomeEstrutura = (id) => state.estrutura.find((n) => n.id === id)?.nome || '—';
@@ -258,10 +267,10 @@ function pageColaboradores() {
         <div class="field"><label>Gestor direto <small>(obrigatório — conta de login já convidada)</small></label>
           <select id="p_gestor_perfil">${contasGestor.map((pf) => `<option value="${pf.id}">${pf.nome || '(sem nome)'} — ${PAPEL_LABEL_UI[pf.papel]}</option>`).join('')}</select>
         </div>
-        <div class="field"><label>Conta de login deste colaborador <small>(opcional)</small></label>
+        <div class="field"><label>Conta de login desta pessoa <small>(opcional — Líder, RH e Administrador também podem ser vinculados aqui, pra terem seu próprio ciclo de avaliação)</small></label>
           <select id="p_perfil">
             <option value="">— sem conta vinculada —</option>
-            ${contasColaborador.map((pf) => `<option value="${pf.id}">${pf.nome || '(sem nome)'}</option>`).join('')}
+            ${contasColaborador.map((pf) => `<option value="${pf.id}">${pf.nome || '(sem nome)'} — ${PAPEL_LABEL_UI[pf.papel]}</option>`).join('')}
           </select>
         </div>
         <div class="field"><label>Data de admissão</label><input id="p_admissao" type="date"></div>
@@ -335,9 +344,22 @@ function addColaborador() {
   const unidadeId = document.getElementById('p_unidade').value;
   const setorId = document.getElementById('p_setor').value;
   const gestorPerfilId = document.getElementById('p_gestor_perfil').value;
+  const perfilVinculado = document.getElementById('p_perfil').value || null;
   if (!cargoId || !unidadeId || !setorId || !gestorPerfilId) {
     showToast(
       'Todos os vínculos (cargo, unidade, setor, gestor direto) são obrigatórios — critério de aceite do módulo Colaboradores.'
+    );
+    return;
+  }
+  // BUG DE INTEGRIDADE EVITADO: agora que Líder/RH/Administrador também
+  // podem ter seu próprio registro de colaborador (pra serem avaliados),
+  // existe o risco de alguém escolher a própria conta como gestor direto
+  // de si mesmo — o que faria a mesma pessoa preencher tanto a etapa
+  // "Colaborador" quanto a etapa "Líder" (50% do peso) do próprio ciclo,
+  // anulando na prática a avaliação por 3 pessoas (RN003).
+  if (perfilVinculado && perfilVinculado === gestorPerfilId) {
+    showToast(
+      'Uma pessoa não pode ser cadastrada como gestora de si mesma — escolha outra pessoa para o gestor direto.'
     );
     return;
   }
@@ -354,7 +376,7 @@ function addColaborador() {
     setorId,
     gestorPerfilId,
     versaoCargoVinculada: cargo.desenho.versao,
-    perfilId: document.getElementById('p_perfil').value || null,
+    perfilId: perfilVinculado,
     admissao: document.getElementById('p_admissao').value,
     movimentacoes: [
       {
@@ -588,6 +610,13 @@ function confirmarMovimentacao(colabId) {
   const novoGestorId = document.getElementById(`mv_gestor_${colabId}`).value;
   const tipo = document.getElementById(`mv_tipo_${colabId}`).value;
   const motivo = document.getElementById(`mv_motivo_${colabId}`).value.trim();
+
+  if (p.perfilId && p.perfilId === novoGestorId) {
+    showToast(
+      'Uma pessoa não pode ser movida para ser gestora de si mesma — escolha outra pessoa para o gestor direto.'
+    );
+    return;
+  }
 
   const mudancas = [];
   const alteracoesEstruturadas = [];

@@ -379,7 +379,11 @@
     "setoresDescendentesDe": "writable",
     "_expandidosEstrutura": "writable",
     "truncarRotuloEixo": "writable",
-    "explicacaoEscalaIDA": "writable"
+    "explicacaoEscalaIDA": "writable",
+    "renderMinhaAvaliacaoPendente": "writable",
+    "souOGestorDoCiclo": "writable",
+    "souOColaboradorDoCiclo": "writable",
+    "_dadosGraficosRadar": "writable"
   },
   "rules": {
     "no-unused-vars": "off",

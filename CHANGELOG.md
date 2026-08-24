@@ -3,6 +3,85 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.35.0 — Nova identidade visual INETRIS
+Implementação da identidade visual documentada no Manual do Sistema
+INETRIS (Seções 7 a 10) — mudança grande, de tema escuro pra um tema
+claro, com azul só como destaque pontual (princípio central do manual:
+"o sistema não deve ser azul — azul é assinatura e interação, não massa
+visual").
+
+- **Paleta de cores** — fundo agora branco/cinza muito claro, cartões
+  brancos com borda cinza suave, azul (#2563EB) usado só em botões,
+  menu selecionado, links e números-chave. Cores funcionais realinhadas:
+  Vermelho #EF4444 (Iniciar), Âmbar #F59E0B (Desenvolver), Verde #16A34A
+  (Alavancar) — direto do manual.
+- **Tipografia** — Inter agora cobre também os títulos (antes usava
+  Space Grotesk pra isso).
+- **Logo** — atualizado pro logo oficial do Instituto INETRIS.
+- **Gráfico das 5 dimensões (N·O·R·T·E)** — o elemento visual "assinatura"
+  do manual, implementado na tela de Diagnóstico (resultado individual),
+  reaproveitando os dados já calculados (`pilarMedia`) — mantém a
+  escala real do NORTE (0 a 1, IDA de 3 níveis), sem trocar pela escala
+  de 0 a 5 do manual, já que isso mudaria a metodologia em si, não só a
+  aparência.
+
+**Dois bugs reais corrigidos no processo:**
+1. Um mecanismo de contraste que eu tinha construído antes (v0.29.0)
+   assumia que a barra lateral seria sempre escura, e clareava cores
+   escolhidas pela empresa que fossem escuras demais. Com o fundo agora
+   branco, a lógica precisava ser o oposto — corrigida e renomeada
+   (`--gold-on-dark` → `--gold-on-light`), testada com os casos
+   extremos (branco puro, por exemplo).
+2. O item selecionado do menu lateral não batia com o manual (usava
+   cinza claro com texto escuro, em vez de azul claro com texto azul) —
+   corrigido, confirmado visualmente.
+
+Além disso, corrigidas ~15 cores fixas espalhadas pelo CSS e por 3
+arquivos JS (gráficos, e-mails, tags de pilar) que tinham tons claros
+demais, pensados só pra funcionar num fundo escuro — ficariam
+ilegíveis no fundo branco novo.
+
+**Validação**: renderizei o CSS e os componentes reais (não só teoricamente)
+num navegador headless antes de fechar, incluindo o menu lateral, os
+cartões de diagnóstico, o gráfico de 5 dimensões e os avisos — confirmando
+contraste e legibilidade em cada um.
+
+## v0.34.0 — Líder, RH e Administrador também podem ser avaliados
+Até aqui, só quem tinha papel de sistema "Colaborador" podia ter um ciclo
+de avaliação — Líder, RH e Administrador existiam só como contas de
+acesso, sem vínculo a cargo/unidade/setor/gestor. Combinado o desenho
+com você: quando um Líder é avaliado, quem faz o papel de "Líder" (peso
+50%) é o gestor dele (outro Líder ou o Administrador); RH e
+Administrador se avaliam mutuamente nesse mesmo papel.
+
+**O que mudou:**
+- **Vínculo de conta** (`js/13-page-colaboradores.js`): agora qualquer
+  conta (não só papel "Colaborador") pode ser vinculada a um registro de
+  colaborador — inclusive Líder, RH e Administrador. O rótulo do campo
+  foi atualizado, mostrando o papel de cada conta na lista.
+- **Trava de integridade**: impedido cadastrar (ou mover) alguém como
+  gestor de si mesmo — isso anularia a avaliação por 3 pessoas (RN003),
+  já que a mesma pessoa preencheria tanto a própria etapa quanto a do
+  "Líder".
+- **Permissões reescritas** (`js/14-permissions.js`): a lógica de quem
+  pode preencher/ver cada etapa dependia do papel de sistema ser
+  exatamente "colaborador"/"lider" — o que bloqueava completamente um
+  Líder/RH/Admin de preencher a própria avaliação, mesmo depois de ter o
+  vínculo. Agora depende da relação real com aquele ciclo específico (é
+  a própria pessoa sendo avaliada? é o gestor cadastrado dela?), não do
+  papel de sistema. Corrigido em 4 funções + uma dupla de funções
+  duplicada/desatualizada encontrada em `js/15-page-ciclos-avaliacao.js`
+  (usada pra registrar/validar evidência do PDI), com o mesmo problema.
+- **Dashboard**: como Líder/RH/Admin não veem o dashboard de
+  "Colaborador" (veem o próprio, de gestor/RH/admin), adicionado um
+  aviso "Você também está sendo avaliado(a) neste ciclo" nesses
+  dashboards quando aplicável — sem isso, a pessoa nunca ficaria sabendo
+  que precisa agir, mesmo já podendo.
+
+Testei isoladamente: autoavaliação de um Líder, gestor preenchendo a
+etapa dele, e o bloqueio de auto-gestão — nos três casos, comportamento
+esperado. CI completo (sintaxe, ESLint, Prettier) passando limpo.
+
 ## v0.33.0 — Explicação da escala IDA na tela de avaliação
 Antes de lançar as notas (Iniciar/Desenvolver/Alavancar), a tela agora
 mostra um aviso explicando o que cada letra significa — pra quem nunca

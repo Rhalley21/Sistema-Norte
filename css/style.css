@@ -1,30 +1,36 @@
 :root {
-  --bg: #061a30;
-  --surface: #0a2647;
-  --surface-2: #13345f;
-  --line: #2a4972;
-  --ink: #e9edf3;
-  --ink-dim: #9fb0c7;
-  --ink-faint: #6c7f9a;
-  --gold: #e99610;
-  --gold-soft: rgba(233, 150, 16, 0.16);
-  --gold-on-dark: var(--gold);
-  --iniciar: #c1584c;
-  --iniciar-soft: rgba(193, 88, 76, 0.16);
-  --desenvolver: #e99610;
-  --desenvolver-soft: rgba(233, 150, 16, 0.16);
-  --alavancar: #4a9b6e;
-  --alavancar-soft: rgba(74, 155, 110, 0.16);
-  --nivel-unidade: #e99610;
-  --nivel-unidade-soft: rgba(233, 150, 16, 0.18);
-  --nivel-departamento: #4f8fd1;
-  --nivel-departamento-soft: rgba(79, 143, 209, 0.18);
-  --nivel-setor: #4a9b6e;
-  --nivel-setor-soft: rgba(74, 155, 110, 0.18);
+  /* Identidade visual INETRIS (implementada a partir do Manual, Seções 7-10)
+     Princípio central do manual: "o sistema não deve ser azul — azul é
+     assinatura e interação, não massa visual". Por isso as superfícies
+     (fundo, cartões, menu) ficam brancas/cinza muito claro, e o azul
+     aparece só como destaque pontual (botões, item de menu selecionado,
+     números-chave, links) — nunca como cor de fundo de tela inteira. */
+  --bg: #f3f4f6;
+  --surface: #ffffff;
+  --surface-2: #f9fafb;
+  --line: #e5e7eb;
+  --ink: #0d1b33;
+  --ink-dim: #4b5563;
+  --ink-faint: #9ca3af;
+  --gold: #2563eb;
+  --gold-soft: rgba(37, 99, 235, 0.12);
+  --gold-on-light: var(--gold);
+  --iniciar: #ef4444;
+  --iniciar-soft: rgba(239, 68, 68, 0.12);
+  --desenvolver: #f59e0b;
+  --desenvolver-soft: rgba(245, 158, 11, 0.12);
+  --alavancar: #16a34a;
+  --alavancar-soft: rgba(22, 163, 74, 0.12);
+  --nivel-unidade: #2563eb;
+  --nivel-unidade-soft: rgba(37, 99, 235, 0.12);
+  --nivel-departamento: #0ea5e9;
+  --nivel-departamento-soft: rgba(14, 165, 233, 0.12);
+  --nivel-setor: #16a34a;
+  --nivel-setor-soft: rgba(22, 163, 74, 0.12);
   --nivel-equipe: #9b6fd6;
-  --nivel-equipe-soft: rgba(155, 111, 214, 0.18);
+  --nivel-equipe-soft: rgba(155, 111, 214, 0.12);
   --radius: 10px;
-  --serif-display: 'Space Grotesk', sans-serif;
+  --serif-display: 'Inter', sans-serif;
   --body: 'Inter', sans-serif;
   --mono: 'JetBrains Mono', monospace;
 }
@@ -201,11 +207,12 @@ nav.steps {
   color: var(--ink);
 }
 .step-btn.active {
-  background: var(--surface-2);
-  color: var(--ink);
+  background: var(--gold-soft);
+  color: var(--gold-on-light);
+  font-weight: 500;
 }
 .step-btn.active .num {
-  color: var(--gold-on-dark);
+  color: var(--gold-on-light);
 }
 .step-btn.active::before {
   content: '';
@@ -224,7 +231,7 @@ nav.steps {
 .step-btn .badge {
   margin-left: auto;
   background: var(--gold-soft);
-  color: var(--gold-on-dark);
+  color: var(--gold-on-light);
   font-size: 10px;
   padding: 1px 6px;
   border-radius: 20px;
@@ -253,7 +260,7 @@ main {
 .eyebrow {
   font-family: var(--mono);
   font-size: 11px;
-  color: var(--gold-on-dark);
+  color: var(--gold-on-light);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-bottom: 8px;
@@ -353,11 +360,11 @@ h1 {
 .btn-primary {
   background: var(--gold);
   border-color: var(--gold);
-  color: var(--gold-text, #1a1305);
+  color: var(--gold-text, #ffffff);
   font-weight: 600;
 }
 .btn-primary:hover {
-  background: #e0ae5c;
+  background: #1d4ed8;
 }
 .btn-ghost {
   background: transparent;
@@ -450,24 +457,24 @@ tr:hover td {
   margin-right: 4px;
 }
 .tag-n {
-  background: rgba(212, 162, 78, 0.12);
-  color: #e3bd7f;
+  background: rgba(245, 158, 11, 0.12);
+  color: #92400e;
 }
 .tag-o {
-  background: rgba(120, 170, 220, 0.14);
-  color: #8db3e0;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
 }
 .tag-r {
-  background: rgba(150, 140, 220, 0.14);
-  color: #a79ee8;
+  background: rgba(139, 92, 246, 0.12);
+  color: #6d28d9;
 }
 .tag-t {
-  background: rgba(74, 155, 110, 0.14);
-  color: #78c299;
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
 }
 .tag-e {
-  background: rgba(193, 88, 76, 0.14);
-  color: #dd8b81;
+  background: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
 }
 
 .flow {
@@ -491,7 +498,7 @@ tr:hover td {
   background: var(--alavancar-soft);
 }
 .flow-item.now {
-  color: var(--gold-on-dark);
+  color: var(--gold-on-light);
   border-color: rgba(212, 162, 78, 0.4);
   background: var(--gold-soft);
   font-weight: 600;
@@ -589,7 +596,7 @@ tr:hover td {
 .avaliador-tab.active {
   background: var(--surface);
   border-color: var(--gold);
-  color: var(--gold-on-dark);
+  color: var(--gold-on-light);
 }
 .avaliador-tab .check {
   color: var(--alavancar);
@@ -620,14 +627,14 @@ tr:hover td {
   padding: 12px 14px;
   border-radius: 6px;
   font-size: 12.5px;
-  color: #eccb95;
+  color: #1e3a5f;
   margin-bottom: 16px;
   line-height: 1.55;
 }
 .notice.info {
-  border-color: #8db3e0;
-  background: rgba(120, 170, 220, 0.1);
-  color: #bcd6f0;
+  border-color: #0ea5e9;
+  background: rgba(14, 165, 233, 0.1);
+  color: #075985;
 }
 .notice.lock {
   border-color: var(--ink-faint);
@@ -1002,7 +1009,7 @@ tr:hover td {
 .filtro-pill.active {
   background: var(--gold-soft);
   border-color: var(--gold);
-  color: var(--gold-on-dark);
+  color: var(--gold-on-light);
   font-weight: 500;
 }
 .filtro-pill .count {

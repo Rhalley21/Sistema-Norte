@@ -46,6 +46,27 @@ state.route = 'dashboard_role';
 /* ---------- Cap. 9 — Central de pendências por perfil (sugestão técnica) ----------
    Cada jornada ganha uma "home" com as ações pendentes em destaque, pra
    reduzir cliques: a pessoa já vê o que precisa fazer, sem precisar navegar. */
+/* Mostra um aviso se a pessoa logada também está sendo avaliada em algum
+   ciclo aberto — necessário agora que Líder, RH e Administrador também
+   podem ter seu próprio ciclo (antes, só quem tinha papel "colaborador"
+   passava por isso, e via esse aviso automaticamente no próprio dashboard
+   de Colaborador). Sem isso, um Líder/RH/Admin sendo avaliado nunca
+   ficaria sabendo, porque o dashboard dele é outro. */
+function renderMinhaAvaliacaoPendente() {
+  const meuCiclo = state.ciclos.find(
+    (c) =>
+      souOColaboradorDoCiclo(c) &&
+      (c.estado === 'Aberto' || c.estado === 'Em Consolidação' || c.estado === 'Pendência de Avaliador')
+  );
+  if (!meuCiclo) return '';
+  const precisaAgir = meuCiclo.tipoAvaliacao !== 'ao_vivo' && meuCiclo.etapa === 'colaborador';
+  return `<div class="notice info">
+    <b>Você também está sendo avaliado(a) neste ciclo.</b>
+    ${precisaAgir ? ' Sua autoavaliação está aguardando você.' : ' Acompanhe o andamento quando quiser.'}
+    <button class="btn btn-sm" style="margin-left:8px;" onclick="abrirCiclo('${meuCiclo.id}')">Abrir meu ciclo →</button>
+  </div>`;
+}
+
 function renderPendenciasAdmin() {
   const passos = [
     {
@@ -225,16 +246,18 @@ function pageDashboard() {
   if (state.role === 'colaborador') {
     body = renderPendenciasColaborador() + renderDashboardColaborador();
   } else if (state.role === 'gestor' && !meuEscopoEstendido) {
-    body = renderPendenciasGestor() + renderDashboardGestor();
+    body = renderMinhaAvaliacaoPendente() + renderPendenciasGestor() + renderDashboardGestor();
   } else if (state.role === 'gestor' && meuEscopoEstendido) {
     body =
       `<div class="notice info">Escopo estendido: você tem uma exceção explícita concedida pelo Administrador para ver os dados consolidados de toda a empresa, além da sua própria equipe.</div>` +
+      renderMinhaAvaliacaoPendente() +
       renderPendenciasGestor() +
       renderDashboardAdmin(abertos, pdisAtivos, encerrados);
   } else if (state.role === 'rh') {
-    body = renderPendenciasRH() + renderDashboardRH();
+    body = renderMinhaAvaliacaoPendente() + renderPendenciasRH() + renderDashboardRH();
   } else {
-    body = renderPendenciasAdmin() + renderDashboardAdmin(abertos, pdisAtivos, encerrados);
+    body =
+      renderMinhaAvaliacaoPendente() + renderPendenciasAdmin() + renderDashboardAdmin(abertos, pdisAtivos, encerrados);
   }
 
   return `

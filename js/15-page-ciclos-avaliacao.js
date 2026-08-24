@@ -950,10 +950,15 @@ function gerarEvidenciaEspecifica(acao, indicadorItem) {
 function diagnosticoSummaryHTML(ciclo) {
   const d = ciclo.diagnostico;
   const DIMENSAO_LABEL = { Resultado: 'Resultado', Comportamento: 'Comportamento', Potencial: 'Potencial' };
+  _dadosGraficosRadar[ciclo.id] = d.pilarMedia;
   return `
     <div style="margin:14px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <span class="pill ${pillClass(d.geral)}" style="font-size:13px;padding:6px 14px;">Classificação geral: ${pillLabel(d.geral)}</span>
       <span class="small-muted" style="font-family:var(--mono);font-size:13px;">${d.geralMedia !== null ? d.geralMedia.toFixed(2) : '—'} / 1,00</span>
+    </div>
+    <div class="card" style="max-width:340px;margin:0 auto 16px;padding:14px;">
+      <div class="small-muted" style="text-align:center;margin-bottom:4px;">Desempenho por pilar (N·O·R·T·E)</div>
+      <div style="position:relative;width:100%;height:230px;"><canvas id="radar_${ciclo.id}" role="img" aria-label="Gráfico de 5 pilares deste ciclo, escala de 0 a 1"></canvas></div>
     </div>
     <div class="grid3">
       ${Object.entries(d.dimensaoSigla || {})
@@ -1039,17 +1044,22 @@ function podeConstruirPDI(ciclo) {
   // combinada). Por isso o RH também pode construir o PDI aqui, diferente
   // do modelo assíncrono, onde o RH só aprova o que já foi escrito.
   if (ciclo.tipoAvaliacao === 'ao_vivo' && meuPapelReal === 'rh') return true;
-  const colaborador = state.colaboradores.find((c) => c.id === ciclo.colaboradorId);
-  if (meuPapelReal === 'lider') return colaborador?.gestorPerfilId === meuPerfilId;
-  if (meuPapelReal === 'colaborador') return colaborador?.perfilId === meuPerfilId;
+  // A própria pessoa sendo avaliada neste ciclo (Colaborador, Líder, RH ou
+  // Administrador — o papel de sistema não importa aqui, só se ela é
+  // literalmente quem está sendo avaliada) e o gestor direto dela (que
+  // pode ser um Líder, ou RH/Administrador avaliando outro Líder/RH/Admin).
+  if (souOColaboradorDoCiclo(ciclo)) return true;
+  if (souOGestorDoCiclo(ciclo)) return true;
   return false;
 }
 function podeAprovarPDI(ciclo) {
   if (ciclo.pdiAprovado) return false;
   if (meuPapelReal === 'owner') return true;
   if (ciclo.tipoAvaliacao === 'ao_vivo' && meuPapelReal === 'rh') return true;
-  const colaborador = state.colaboradores.find((c) => c.id === ciclo.colaboradorId);
-  return meuPapelReal === 'lider' && colaborador?.gestorPerfilId === meuPerfilId;
+  // Quem aprova é sempre o gestor direto — nunca a própria pessoa avaliada,
+  // mesmo que ela seja Líder, RH ou Administrador. Inclui RH/Administrador
+  // aprovando o PDI de outro Líder/RH/Admin que gerenciam diretamente.
+  return (meuPapelReal === 'lider' || meuPapelReal === 'rh') && souOGestorDoCiclo(ciclo);
 }
 
 function renderResultadoCiclo(ciclo, cargo, indicadores) {
@@ -1251,18 +1261,6 @@ function renderResultadoCiclo(ciclo, cargo, indicadores) {
     </div>
   `;
 }
-function souColaboradorDoCiclo(ciclo) {
-  const p = state.colaboradores.find((c) => c.id === ciclo.colaboradorId);
-  return meuPapelReal === 'colaborador' && p?.perfilId === meuPerfilId;
-}
-function souGestorDoCiclo(ciclo) {
-  const p = state.colaboradores.find((c) => c.id === ciclo.colaboradorId);
-  // Mesma correção de podeEditarEtapa (js/14-permissions.js): honra o
-  // vínculo de gestor cadastrado no organograma, independente do papel de
-  // sistema (lider ou owner) de quem está logado.
-  return (meuPapelReal === 'lider' || meuPapelReal === 'owner') && p?.gestorPerfilId === meuPerfilId;
-}
-
 function renderAcompanhamentoItemPDI(ciclo, item, idx) {
   if (item.validadoPeloGestor) {
     return `
@@ -1272,7 +1270,7 @@ function renderAcompanhamentoItemPDI(ciclo, item, idx) {
       </div>`;
   }
   if (item.evidenciaRegistrada) {
-    const podeValidar = souGestorDoCiclo(ciclo) || meuPapelReal === 'owner';
+    const podeValidar = souOGestorDoCiclo(ciclo) || meuPapelReal === 'owner';
     const nomeColaborador = state.colaboradores.find((c) => c.id === ciclo.colaboradorId)?.nome || 'colaborador';
     return `
       <div class="notice">
@@ -1282,7 +1280,7 @@ function renderAcompanhamentoItemPDI(ciclo, item, idx) {
       ${podeValidar ? `<button class="btn btn-primary btn-sm" onclick="validarEvidenciaPDI('${ciclo.id}',${idx})">Validar evidência</button>` : '<div class="small-muted">Aguardando o Gestor validar.</div>'}
     `;
   }
-  const podeRegistrar = souColaboradorDoCiclo(ciclo) || meuPapelReal === 'owner';
+  const podeRegistrar = souOColaboradorDoCiclo(ciclo) || meuPapelReal === 'owner';
   if (podeRegistrar) {
     return `
       <div class="field" style="margin-bottom:8px;"><label>Registrar evidência de conclusão</label><textarea id="ev_${ciclo.id}_${idx}" placeholder="Descreva o que foi feito, ou cole um link/comprovante"></textarea></div>
