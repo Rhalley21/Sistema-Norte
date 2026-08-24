@@ -3,6 +3,40 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.36.0 — Dashboard do Administrador reconstruído no layout da referência
+A v0.35.0 trocou as cores, mas o layout continuava o antigo. Essa versão
+reconstrói o Dashboard do Administrador seguindo a estrutura exata da
+referência que a empresa mandou (imagem do guia visual INETRIS), com
+dados reais do NORTE:
+
+- **3 cartões de KPI com ícone** — Resultado Geral (média da empresa,
+  0 a 1, com a classificação IDA embaixo), Colaboradores Avaliados (%),
+  PDIs em Andamento.
+- **Gráfico de 5 dimensões (N·O·R·T·E) como elemento principal** — agora
+  em nível consolidado da empresa inteira (antes só existia por ciclo
+  individual, na tela de Diagnóstico).
+- **Distribuição das Avaliações** — rosca com total no centro, mesma
+  posição da referência.
+- **Tabela "Desempenho por Pilar"** — média e classificação de cada um
+  dos 5 pilares.
+- **Tabela "Oportunidades de desenvolvimento"** — cargos com maior
+  concentração de "Iniciar" (reaproveita o indicador 7.5 que já existia).
+- **Tabela "Avaliações Recentes"** — colaborador, cargo, avaliador, nota,
+  status e data dos últimos ciclos consolidados.
+
+Os gráficos antigos que não faziam parte da referência (comparação por
+trimestre, evolução mensal, gauge de PDI, ranking de cargos em gráfico)
+foram removidos dessa tela — as informações mais importantes continuam
+disponíveis nas tabelas novas.
+
+Usei ícones SVG embutidos no código (não uma fonte de ícones externa) —
+adicionar uma fonte de ícones inteira só pra 3 ícones seria o mesmo tipo
+de problema de performance que já corrigimos na v0.30.0 (bibliotecas
+pesadas carregando sem necessidade).
+
+Testei os cálculos (média geral da empresa, média por pilar) isoladamente,
+e renderizei o resultado final com o Chart.js de verdade antes de fechar.
+
 ## v0.35.0 — Nova identidade visual INETRIS
 Implementação da identidade visual documentada no Manual do Sistema
 INETRIS (Seções 7 a 10) — mudança grande, de tema escuro pra um tema

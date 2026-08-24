@@ -963,7 +963,7 @@ function inicializarGraficosDashboard() {
         type: 'doughnut',
         data: {
           datasets: [
-            { data: d.ida, backgroundColor: ['#e34948', '#eda100', '#1baf7a'], borderWidth: 3, borderColor: '#ffffff' },
+            { data: d.ida, backgroundColor: ['#ef4444', '#f59e0b', '#16a34a'], borderWidth: 3, borderColor: '#ffffff' },
           ],
         },
         options: {
@@ -974,124 +974,42 @@ function inicializarGraficosDashboard() {
         },
       })
     );
-    if (document.getElementById('barTrimestre')) {
-      _chartsAtivos.push(
-        new Chart(document.getElementById('barTrimestre'), {
-          type: 'bar',
-          data: {
-            labels: ['Trimestre anterior', 'Trimestre atual'],
-            datasets: [
-              { data: d.trimestres, backgroundColor: ['#2c5c8a', '#1baf7a'], borderRadius: 4, maxBarThickness: 46 },
-            ],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-              y: { ticks: { color: corEixo, font: { size: 10 } }, grid: { color: corGrade } },
-              x: { ticks: { color: corTexto, font: { size: 11 } }, grid: { display: false } },
-            },
-          },
-        })
-      );
-    }
-    if (document.getElementById('areaEvolucao') && d.meses.length) {
-      _chartsAtivos.push(
-        new Chart(document.getElementById('areaEvolucao'), {
-          type: 'line',
-          data: {
-            labels: d.meses.map((m) => m.mes.slice(5, 7) + '/' + m.mes.slice(2, 4)),
-            datasets: [
-              {
-                data: d.meses.map((m) => Number(m.media.toFixed(2))),
-                borderColor: '#2563eb',
-                backgroundColor: 'rgba(233,150,16,0.15)',
-                borderWidth: 2,
-                pointRadius: 3,
-                pointBackgroundColor: '#2563eb',
-                fill: true,
-                tension: 0.3,
-              },
-            ],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-              y: {
-                min: 0,
-                max: 1,
-                ticks: { color: corEixo, font: { size: 10 }, stepSize: 0.5 },
-                grid: { color: corGrade },
-              },
-              x: { ticks: { color: corTexto, font: { size: 10 } }, grid: { display: false } },
-            },
-          },
-        })
-      );
-    }
-    if (document.getElementById('barCargos') && d.cargosRisco.length) {
-      _chartsAtivos.push(
-        new Chart(document.getElementById('barCargos'), {
-          type: 'bar',
-          data: {
-            labels: d.cargosRisco.map((c) => c.nome),
-            datasets: [
-              {
-                data: d.cargosRisco.map((c) => c.percentual),
-                backgroundColor: '#e34948',
-                borderRadius: 4,
-                maxBarThickness: 18,
-              },
-            ],
-          },
-          options: {
-            indexAxis: 'y',
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-              x: { min: 0, max: 100, ticks: { color: corEixo, font: { size: 10 } }, grid: { color: corGrade } },
-              y: {
-                ticks: {
-                  color: corTexto,
-                  font: { size: 10 },
-                  callback: function (valor, indice) {
-                    return truncarRotuloEixo(this.getLabelForValue(indice));
-                  },
+    if (document.getElementById('radarAdmin')) {
+      const labels = ['N', 'O', 'R', 'T', 'E'].filter((p) => d.pilares[p] !== null && d.pilares[p] !== undefined);
+      if (labels.length) {
+        _chartsAtivos.push(
+          new Chart(document.getElementById('radarAdmin'), {
+            type: 'radar',
+            data: {
+              labels: labels.map((p) => PILAR_LABEL[p] || p),
+              datasets: [
+                {
+                  data: labels.map((p) => Number(d.pilares[p].toFixed(2))),
+                  borderColor: '#2563eb',
+                  backgroundColor: 'rgba(37,99,235,0.12)',
+                  pointBackgroundColor: '#2563eb',
+                  borderWidth: 2,
                 },
-                grid: { display: false },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                r: {
+                  min: 0,
+                  max: 1,
+                  ticks: { stepSize: 0.25, color: corEixo, backdropColor: 'transparent', font: { size: 9 } },
+                  grid: { color: corGrade },
+                  angleLines: { color: corGrade },
+                  pointLabels: { color: corTexto, font: { size: 11 } },
+                },
               },
             },
-          },
-        })
-      );
-    }
-    if (document.getElementById('gaugePdi')) {
-      _chartsAtivos.push(
-        new Chart(document.getElementById('gaugePdi'), {
-          type: 'doughnut',
-          data: {
-            datasets: [
-              {
-                data: [d.pctPdiNoPrazo, 100 - d.pctPdiNoPrazo],
-                backgroundColor: ['#16a34a', '#e5e7eb'],
-                borderWidth: 0,
-                circumference: 180,
-                rotation: 270,
-              },
-            ],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '75%',
-            plugins: { legend: { display: false }, tooltip: { enabled: false } },
-          },
-        })
-      );
+          })
+        );
+      }
     }
   }
 

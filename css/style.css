@@ -1365,3 +1365,57 @@ hr.sep {
 .tree-node-colaborador:not(:last-child) {
   border-bottom: 1px solid var(--line);
 }
+
+/* Cartões de KPI no estilo da identidade INETRIS (ícone + valor + nota) — v0.36.0 */
+.painel-kpi-inetris {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.kpi-card-inetris {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.kpi-card-icone {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--gold-soft);
+  color: var(--gold-on-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.kpi-card-label {
+  font-size: 12.5px;
+  color: var(--ink-dim);
+  margin-bottom: 4px;
+}
+.kpi-card-valor {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.2;
+}
+.kpi-card-meta {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink-faint);
+}
+.kpi-card-nota {
+  font-size: 12px;
+  color: var(--ink-dim);
+  margin-top: 4px;
+}
+.kpi-card-nota.boa {
+  color: var(--alavancar);
+  font-weight: 500;
+}
