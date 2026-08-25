@@ -137,6 +137,16 @@ textarea {
   margin-bottom: 8px;
   padding: 0 6px;
 }
+.role-select {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+}
 .role-btn {
   width: 100%;
   text-align: left;
@@ -181,7 +191,29 @@ nav.steps {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--ink-faint);
-  margin: 14px 6px 8px;
+  margin: 14px 0 4px;
+}
+.step-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 6px 6px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.step-group-toggle:hover {
+  background: var(--surface-2);
+}
+.step-group-chevron {
+  font-size: 9px;
+  color: var(--ink-faint);
+  transition: transform 0.15s ease;
+}
+.step-group-chevron.aberto {
+  transform: rotate(90deg);
 }
 .step-btn {
   display: flex;

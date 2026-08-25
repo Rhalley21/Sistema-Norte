@@ -144,7 +144,10 @@ function confirmarImportacaoLote() {
 }
 
 function pageColaboradoresGestor() {
-  const minhaEquipe = state.colaboradores.filter((p) => p.gestorPerfilId === meuPerfilId && !p.anonimizado);
+  const minhaEquipeCompleta = state.colaboradores.filter((p) => p.gestorPerfilId === meuPerfilId && !p.anonimizado);
+  const minhaEquipe = _termoBuscaGlobal
+    ? minhaEquipeCompleta.filter((p) => p.nome.toLowerCase().includes(_termoBuscaGlobal.toLowerCase()))
+    : minhaEquipeCompleta;
   const cargosAprovados = state.cargos.filter((c) => c.desenho.aprovado && !c.descontinuado);
   const unidades = state.estrutura.filter((n) => n.tipo === 'unidade');
   const setores = state.estrutura.filter((n) => n.tipo === 'setor' || n.tipo === 'equipe' || n.tipo === 'departamento');
@@ -159,6 +162,14 @@ function pageColaboradoresGestor() {
     </div>
     <div class="card">
       <h3>Colaboradores da minha equipe</h3>
+      ${
+        _termoBuscaGlobal
+          ? `<div class="notice info" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>Filtrando por "<b>${escaparHtml(_termoBuscaGlobal)}</b>"</span>
+        <button class="btn btn-sm" onclick="_termoBuscaGlobal='';render();">Limpar busca ×</button>
+      </div>`
+          : ''
+      }
       ${
         minhaEquipe.length
           ? `<table><thead><tr><th>Nome</th><th>Cargo</th><th>Unidade</th><th>Setor</th><th></th></tr></thead><tbody>
@@ -185,7 +196,7 @@ function pageColaboradoresGestor() {
           })
           .join('')}
       </tbody></table>`
-          : '<div class="empty">Nenhum colaborador vinculado a você como gestor direto ainda.</div>'
+          : `<div class="empty">${_termoBuscaGlobal ? 'Nenhum colaborador da sua equipe encontrado com esse nome.' : 'Nenhum colaborador vinculado a você como gestor direto ainda.'}</div>`
       }
     </div>
   `;
@@ -289,9 +300,22 @@ function pageColaboradores() {
     <div class="card">
       <h3>Colaboradores cadastrados</h3>
       ${
+        _termoBuscaGlobal
+          ? `<div class="notice info" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>Filtrando por "<b>${escaparHtml(_termoBuscaGlobal)}</b>"</span>
+        <button class="btn btn-sm" onclick="_termoBuscaGlobal='';render();">Limpar busca ×</button>
+      </div>`
+          : ''
+      }
+      ${
         state.colaboradores.length
-          ? `<table><thead><tr><th>Nome</th><th>Cargo</th><th>Unidade</th><th>Setor</th><th>Gestor direto</th><th>Status</th><th></th></tr></thead><tbody>
-        ${state.colaboradores
+          ? (() => {
+              const listaFiltrada = _termoBuscaGlobal
+                ? state.colaboradores.filter((p) => p.nome.toLowerCase().includes(_termoBuscaGlobal.toLowerCase()))
+                : state.colaboradores;
+              if (!listaFiltrada.length) return '<div class="empty">Nenhum colaborador encontrado com esse nome.</div>';
+              return `<table><thead><tr><th>Nome</th><th>Cargo</th><th>Unidade</th><th>Setor</th><th>Gestor direto</th><th>Status</th><th></th></tr></thead><tbody>
+        ${listaFiltrada
           .map((p) => {
             const cargo = state.cargos.find((c) => c.id === p.cargoId);
             const emMovimento = _movimentarColabId === p.id;
@@ -327,7 +351,8 @@ function pageColaboradores() {
           `;
           })
           .join('')}
-      </tbody></table>`
+      </tbody></table>`;
+            })()
           : '<div class="empty">Nenhum colaborador cadastrado.</div>'
       }
     </div>

@@ -3,6 +3,42 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.42.0 — Menu lateral em acordeão + busca de verdade
+Dois ajustes pedidos direto:
+
+**1) Menu lateral menos poluído.** Os grupos (Fundação, Cargos, Pessoas,
+Ciclo NORTE, Base) agora aparecem só pelo nome — clicar num grupo expande
+e mostra as opções dele, clicar de novo recolhe. O grupo que contém a
+tela em que você está aberto automaticamente, pra não se perder ao
+navegar — os outros ficam fechados até você clicar.
+
+**2) Busca do cabeçalho agora funciona.** Antes estava propositalmente
+desativada (nenhuma busca tinha sido implementada ainda). Agora: digita
+o nome de um colaborador e aperta Enter — leva pra tela de Colaboradores
+já filtrada por esse nome, com um aviso mostrando o filtro ativo e um
+botão pra limpar. Funciona tanto pra quem vê todos os colaboradores
+(Admin/RH) quanto pra quem só vê a própria equipe (Gestor/Líder) — cada
+um filtra dentro do que já tem acesso.
+
+A busca só aparece pra quem tem acesso à tela de Colaboradores — um
+Colaborador comum não veria o campo, porque pra ele buscar outra pessoa
+resultaria só num erro de acesso, sem utilidade real.
+
+Testei a lógica do filtro isoladamente (busca com correspondência,
+busca vazia, busca sem resultado) e confirmei visualmente o menu
+recolhido/expandido e a busca habilitada antes de fechar.
+
+## v0.41.1 — Menu lateral menos poluído: "Ver como" em dropdown
+O seletor "Ver como (pré-visualização)" — visível só pro Administrador,
+usado para testar a visão de RH/Gestor/Colaborador — ocupava 4 linhas
+inteiras no topo do menu lateral, com o mesmo peso visual da navegação
+real embaixo. Trocado por um dropdown compacto (uma linha só, mesma
+função) — o menu de navegação agora aparece bem mais rápido e menos
+poluído visualmente.
+
+Confirmei o resultado renderizando o CSS real antes de fechar (antes:
+4 linhas cheias · depois: 1 linha).
+
 ## v0.41.0 — Valores exatos do documento identidade-visual-inetris.html
 Diferente das vezes anteriores (print e prompt de texto), esse era um
 documento HTML de verdade — com CSS extraível, não só interpretável.

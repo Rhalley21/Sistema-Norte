@@ -279,7 +279,11 @@ function pageDashboard() {
         <p class="page-desc" style="margin:2px 0 0;">A plataforma organiza, calcula e sugere — a decisão final permanece sempre humana.</p>
       </div>
       <div class="topo-pagina-acoes">
-        <div class="topo-pagina-busca"><input type="text" placeholder="Buscar..." disabled title="Em breve" /></div>
+        ${
+          STEPS.find((s) => s.id === 'colaboradores')
+            ? `<div class="topo-pagina-busca"><input type="text" id="campoBuscaGlobal" placeholder="Buscar colaborador..." value="${escaparHtml(_termoBuscaGlobal)}" onkeydown="if(event.key==='Enter'){_termoBuscaGlobal=this.value.trim();goto('colaboradores');}" title="Digite o nome e pressione Enter" /></div>`
+            : ''
+        }
         <div class="topo-pagina-empresa" title="Empresa atual">${escaparHtml(state.empresa?.nomeFantasia) || 'Minha empresa'}</div>
         ${renderSinoNotificacoes()}
         <div class="topo-pagina-avatar" title="${escaparHtml(meuNome)}">${iniciaisMeuNome}</div>

@@ -384,7 +384,10 @@
     "souOGestorDoCiclo": "writable",
     "souOColaboradorDoCiclo": "writable",
     "_dadosGraficosRadar": "writable",
-    "COR_PILAR": "writable"
+    "COR_PILAR": "writable",
+    "_termoBuscaGlobal": "writable",
+    "toggleGrupoMenu": "writable",
+    "_gruposExpandidos": "writable"
   },
   "rules": {
     "no-unused-vars": "off",

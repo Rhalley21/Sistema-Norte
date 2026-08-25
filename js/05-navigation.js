@@ -133,6 +133,15 @@ function compassSVG() {
 }
 
 let _menuMobileAberto = false;
+// Grupos do menu que estão expandidos — por padrão, nenhum (só os nomes
+// principais aparecem); o grupo que contém a rota atual abre automático,
+// pra pessoa não perder onde está ao navegar.
+let _gruposExpandidos = new Set();
+function toggleGrupoMenu(nome) {
+  if (_gruposExpandidos.has(nome)) _gruposExpandidos.delete(nome);
+  else _gruposExpandidos.add(nome);
+  render();
+}
 
 function renderSidebar() {
   const roles = [
@@ -162,39 +171,42 @@ function renderSidebar() {
         <div class="role-label">${podeAlternarPapel ? 'Ver como (pré-visualização)' : 'Seu papel'}</div>
         ${
           podeAlternarPapel
-            ? roles
-                .map(
-                  (r) => `
-              <button class="role-btn ${state.role === r.id ? 'active' : ''}" onclick="setRole('${r.id}')">
-                <span class="dot"></span>${r.label}
-              </button>
-            `
-                )
-                .join('')
+            ? `<select class="role-select" onchange="setRole(this.value)">
+              ${roles.map((r) => `<option value="${r.id}" ${state.role === r.id ? 'selected' : ''}>${r.label}</option>`).join('')}
+            </select>`
             : `<div class="role-btn active" style="cursor:default;"><span class="dot"></span>${roles.find((r) => r.id === state.role)?.label || state.role}</div>`
         }
       </div>
 
       <nav class="steps">
         ${groups
-          .map(
-            (g) => `
-          <div class="step-group-label">${g}</div>
-          ${STEPS.filter((s) => s.group === g)
-            .map((s) => {
-              const unlocked = stepUnlocked(s.id);
-              const idx = STEPS.indexOf(s) + 1;
-              const clickAction = unlocked
-                ? "goto('" + s.id + "')"
-                : "showToast('Complete a etapa anterior primeiro — o NORTE não permite pular passos.')";
-              return `<button class="step-btn ${state.route === s.id ? 'active' : ''} ${unlocked ? '' : 'locked'}"
+          .map((g) => {
+            const itensDoGrupo = STEPS.filter((s) => s.group === g);
+            const grupoTemRotaAtiva = itensDoGrupo.some((s) => s.id === state.route);
+            const expandido = _gruposExpandidos.has(g) || grupoTemRotaAtiva;
+            return `
+          <button class="step-group-label step-group-toggle" onclick="toggleGrupoMenu('${g}')">
+            <span class="step-group-chevron ${expandido ? 'aberto' : ''}">▸</span>${g}
+          </button>
+          ${
+            expandido
+              ? itensDoGrupo
+                  .map((s) => {
+                    const unlocked = stepUnlocked(s.id);
+                    const idx = STEPS.indexOf(s) + 1;
+                    const clickAction = unlocked
+                      ? "goto('" + s.id + "')"
+                      : "showToast('Complete a etapa anterior primeiro — o NORTE não permite pular passos.')";
+                    return `<button class="step-btn ${state.route === s.id ? 'active' : ''} ${unlocked ? '' : 'locked'}"
               onclick="${clickAction}">
               <span class="num">${String(idx).padStart(2, '0')}</span>${s.label}
             </button>`;
-            })
-            .join('')}
-        `
-          )
+                  })
+                  .join('')
+              : ''
+          }
+        `;
+          })
           .join('')}
       </nav>
 

@@ -911,6 +911,11 @@ async function garantirChart() {
   await carregarScript('https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js');
 }
 
+// Busca global — digitada no cabeçalho, aplicada como filtro por nome na
+// tela de Colaboradores (a busca mais comum num sistema de RH). Fica
+// guardada aqui porque é lida em telas diferentes de onde é escrita.
+let _termoBuscaGlobal = '';
+
 let _dadosGraficosDashboardAdmin = null;
 let _dadosGraficosDashboardRH = null;
 let _dadosGraficosDashboardGestor = null;
