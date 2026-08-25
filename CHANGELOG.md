@@ -3,6 +3,83 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.41.0 — Valores exatos do documento identidade-visual-inetris.html
+Diferente das vezes anteriores (print e prompt de texto), esse era um
+documento HTML de verdade — com CSS extraível, não só interpretável.
+Corrigidas as diferenças que ainda restavam, agora com precisão exata:
+
+- **Cor de borda** (`--line`): #E3E6EB (era #E5E7EB — bem próximo, mas
+  não idêntico).
+- **Sombra dos cartões**: adicionada a sombra exata do documento
+  (`0 1px 2px rgba(13,27,51,.04), 0 8px 24px rgba(13,27,51,.06)`) —
+  antes os cartões não tinham nenhuma sombra.
+- **Cantos dos cartões**: 16px (era 12px) — o documento usa 3 níveis de
+  raio (6/10/16px) e os cartões externos usam o maior.
+- **Painéis internos** (dentro de um cartão, ex.: os gráficos do
+  dashboard): corrigido pra fundo branco com borda — estavam com fundo
+  cinza claro sem borda.
+- **Cores do gráfico de 5 dimensões**: valores exatos da seção "Telas de
+  referência" do documento (a versão real de tela, não a decorativa) —
+  Nível Técnico #2563EB · Operacional #0EA5E9 · Resultado #16A34A · Time
+  #7C3AED · Evolução #65A30D. A linha que conecta os pontos voltou a ser
+  azul com preenchimento azul claro (documento usa isso na tela real,
+  diferente do cinza neutro que eu tinha usado antes).
+
+Confirmei que o mecanismo de cor personalizada por empresa (white-label)
+continua funcionando normalmente — os valores fixos agora são só o
+padrão de fábrica, sobrescrito automaticamente quando uma empresa
+escolhe suas próprias cores.
+
+Renderizei o resultado final (sombra + cores do radar) com o CSS e o
+Chart.js reais antes de fechar.
+
+## v0.40.0 — Detalhes pixel a pixel da referência (sem mudar a metodologia)
+Pedido explícito: copiar a referência sem alterações. Importante: a
+referência é um guia de estilo, e o próprio manual diz que não deve ser
+replicado pixel a pixel — a escala de 0 a 5 com 5 níveis
+(Excelente/Bom/Regular/Atenção/Crítico) e os nomes de exemplo (Ana
+Martins, Carlos Souza) são ilustrativos, não a metodologia real. Copiar
+isso literalmente mudaria a metodologia NORTE (0 a 1, 3 níveis:
+Iniciar/Desenvolver/Alavancar) e mostraria dados fictícios em vez dos
+reais.
+
+O que dava pra copiar pixel a pixel — e não tinha sido feito ainda —
+foi implementado agora:
+
+- **Sparkline** no card "Resultado geral", com a evolução dos últimos
+  meses.
+- **Barra de progresso com meta** no card "Colaboradores avaliados"
+  ("Meta: 90%").
+- **PDIs em andamento** com duas linhas de nota ("Em progresso" +
+  "Total de ativos: N"), igual à referência.
+- **Ícone de informação** ao lado de "Desempenho por dimensão", com
+  explicação ao passar o mouse.
+- **Links "Ver todas..."** no rodapé das 3 tabelas (Dimensões,
+  Oportunidades, Avaliações), levando pra tela correspondente.
+- **Avatar com iniciais + menu de três pontos** em cada linha da tabela
+  "Avaliações Recentes".
+
+No caminho, encontrei e corrigi um erro que eu mesmo teria introduzido:
+os links "Ver todas as dimensões"/"Ver todas as oportunidades" apontavam
+pra rotas que não existem no sistema (`diagnosticos`, `pdis`, no plural)
+— a rota certa é `diagnostico` (singular, tela combinada de
+Diagnóstico & PDI). Corrigido antes de fechar.
+
+Renderizei o resultado final com o Chart.js de verdade antes de entregar.
+
+## v0.39.1 — Gráfico de rosca mais elegante
+Refinamento visual nos 3 gráficos de "Classificação geral" (Admin, RH e
+Gestor) — Iniciar/Desenvolver/Alavancar:
+
+- Espaçamento entre as fatias (antes ficavam coladas).
+- Pontas arredondadas em cada fatia, em vez de retas.
+- Efeito sutil ao passar o mouse (a fatia "respira" um pouco).
+- Texto central em duas linhas — o número em destaque, com um rótulo
+  pequeno embaixo ("avaliados", "colaboradores", "na equipe", conforme o
+  dashboard) — antes era só o número solto.
+
+Confirmei o resultado renderizando o Chart.js de verdade antes de fechar.
+
 ## v0.39.0 — Ajustes finos conforme o Manual de Marca INETRIS
 Revisão ponto a ponto contra o Manual de Marca completo (o prompt de
 identidade visual), corrigindo diferenças reais que ainda restavam:

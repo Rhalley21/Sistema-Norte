@@ -1,26 +1,28 @@
 :root {
-  /* Identidade visual INETRIS (implementada a partir do Manual, Seções 7-10)
-     Princípio central do manual: "o sistema não deve ser azul — azul é
-     assinatura e interação, não massa visual". Por isso as superfícies
-     (fundo, cartões, menu) ficam brancas/cinza muito claro, e o azul
-     aparece só como destaque pontual (botões, item de menu selecionado,
-     números-chave, links) — nunca como cor de fundo de tela inteira. */
+  /* Identidade visual INETRIS — v0.41.0: valores exatos extraídos do
+     documento identidade-visual-inetris.html (documento fonte, não mais
+     interpretado de prints). --line, os tons "-soft" e a sombra dos
+     cartões agora usam os hexadecimais exatos do documento, em vez de
+     rgba() calculado. */
   --bg: #f3f4f6;
   --surface: #ffffff;
   --surface-2: #f9fafb;
-  --line: #e5e7eb;
+  --line: #e3e6eb;
   --ink: #0d1b33;
   --ink-dim: #4b5563;
   --ink-faint: #9ca3af;
   --gold: #2563eb;
-  --gold-soft: rgba(37, 99, 235, 0.12);
+  --gold-soft: #eff4fe;
   --gold-on-light: var(--gold);
   --iniciar: #ef4444;
-  --iniciar-soft: rgba(239, 68, 68, 0.12);
+  --iniciar-soft: #fdecec;
   --desenvolver: #f59e0b;
-  --desenvolver-soft: rgba(245, 158, 11, 0.12);
+  --desenvolver-soft: #fef6e7;
   --alavancar: #16a34a;
-  --alavancar-soft: rgba(22, 163, 74, 0.12);
+  --alavancar-soft: #eaf7ef;
+  --cyan: #0ea5e9;
+  --cyan-soft: #e9f7fd;
+  --shadow-card: 0 1px 2px rgba(13, 27, 51, 0.04), 0 8px 24px rgba(13, 27, 51, 0.06);
   --nivel-unidade: #2563eb;
   --nivel-unidade-soft: rgba(37, 99, 235, 0.12);
   --nivel-departamento: #0ea5e9;
@@ -29,7 +31,7 @@
   --nivel-setor-soft: rgba(22, 163, 74, 0.12);
   --nivel-equipe: #9b6fd6;
   --nivel-equipe-soft: rgba(155, 111, 214, 0.12);
-  --radius: 12px;
+  --radius: 16px;
   --serif-display: 'Inter', sans-serif;
   --body: 'Inter', sans-serif;
   --mono: 'JetBrains Mono', monospace;
@@ -283,6 +285,7 @@ h1 {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
   padding: 22px;
   margin-bottom: 18px;
 }
@@ -1208,7 +1211,8 @@ hr.sep {
   }
 }
 .grafico-card {
-  background: var(--surface-2);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 16px;
 }
@@ -1244,11 +1248,21 @@ hr.sep {
   position: absolute;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--ink);
+  line-height: 1.1;
+}
+.grafico-donut-centro-legenda {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-top: 2px;
 }
 .grafico-legenda {
   display: flex;
@@ -1466,4 +1480,62 @@ hr.sep {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 160px;
+}
+
+/* Detalhes pixel a pixel da referência INETRIS: sparkline, progresso, info, links (v0.40.0) */
+.kpi-sparkline-wrap {
+  height: 32px;
+  margin-top: 10px;
+}
+.kpi-card-rodape {
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin-top: 6px;
+}
+.kpi-progresso-trilha {
+  height: 6px;
+  background: var(--surface-2);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+.kpi-progresso-fill {
+  height: 100%;
+  background: var(--gold);
+  border-radius: 4px;
+}
+.info-icone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1px solid var(--ink-faint);
+  color: var(--ink-faint);
+  font-size: 10px;
+  font-style: italic;
+  font-family: Georgia, serif;
+  cursor: help;
+  vertical-align: middle;
+}
+.ver-todas-link {
+  margin-top: 10px;
+  color: var(--gold-on-light);
+  background: transparent;
+  border: none;
+  padding: 4px 0;
+}
+.btn-menu-pontos {
+  background: none;
+  border: none;
+  color: var(--ink-faint);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.btn-menu-pontos:hover {
+  background: var(--surface-2);
+  color: var(--ink);
 }

@@ -386,10 +386,23 @@ function renderDashboardAdmin(abertos, pdisAtivos, encerrados) {
 
   // Guarda os dados calculados pra os gráficos serem montados depois que o
   // HTML já estiver na tela (ver inicializarGraficosDashboard em 02-core-helpers.js)
+  // Sparkline dos últimos 12 meses — mesmo elemento do card "Resultado Geral" na referência.
+  const porMesAdmin = {};
+  ciclosComDiag.forEach((c) => {
+    const mes = c.dataAbertura.slice(0, 7);
+    porMesAdmin[mes] = porMesAdmin[mes] || [];
+    porMesAdmin[mes].push(c.diagnostico.geralMedia);
+  });
+  const mesesOrdenados = Object.keys(porMesAdmin)
+    .sort()
+    .slice(-12)
+    .map((m) => porMesAdmin[m].reduce((a, b) => a + b, 0) / porMesAdmin[m].length);
+
   _dadosGraficosDashboardAdmin = {
     ida: [contagemIda.I, contagemIda.D, contagemIda.A],
     pilares: mediaPorPilar,
     cargosRisco: porCargo.slice(0, 4),
+    sparkline: mesesOrdenados,
   };
 
   return `
@@ -404,35 +417,43 @@ function renderDashboardAdmin(abertos, pdisAtivos, encerrados) {
         : ''
     }
     <div class="painel-kpi-inetris">
-      <div class="kpi-card-inetris">
-        <div class="kpi-card-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01z"/></svg></div>
-        <div>
-          <div class="kpi-card-label">Resultado geral</div>
-          <div class="kpi-card-valor">${mediaGeralEmpresa !== null ? mediaGeralEmpresa.toFixed(2) : '—'} <span class="kpi-card-meta">/ 1,00</span></div>
-          <div class="kpi-card-nota ${mediaGeralEmpresa !== null && mediaGeralEmpresa >= 0.67 ? 'boa' : ''}">${mediaGeralEmpresa !== null ? pillLabel(classificar(mediaGeralEmpresa)) : 'Sem diagnóstico ainda'}</div>
+      <div class="kpi-card-inetris" style="flex-direction:column;align-items:stretch;">
+        <div style="display:flex;gap:12px;">
+          <div class="kpi-card-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01z"/></svg></div>
+          <div>
+            <div class="kpi-card-label">Resultado geral</div>
+            <div class="kpi-card-valor">${mediaGeralEmpresa !== null ? mediaGeralEmpresa.toFixed(2) : '—'} <span class="kpi-card-meta">/ 1,00</span></div>
+            <div class="kpi-card-nota ${mediaGeralEmpresa !== null && mediaGeralEmpresa >= 0.67 ? 'boa' : ''}">${mediaGeralEmpresa !== null ? pillLabel(classificar(mediaGeralEmpresa)) : 'Sem diagnóstico ainda'}</div>
+          </div>
         </div>
+        ${mesesOrdenados.length > 1 ? '<div class="kpi-sparkline-wrap"><canvas id="sparklineAdmin"></canvas></div><div class="kpi-card-rodape">Últimos ' + mesesOrdenados.length + ' meses</div>' : ''}
       </div>
-      <div class="kpi-card-inetris">
-        <div class="kpi-card-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1M9 12l2 2 4-4"/></svg></div>
-        <div>
-          <div class="kpi-card-label">Colaboradores avaliados</div>
-          <div class="kpi-card-valor">${totalIda ? Math.round((totalIda / state.colaboradores.length) * 100) : 0}%</div>
-          <div class="kpi-card-nota">${totalIda} de ${state.colaboradores.length}</div>
+      <div class="kpi-card-inetris" style="flex-direction:column;align-items:stretch;">
+        <div style="display:flex;gap:12px;">
+          <div class="kpi-card-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1M9 12l2 2 4-4"/></svg></div>
+          <div>
+            <div class="kpi-card-label">Colaboradores avaliados</div>
+            <div class="kpi-card-valor">${totalIda ? Math.round((totalIda / state.colaboradores.length) * 100) : 0}%</div>
+            <div class="kpi-card-nota">${totalIda} de ${state.colaboradores.length}</div>
+          </div>
         </div>
+        <div class="kpi-progresso-trilha"><div class="kpi-progresso-fill" style="width:${totalIda ? Math.min(100, Math.round((totalIda / state.colaboradores.length) * 100)) : 0}%;"></div></div>
+        <div class="kpi-card-rodape">Meta: 90%</div>
       </div>
       <div class="kpi-card-inetris">
         <div class="kpi-card-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg></div>
         <div>
           <div class="kpi-card-label">PDIs em andamento</div>
           <div class="kpi-card-valor">${pdisAtivos}</div>
-          <div class="kpi-card-nota">${pdisAprovadosCount} de ${ciclosComPdi.length} já aprovados</div>
+          <div class="kpi-card-nota">Em progresso</div>
+          <div class="kpi-card-nota">Total de ativos: ${ciclosComPdi.length}</div>
         </div>
       </div>
     </div>
 
     <div class="painel-visao-geral" style="grid-template-columns:1.2fr 0.8fr;">
       <div class="grafico-card">
-        <h4>Desempenho por dimensão <small>Média da empresa, escala 0 a 1</small></h4>
+        <h4>Desempenho por dimensão <span class="info-icone" title="Média de cada pilar N·O·R·T·E, escala IDA de 0 a 1, considerando todos os ciclos com diagnóstico já gerado.">i</span> <small>Média da empresa, escala 0 a 1</small></h4>
         ${somaPorPilar.N.length ? `<div style="position:relative;width:100%;height:260px;"><canvas id="radarAdmin" role="img" aria-label="Radar de 5 pilares da empresa"></canvas></div>` : '<div class="empty">Sem diagnósticos ainda.</div>'}
       </div>
       <div class="grafico-card">
@@ -441,7 +462,7 @@ function renderDashboardAdmin(abertos, pdisAtivos, encerrados) {
           totalIda
             ? `<div class="grafico-donut-wrap">
           <div class="grafico-donut-canvas"><canvas id="donutIda" role="img" aria-label="Rosca com a distribuição geral: ${contagemIda.I} Iniciar, ${contagemIda.D} Desenvolver, ${contagemIda.A} Alavancar"></canvas>
-            <div class="grafico-donut-centro">${totalIda}</div>
+            <div class="grafico-donut-centro">${totalIda}<span class="grafico-donut-centro-legenda">avaliados</span></div>
           </div>
           <div class="grafico-legenda">
             <span><span class="dot" style="background:var(--iniciar);"></span>Iniciar ${Math.round((contagemIda.I / totalIda) * 100)}% (${contagemIda.I})</span>
@@ -471,6 +492,7 @@ function renderDashboardAdmin(abertos, pdisAtivos, encerrados) {
             })
             .join('')}
         </tbody></table>
+        <button class="btn btn-ghost btn-sm ver-todas-link" onclick="goto('diagnostico')">Ver todas as dimensões →</button>
       </div>
       <div class="card" style="margin-bottom:0;">
         <h3>Oportunidades de desenvolvimento</h3>
@@ -492,6 +514,7 @@ function renderDashboardAdmin(abertos, pdisAtivos, encerrados) {
             })
             .join('')}
         </tbody></table>
+        <button class="btn btn-ghost btn-sm ver-todas-link" onclick="goto('diagnostico')">Ver todas as oportunidades →</button>
       </div>
     </div>
 
@@ -499,17 +522,27 @@ function renderDashboardAdmin(abertos, pdisAtivos, encerrados) {
       <h3>Avaliações recentes</h3>
       ${
         avaliacoesRecentes.length
-          ? `<table><thead><tr><th>Colaborador</th><th>Cargo</th><th>Área</th><th>Avaliador</th><th>Dimensão</th><th>Nota</th><th>Status</th><th>Data</th></tr></thead><tbody>
+          ? `<table><thead><tr><th></th><th>Colaborador</th><th>Cargo</th><th>Área</th><th>Avaliador</th><th>Dimensão</th><th>Nota</th><th>Status</th><th>Data</th><th></th></tr></thead><tbody>
         ${avaliacoesRecentes
           .map((a) => {
             const area = state.estrutura.find((n) => n.id === a.p?.setorId)?.nome || '—';
             const dm = a.ciclo.diagnostico.dimensaoMedia || {};
             const dimensoesValidas = Object.entries(dm).filter(([, v]) => v !== null);
             const piorDimensao = dimensoesValidas.length ? dimensoesValidas.sort((x, y) => x[1] - y[1])[0][0] : 'Geral';
-            return `<tr><td><b>${a.p ? escaparHtml(a.p.nome) : '—'}</b></td><td class="small-muted">${a.cargo ? escaparHtml(a.cargo.nome) : '—'}</td><td class="small-muted">${escaparHtml(area)}</td><td class="small-muted">${a.gestor}</td><td class="small-muted">${piorDimensao}</td><td class="small-muted" style="font-family:var(--mono);">${a.ciclo.diagnostico.geralMedia !== null ? a.ciclo.diagnostico.geralMedia.toFixed(2) : '—'}</td><td><span class="pill ${pillClass(a.ciclo.diagnostico.geral)}">${pillLabel(a.ciclo.diagnostico.geral)}</span></td><td class="small-muted">${a.ciclo.dataAbertura}</td></tr>`;
+            const iniciaisAval = a.p
+              ? a.p.nome
+                  .trim()
+                  .split(/\s+/)
+                  .slice(0, 2)
+                  .map((s) => s[0])
+                  .join('')
+                  .toUpperCase()
+              : '—';
+            return `<tr><td><span class="tree-node-avatar">${iniciaisAval}</span></td><td><b>${a.p ? escaparHtml(a.p.nome) : '—'}</b></td><td class="small-muted">${a.cargo ? escaparHtml(a.cargo.nome) : '—'}</td><td class="small-muted">${escaparHtml(area)}</td><td class="small-muted">${a.gestor}</td><td class="small-muted">${piorDimensao}</td><td class="small-muted" style="font-family:var(--mono);">${a.ciclo.diagnostico.geralMedia !== null ? a.ciclo.diagnostico.geralMedia.toFixed(2) : '—'}</td><td><span class="pill ${pillClass(a.ciclo.diagnostico.geral)}">${pillLabel(a.ciclo.diagnostico.geral)}</span></td><td class="small-muted">${a.ciclo.dataAbertura}</td><td><button class="btn-menu-pontos" onclick="abrirCiclo('${a.ciclo.id}')" title="Abrir ciclo">⋮</button></td></tr>`;
           })
           .join('')}
-      </tbody></table>`
+      </tbody></table>
+      <button class="btn btn-ghost btn-sm ver-todas-link" onclick="goto('ciclos')">Ver todas as avaliações →</button>`
           : '<div class="empty">Nenhum ciclo aberto ainda. Vá em <b>Ciclos de Avaliação</b> para iniciar o primeiro.</div>'
       }
     </div>
@@ -633,7 +666,7 @@ function renderDashboardRH() {
           totalIdaRH
             ? `<div class="grafico-donut-wrap">
           <div class="grafico-donut-canvas"><canvas id="rhDonutIda" role="img" aria-label="Rosca com a distribuição geral: ${contagemIdaRH.I} Iniciar, ${contagemIdaRH.D} Desenvolver, ${contagemIdaRH.A} Alavancar"></canvas>
-            <div class="grafico-donut-centro">${totalColabAtivos}</div>
+            <div class="grafico-donut-centro">${totalColabAtivos}<span class="grafico-donut-centro-legenda">colaboradores</span></div>
           </div>
           <div class="grafico-legenda">
             <span><span class="dot" style="background:var(--iniciar);"></span>Iniciar ${Math.round((contagemIdaRH.I / totalIdaRH) * 100)}%</span>
@@ -811,7 +844,7 @@ function renderDashboardGestor() {
           totalIdaEquipe
             ? `<div class="grafico-donut-wrap">
           <div class="grafico-donut-canvas"><canvas id="gestorDonutIda" role="img" aria-label="Rosca com a distribuição da equipe: ${contagemIdaEquipe.I} Iniciar, ${contagemIdaEquipe.D} Desenvolver, ${contagemIdaEquipe.A} Alavancar"></canvas>
-            <div class="grafico-donut-centro">${minhaEquipe.length}</div>
+            <div class="grafico-donut-centro">${minhaEquipe.length}<span class="grafico-donut-centro-legenda">na equipe</span></div>
           </div>
           <div class="grafico-legenda">
             <span><span class="dot" style="background:var(--iniciar);"></span>Iniciar ${Math.round((contagemIdaEquipe.I / totalIdaEquipe) * 100)}%</span>
