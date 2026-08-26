@@ -3,6 +3,42 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.43.4 — Bug corrigido: marca d'água cortada (só 2 bolinhas apareciam)
+Reportado com print real: só 2 bolinhas douradas apareciam no topo, em
+vez da logo inteira. Causa: a marca d'água (1100px) estava centralizada
+verticalmente (`center`) num espaço que só existe de verdade em telas
+bem altas — em monitores mais baixos/widescreen (como o do print), a
+imagem ficava maior que a altura da tela, cortada por cima e por baixo,
+sobrando só um pedacinho visível.
+
+Corrigido: tamanho reduzido pra 620px (cabe em qualquer tela comum,
+mesmo mais baixa) e posição fixada a partir do topo, em vez de
+centralizada — garante que a logo inteira sempre aparece, independente
+da altura da tela de quem está usando.
+
+Testei renderizando na mesma proporção larga e baixa do monitor do
+print antes de fechar, pra confirmar que não corta mais.
+
+## v0.43.3 — Marca d'água maior (1100px)
+Aumentada de 760px pra 1100px. Como a imagem de origem tinha sido salva
+num tamanho menor pra economizar espaço, aumentar só no CSS deixaria
+borrado — regenerei a imagem de origem em resolução mais alta antes de
+aumentar. No processo, comprimi com paleta reduzida (a logo só usa
+navy/dourado/branco/transparente, então 32 cores é mais que suficiente)
+— o arquivo caiu de ~310KB pra ~24KB nesse tamanho maior, sem perda
+visível de nitidez.
+
+Confirmei visualmente antes de fechar.
+
+## v0.43.2 — Marca d'água: logo navy/dourado, maior, no lado direito
+Trocada a marca d'água pra usar a mesma logo navy/dourado da barra
+lateral (fundo tornado transparente), em vez da versão cinza clara
+anterior. Aumentada (760px) e reposicionada — antes ficava só no canto
+superior direito, agora fica centralizada verticalmente no lado direito,
+no espaço mais vazio da tela.
+
+Confirmei visualmente o resultado antes de fechar.
+
 ## v0.43.1 — Marca d'água simplificada: só uma logo grande
 Ajuste direto: em vez de 4 cópias em tamanhos diferentes espalhadas, agora
 é só uma logo grande (640px), uma única vez, no canto superior direito.
