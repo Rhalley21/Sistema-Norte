@@ -3,6 +3,22 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.43.6 — Marca d'água mais pra direita e maior (1700px)
+Empurrada mais pra direita (menos sobreposta com os cartões) e aumentada
+de 1300px pra 1700px. Confirmei visualmente antes de fechar.
+
+## v0.43.5 — Marca d'água bem maior (1300px)
+Aumentada de 620px pra 1300px, ocupando bem mais do espaço vazio à
+direita. Regenerei a imagem de origem na resolução original (1254px, a
+imagem enviada) em vez de reaproveitar a versão de 900px de antes, pra
+não borrar com esse tamanho maior — mesma técnica de compressão de
+paleta reduzida, ficou em 33KB mesmo nessa resolução total.
+
+Nesse tamanho, a marca d'água pode se estender além da parte visível da
+tela em monitores mais baixos — isso é esperado nesse tamanho grande (a
+parte que mais aparece, perto dos cartões do topo, é a que mais
+importa). Confirmei visualmente antes de fechar.
+
 ## v0.43.4 — Bug corrigido: marca d'água cortada (só 2 bolinhas apareciam)
 Reportado com print real: só 2 bolinhas douradas apareciam no topo, em
 vez da logo inteira. Causa: a marca d'água (1100px) estava centralizada

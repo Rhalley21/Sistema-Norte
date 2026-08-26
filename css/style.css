@@ -70,8 +70,8 @@ body::before {
   opacity: 0.28;
   background-repeat: no-repeat;
   background-image: var(--marca-dagua-1, none);
-  background-position: calc(100% - 50px) 200px;
-  background-size: 620px auto;
+  background-position: calc(100% + 420px) 40px;
+  background-size: 1700px auto;
 }
 ::selection {
   background: var(--gold-soft);
