@@ -70,7 +70,7 @@ body::before {
   opacity: 0.28;
   background-repeat: no-repeat;
   background-image: var(--marca-dagua-1, none);
-  background-position: calc(100% + 1100px) -280px;
+  background-position: calc(100% + 650px) -280px;
   background-size: 2000px auto;
 }
 ::selection {

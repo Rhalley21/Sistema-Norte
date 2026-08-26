@@ -3,6 +3,10 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.43.8 — Marca d'água mais pra esquerda
+Deslocada mais pra esquerda — mostra bem mais da estrutura da logo do
+que antes. Confirmei visualmente antes de fechar.
+
 ## v0.43.7 — Marca d'água recalibrada pra bater com a referência
 Comparando com a referência enviada, entendi o efeito certo: a logo é
 gigante o bastante pra o CENTRO dela ficar fora da tela, à direita — só
