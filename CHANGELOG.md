@@ -3,6 +3,19 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.43.7 — Marca d'água recalibrada pra bater com a referência
+Comparando com a referência enviada, entendi o efeito certo: a logo é
+gigante o bastante pra o CENTRO dela ficar fora da tela, à direita — só
+uma fatia esparsa da borda esquerda aparece, com folgas (a própria logo
+tem espaços vazios na estrutura dela). Renderizei várias combinações de
+tamanho/posição lado a lado com a referência (mesma largura de tela,
+1456px) até chegar numa versão bem mais próxima do efeito esparso.
+
+Como isso foi calibrado visualmente a partir de um print (não de um
+valor exato), pode não bater 100% ainda — se precisar de mais ajuste
+fino (mais alto/baixo, mais fatia visível ou menos), é só apontar a
+direção que eu corrijo.
+
 ## v0.43.6 — Marca d'água mais pra direita e maior (1700px)
 Empurrada mais pra direita (menos sobreposta com os cartões) e aumentada
 de 1300px pra 1700px. Confirmei visualmente antes de fechar.
