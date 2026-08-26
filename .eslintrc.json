@@ -390,7 +390,20 @@
     "_gruposExpandidos": "writable",
     "_marcaDaguaAplicada": "writable",
     "MARCA_DAGUA_B64": "writable",
-    "aplicarMarcaDagua": "writable"
+    "aplicarMarcaDagua": "writable",
+    "_meusRegistrosPontoHoje": "writable",
+    "_pontoCarregando": "writable",
+    "_pontoBatendoAgora": "writable",
+    "_pontoJaCarregouUmaVez": "writable",
+    "baterPonto": "writable",
+    "carregarMeusRegistrosPontoHoje": "writable",
+    "exportarPontoSemanalPDF": "writable",
+    "formatarHora": "writable",
+    "formatarMinutos": "writable",
+    "pagePonto": "writable",
+    "proximoTipoPonto": "writable",
+    "segundaFeiraDaSemanaAtual": "writable",
+    "totalMinutosTrabalhadosHoje": "writable"
   },
   "rules": {
     "no-unused-vars": "off",

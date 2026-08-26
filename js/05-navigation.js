@@ -6,6 +6,7 @@ const STEPS_BASE = [
   { id: 'cargos', label: 'Base de Cargos (CBO)', group: 'Cargos', papeis: ['owner', 'rh'] },
   { id: 'desenho', label: 'Desenho de Cargo', group: 'Cargos', papeis: ['owner', 'rh'] },
   { id: 'colaboradores', label: 'Colaboradores', group: 'Pessoas', papeis: ['owner', 'rh', 'lider'] },
+  { id: 'ponto', label: 'Ponto', group: 'Pessoas' }, // sem `papeis`: visível pra todo mundo — todo mundo bate o próprio ponto, independente do papel de sistema
   { id: 'clima', label: 'Pesquisa de Clima / eNPS', group: 'Pessoas' },
   { id: 'sucessao', label: 'Mapa de Sucessão', group: 'Pessoas', papeis: ['owner', 'rh'] },
   { id: 'ciclos', label: 'Ciclos de Avaliação', group: 'Ciclo NORTE' },
@@ -51,6 +52,8 @@ function stepUnlocked(id) {
       return state.cargos.length > 0;
     case 'colaboradores':
       return state.cargos.some((c) => c.desenho.aprovado && !c.descontinuado);
+    case 'ponto':
+      return true;
     case 'ciclos':
       return state.colaboradores.length > 0;
     case 'diagnostico':

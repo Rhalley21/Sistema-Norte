@@ -1593,3 +1593,128 @@ hr.sep {
   background: var(--surface-2);
   color: var(--ink);
 }
+
+/* ---------- Ponto (js/29-page-ponto.js) ---------- */
+.ponto-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.ponto-hero-relogio {
+  font-family: var(--mono);
+  font-size: 42px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--ink);
+  line-height: 1.1;
+}
+.ponto-btn-bater {
+  margin-top: 18px;
+  padding: 13px 30px;
+  font-size: 14.5px;
+  border-radius: 12px;
+}
+.ponto-kpis {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ponto-kpis .kpi-card-inetris {
+  flex: 1;
+}
+.ponto-grafico {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  height: 160px;
+  padding-top: 8px;
+}
+.ponto-grafico-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+.ponto-grafico-valor {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-dim);
+  margin-bottom: 4px;
+  height: 14px;
+}
+.ponto-grafico-barra-trilha {
+  flex: 1;
+  width: 100%;
+  max-width: 34px;
+  display: flex;
+  align-items: flex-end;
+  background: var(--surface-2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.ponto-grafico-barra {
+  width: 100%;
+  background: var(--gold-soft);
+  border-radius: 8px 8px 0 0;
+  transition: height 0.3s ease;
+}
+.ponto-grafico-barra.hoje {
+  background: var(--gold);
+}
+.ponto-grafico-label {
+  margin-top: 8px;
+  font-size: 11px;
+  text-transform: capitalize;
+  color: var(--ink-faint);
+}
+.ponto-grafico-label.hoje {
+  color: var(--gold-on-light);
+  font-weight: 600;
+}
+.ponto-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ponto-timeline-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--line);
+}
+.ponto-timeline-item:last-child {
+  border-bottom: none;
+}
+.ponto-timeline-icone {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ponto-timeline-icone.in {
+  background: var(--alavancar-soft);
+  color: var(--alavancar);
+}
+.ponto-timeline-icone.out {
+  background: var(--iniciar-soft);
+  color: var(--iniciar);
+}
+.ponto-timeline-tipo {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+@media (max-width: 640px) {
+  .ponto-hero-relogio {
+    font-size: 34px;
+  }
+  .ponto-grafico {
+    height: 130px;
+  }
+}

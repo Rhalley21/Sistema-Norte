@@ -14,6 +14,8 @@ function renderRoute() {
       return pageDesenho();
     case 'colaboradores':
       return pageColaboradores();
+    case 'ponto':
+      return pagePonto();
     case 'ciclos':
       return pageCiclos();
     case 'diagnostico':

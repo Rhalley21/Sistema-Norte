@@ -29,7 +29,14 @@ norte-organizado/
 │   ├── 16-page-diagnostico.js      → tela "Diagnóstico & PDI"
 │   ├── 17-page-inteligencia.js     → tela "Banco de Inteligência"
 │   ├── 18-persistence.js          → salvar/carregar dados do Supabase
-│   └── 19-auth.js                  → login, cadastro, sessão
+│   ├── 19-auth.js                  → login, cadastro, sessão
+│   ├── 20-page-relatorios.js       → tela "Relatórios" (inclui o PDF semanal de Ponto)
+│   └── 29-page-ponto.js            → tela "Ponto" — bater ponto online (fala com a Edge Function "ponto", não com um banco direto)
+├── supabase/functions/
+│   ├── enviar-email/               → Edge Function que manda e-mails via Resend
+│   └── ponto/                      → Edge Function que faz a ponte com o banco de ponto SEPARADO (ver sql-ponto-db/)
+├── sql-ponto-db/            → schema de um projeto Supabase À PARTE, só para o ponto (não roda no banco principal)
+│   └── 01-schema.sql
 └── sql/                     → scripts para rodar no SQL Editor do Supabase, NESSA ORDEM
     ├── 01-schema.sql              → cria as tabelas principais
     ├── 02-auth-trigger.sql        → cadastro cria empresa + perfil automaticamente

@@ -3,6 +3,57 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.45.1 — Ponto: layout reorganizado
+Tela "Ponto" redesenhada, seguindo os mesmos componentes visuais já usados
+no resto do sistema (`.kpi-card-inetris`, ícones em SVG no estilo Feather,
+paleta e tipografia da identidade INETRIS) — sem inventar um estilo novo:
+- Card principal com relógio maior, e o botão "Bater ponto" como o único
+  elemento em destaque da tela (assinatura visual da página).
+- Três KPIs ao lado do relógio: horas trabalhadas hoje, última batida, e
+  total dos últimos 7 dias.
+- Gráfico de barras dos últimos 7 dias (novo — a Edge Function "ponto"
+  ganhou a ação `periodo`, que busca um intervalo livre de datas da
+  própria pessoa, generalizando a ação `hoje`).
+- Histórico de hoje virou uma linha do tempo com ícones de entrada/saída,
+  em vez da tabela simples de antes.
+
+## v0.45.0 — Ponto passa a viver num banco de dados separado
+Reversão de arquitetura da v0.44.0: os registros de ponto (`registros_ponto`)
+saem do projeto Supabase principal e passam a viver num **projeto Supabase
+totalmente separado**, criado só para isso (ver sql-ponto-db/01-schema.sql)
+— o motivo direto foi o banco principal já estar pesado, e ponto ser
+justamente o tipo de dado que mais cresce (2+ linhas por pessoa, todo dia).
+
+Como o navegador só tem sessão de login do projeto principal (nunca deve
+ter chave do banco de ponto), a ligação entre os dois passa a ser feita
+por uma Edge Function nova, `supabase/functions/ponto/index.ts`: ela
+confere a sessão da pessoa no projeto principal (quem é, qual empresa,
+qual papel) e só então lê/grava no projeto de ponto, usando a
+service_role key dele — guardada como secret da função, nunca exposta no
+front-end. `js/29-page-ponto.js` (bater ponto) e `exportarPontoSemanalPDF`
+em `js/20-page-relatorios.js` (PDF do RH) passaram a chamar essa função
+em vez de acessar `registros_ponto` direto — o `sql/20-registros-ponto.sql`
+da v0.44.0 foi removido, não roda mais no banco principal.
+
+## v0.44.0 — Novo módulo: Ponto
+Nova tela **Ponto** (grupo "Pessoas", visível pra todo mundo, qualquer
+papel) — cada pessoa bate a própria entrada/saída, com relógio e total do
+dia. Diferente do resto do sistema, os registros NÃO ficam dentro do JSON
+de `dados_sistema`: é uma tabela própria (`registros_ponto`,
+sql/20-registros-ponto.sql), pelo mesmo motivo já registrado no
+ALERTA-ESCALABILIDADE.md — é um evento de alto volume, todo dia, pra todo
+mundo, e inflaria o blob rapidamente. A tabela é append-only (mesmo
+princípio da tabela `auditoria`): ninguém, nem o Administrador, pode
+alterar ou apagar uma batida já registrada pelo próprio banco (sem
+política de UPDATE/DELETE) — só RLS de SELECT (a própria pessoa, ou
+RH/Administrador vendo a empresa toda) e INSERT (só em nome de si mesmo).
+
+Em Relatórios, novo tipo **"Ponto — consolidado semanal (PDF)"**: RH ou
+Administrador escolhe a segunda-feira da semana e baixa um PDF com todas
+as batidas da empresa naquela semana, agrupadas por colaborador, com o
+total de horas de cada um — mesmo padrão client-side (jsPDF + autotable)
+já usado nos outros relatórios em PDF do sistema, sem infraestrutura nova.
+
 ## v0.43.8 — Marca d'água mais pra esquerda
 Deslocada mais pra esquerda — mostra bem mais da estrutura da logo do
 que antes. Confirmei visualmente antes de fechar.

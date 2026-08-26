@@ -130,6 +130,7 @@ function pageRelatorios() {
           ['pdi', 'PDI individual (PDF)'],
           ['dossie', 'Dossiê completo — Desenho + Avaliação + PDI (PDF)'],
           ['institucional', 'Relatório Institucional Consolidado — raio-x da empresa (PDF)'],
+          ['ponto_semanal', 'Ponto — consolidado semanal (PDF)'],
           ['consolidado', 'Consolidado por Unidade/Setor (Excel)'],
           ['comparativo', 'Comparativo histórico do colaborador (Excel)'],
         ]
@@ -188,6 +189,22 @@ function pageRelatorios() {
     }
 
     ${
+      _tipoRelatorio === 'ponto_semanal'
+        ? `
+      <div class="card">
+        <h3>Ponto — consolidado semanal</h3>
+        <p class="page-desc">Um PDF com todas as batidas de ponto da empresa na semana escolhida, agrupadas por colaborador, com o total de horas de cada um — pronto para o RH conferir e arquivar.</p>
+        <div class="field" style="max-width:220px;">
+          <label>Segunda-feira da semana</label>
+          <input type="date" id="rel_ponto_inicio" value="${segundaFeiraDaSemanaAtual()}">
+        </div>
+        <button class="btn btn-primary" onclick="exportarPontoSemanalPDF(document.getElementById('rel_ponto_inicio').value)">Exportar PDF</button>
+      </div>
+    `
+        : ''
+    }
+
+    ${
       _tipoRelatorio === 'consolidado'
         ? `
       <div class="card">
@@ -228,6 +245,137 @@ function pageRelatorios() {
 
     <div class="notice">Processamento roda no navegador — para relatórios muito grandes (milhares de colaboradores), o ideal seria uma fila assíncrona no servidor com notificação de conclusão (ponto de evolução, ainda não construído).</div>
   `;
+}
+
+// Segunda-feira da semana atual, no formato aceito por <input type="date"> (AAAA-MM-DD)
+function segundaFeiraDaSemanaAtual() {
+  const hoje = new Date();
+  const diaSemana = hoje.getDay(); // 0=domingo .. 6=sábado
+  const deslocamento = diaSemana === 0 ? -6 : 1 - diaSemana; // volta até a segunda-feira
+  const segunda = new Date(hoje);
+  segunda.setDate(hoje.getDate() + deslocamento);
+  return segunda.toISOString().slice(0, 10);
+}
+
+async function exportarPontoSemanalPDF(dataInicioISO) {
+  if (!dataInicioISO) {
+    showToast('Escolha a segunda-feira da semana desejada.');
+    return;
+  }
+  await garantirJsPDF();
+
+  const inicio = new Date(`${dataInicioISO}T00:00:00`);
+  const fim = new Date(inicio);
+  fim.setDate(fim.getDate() + 7); // exclusivo: cobre segunda 00:00 até a segunda seguinte 00:00 (a semana inteira)
+
+  const { data, error } = await sb.functions.invoke('ponto', {
+    body: { action: 'semana', inicioISO: inicio.toISOString(), fimISO: fim.toISOString() },
+  });
+
+  if (error || data?.error) {
+    console.error('Falha ao carregar registros de ponto', error || data?.error);
+    showToast('Não foi possível carregar os registros de ponto.');
+    return;
+  }
+  const registros = data.registros;
+  if (!registros || registros.length === 0) {
+    showToast('Nenhuma batida de ponto registrada nessa semana.');
+    return;
+  }
+
+  // Agrupa por pessoa, depois por dia, calculando pares entrada/saída — a
+  // mesma lógica usada na tela "Ponto" (js/29-page-ponto.js), aqui rodando
+  // sobre a semana inteira e todo mundo, em vez de hoje e só a própria pessoa.
+  const porPessoa = {};
+  registros.forEach((r) => {
+    const nome = r.nome || 'Conta removida';
+    if (!porPessoa[nome]) porPessoa[nome] = [];
+    porPessoa[nome].push(r);
+  });
+
+  const linhasTabela = [];
+  const totalPorPessoa = {};
+  Object.keys(porPessoa)
+    .sort((a, b) => a.localeCompare(b))
+    .forEach((nome) => {
+      const eventos = porPessoa[nome];
+      const porDia = {};
+      eventos.forEach((r) => {
+        const dia = r.registrado_em.slice(0, 10);
+        (porDia[dia] = porDia[dia] || []).push(r);
+      });
+      let totalMinutosPessoa = 0;
+      Object.keys(porDia)
+        .sort()
+        .forEach((dia) => {
+          const doDia = porDia[dia];
+          let aberta = null;
+          let minutosDia = 0;
+          const marcacoes = [];
+          doDia.forEach((r) => {
+            marcacoes.push(`${r.tipo === 'entrada' ? 'E' : 'S'} ${formatarHora(r.registrado_em)}`);
+            if (r.tipo === 'entrada') {
+              aberta = r.registrado_em;
+            } else if (r.tipo === 'saida' && aberta) {
+              minutosDia += (new Date(r.registrado_em) - new Date(aberta)) / 60000;
+              aberta = null;
+            }
+          });
+          totalMinutosPessoa += minutosDia;
+          linhasTabela.push([
+            nome,
+            new Date(`${dia}T00:00:00`).toLocaleDateString('pt-BR', {
+              weekday: 'short',
+              day: '2-digit',
+              month: '2-digit',
+            }),
+            marcacoes.join('  ·  '),
+            formatarMinutos(Math.round(minutosDia)),
+          ]);
+        });
+      totalPorPessoa[nome] = Math.round(totalMinutosPessoa);
+    });
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.setFontSize(16);
+  doc.text('Ponto — Consolidado Semanal', 14, 18);
+  doc.setFontSize(10);
+  doc.setTextColor(120);
+  doc.text(state.empresa?.nomeFantasia || '', 14, 24);
+  doc.setTextColor(0);
+  desenharLogoNoPDF(doc, 165, 10, 30, 18);
+
+  const fimExibicao = new Date(fim);
+  fimExibicao.setDate(fimExibicao.getDate() - 1);
+  doc.setFontSize(11);
+  doc.text(`Semana de ${inicio.toLocaleDateString('pt-BR')} a ${fimExibicao.toLocaleDateString('pt-BR')}`, 14, 32);
+
+  doc.autoTable({
+    startY: 40,
+    head: [['Colaborador', 'Data', 'Batidas (E = entrada, S = saída)', 'Horas no dia']],
+    body: linhasTabela,
+    styles: { fontSize: 8.5 },
+    headStyles: { fillColor: hexParaRgb(state.configuracoes?.identidadeVisual?.corPrimaria) },
+  });
+
+  const yResumo = doc.lastAutoTable.finalY + 10;
+  doc.setFontSize(11);
+  doc.text('Total na semana, por colaborador', 14, yResumo);
+  doc.autoTable({
+    startY: yResumo + 4,
+    head: [['Colaborador', 'Total de horas']],
+    body: Object.keys(totalPorPessoa)
+      .sort((a, b) => a.localeCompare(b))
+      .map((nome) => [nome, formatarMinutos(totalPorPessoa[nome])]),
+    styles: { fontSize: 9 },
+    headStyles: { fillColor: hexParaRgb(state.configuracoes?.identidadeVisual?.corPrimaria) },
+  });
+
+  doc.save(`ponto_semanal_${dataInicioISO}.pdf`);
+  registrarAuditoria('relatorio.exportado', { tipo: 'ponto_semanal', semanaInicio: dataInicioISO });
+  showToast('PDF do ponto semanal exportado.');
 }
 
 async function exportarAvaliacaoPDF(cicloId) {
