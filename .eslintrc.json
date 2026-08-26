@@ -387,7 +387,10 @@
     "COR_PILAR": "writable",
     "_termoBuscaGlobal": "writable",
     "toggleGrupoMenu": "writable",
-    "_gruposExpandidos": "writable"
+    "_gruposExpandidos": "writable",
+    "_marcaDaguaAplicada": "writable",
+    "MARCA_DAGUA_B64": "writable",
+    "aplicarMarcaDagua": "writable"
   },
   "rules": {
     "no-unused-vars": "off",

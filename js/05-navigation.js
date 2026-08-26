@@ -92,6 +92,7 @@ function render() {
   _ultimaRotaRenderizada = state.route;
   _ultimoCicloAtivoRenderizado = state.cicloAtivo;
   agendarSalvamento();
+  aplicarMarcaDagua();
   // Gráficos (Chart.js) precisam ser montados depois do HTML já estar na
   // tela — inicializarGraficosDashboard() sozinha detecta se os canvas
   // existem (só quando estamos no dashboard do Administrador) e não faz
@@ -225,6 +226,13 @@ function renderSidebar() {
 function setRole(r) {
   state.role = r;
   _menuMobileAberto = false;
+  // BUG CORRIGIDO: trocar o "Ver como" só mudava o papel guardado, sem
+  // levar pro Dashboard — se a pessoa estivesse em qualquer outra tela
+  // (que não depende de state.role pra mudar de aparência), parecia que
+  // nada tinha acontecido, mesmo a troca tendo funcionado por baixo dos
+  // panos. Agora troca de papel e já mostra o Dashboard desse papel, sem
+  // precisar clicar em mais nada.
+  state.route = 'dashboard_role';
   render();
 }
 async function atualizarDadosAoVivo(silencioso) {

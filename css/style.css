@@ -50,6 +50,28 @@ body {
   font-family: var(--body);
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
+  position: relative;
+}
+/* Marca d'água — uma única logo grande, no canto superior direito, atrás
+   de todo o conteúdo (z-index negativo). Como os cartões (.card,
+   .grafico-card etc.) têm fundo branco sólido, a marca d'água só
+   aparece nos espaços vazios ao redor deles — nunca atrapalha a
+   leitura. Fixa (não rola com a página), nunca aparece atrás da barra
+   lateral porque ela tem fundo branco opaco cobrindo por cima. A
+   imagem de fundo em si é aplicada via JS (aplicarMarcaDagua, em
+   js/02-core-helpers.js) — CSS puro não tem como referenciar a
+   variável MARCA_DAGUA_B64 carregada de js/00-logo-asset.js. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.28;
+  background-repeat: no-repeat;
+  background-image: var(--marca-dagua-1, none);
+  background-position: calc(100% + 80px) -100px;
+  background-size: 640px auto;
 }
 ::selection {
   background: var(--gold-soft);

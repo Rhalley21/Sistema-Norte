@@ -916,6 +916,17 @@ async function garantirChart() {
 // guardada aqui porque é lida em telas diferentes de onde é escrita.
 let _termoBuscaGlobal = '';
 
+// Aplica a marca d'água (fundo espalhado no canto superior direito da
+// tela) — feito via variáveis CSS porque JS não consegue manipular
+// pseudo-elementos (::before) diretamente. Roda só uma vez; não precisa
+// repetir a cada render(), já que o valor não muda depois de aplicado.
+let _marcaDaguaAplicada = false;
+function aplicarMarcaDagua() {
+  if (_marcaDaguaAplicada || typeof MARCA_DAGUA_B64 === 'undefined') return;
+  document.documentElement.style.setProperty('--marca-dagua-1', `url('data:image/png;base64,${MARCA_DAGUA_B64}')`);
+  _marcaDaguaAplicada = true;
+}
+
 let _dadosGraficosDashboardAdmin = null;
 let _dadosGraficosDashboardRH = null;
 let _dadosGraficosDashboardGestor = null;

@@ -3,6 +3,56 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.43.1 — Marca d'água simplificada: só uma logo grande
+Ajuste direto: em vez de 4 cópias em tamanhos diferentes espalhadas, agora
+é só uma logo grande (640px), uma única vez, no canto superior direito.
+Confirmei visualmente antes de fechar.
+
+## v0.43.0 — Marca d'água implementada
+Logo em tons claros (já com fundo transparente) conectada como marca
+d'água — várias cópias em tamanhos diferentes, espalhadas no canto
+superior direito da área de conteúdo, em baixa opacidade, atrás de todo
+o resto. Nunca aparece na barra lateral (o fundo branco sólido dela
+cobre por cima) nem atrapalha a leitura dos cartões (que também têm
+fundo branco sólido — a marca d'água só aparece nos espaços vazios entre
+eles).
+
+Detalhe técnico: como JavaScript não consegue manipular pseudo-elementos
+(`::before`) diretamente, a imagem foi conectada através de variáveis
+CSS (`--marca-dagua-1` a `--marca-dagua-4`), definidas uma vez na
+inicialização — não em toda tela nova, só quando o sistema abre.
+
+Renderizei o resultado real (barra lateral + conteúdo) num navegador
+antes de fechar, ajustando a opacidade pra ficar discreta o bastante
+pra não competir com o conteúdo.
+
+## v0.42.2 — Logo trocada (a antiga tinha ficado invisível)
+Confirmado o motivo: a logo anterior tinha sido feita pra aparecer bem
+num fundo escuro — quando o sistema passou pro tema claro (v0.35.0), a
+barra lateral virou branca e a logo ficou praticamente invisível (fundo
+claro em cima de fundo claro).
+
+Logo nova conectada, já pronta pra fundo branco. Processamento aplicado
+antes de conectar: fundo quase-branco da imagem original convertido pra
+transparente de verdade (em vez de deixar um quadrado branco sólido por
+trás), garantindo que funcione bem mesmo se o fundo ao redor não for
+100% branco puro — confirmado pixel a pixel antes de fechar.
+
+Ainda falta a versão da logo pra marca d'água, que a empresa vai mandar
+separado.
+
+## v0.42.1 — Bug corrigido: trocar "Ver como" parecia não fazer nada
+Reportado: escolher outro papel no "Ver como (pré-visualização)" não
+mudava nada na tela, a não ser que a pessoa clicasse manualmente em
+"Dashboard" depois. Causa: `setRole()` só trocava o papel guardado, sem
+levar pro Dashboard — em qualquer outra tela que não muda de aparência
+conforme o papel, parecia que a troca não tinha funcionado (mesmo tendo
+funcionado por baixo dos panos).
+
+Corrigido: trocar o papel agora já leva direto pro Dashboard daquele
+papel, sem precisar clicar em mais nada. Testei a lógica isoladamente
+antes de fechar.
+
 ## v0.42.0 — Menu lateral em acordeão + busca de verdade
 Dois ajustes pedidos direto:
 
