@@ -286,6 +286,15 @@ function pageColaboradores() {
         </div>
         <div class="field"><label>Data de admissão</label><input id="p_admissao" type="date"></div>
       </div>
+      <div class="field" style="margin-top:4px;">
+        <label>Jornada de trabalho <small>(horário oficial dessa pessoa — usado pra saber se uma batida de ponto está atrasada)</small></label>
+        <div class="grid4">
+          <div class="field"><label style="font-size:11px;">Entrada</label><input id="p_jornada_entrada" type="time" value="08:00"></div>
+          <div class="field"><label style="font-size:11px;">Almoço</label><input id="p_jornada_almoco" type="time" value="12:00"></div>
+          <div class="field"><label style="font-size:11px;">Volta do almoço</label><input id="p_jornada_volta_almoco" type="time" value="13:00"></div>
+          <div class="field"><label style="font-size:11px;">Saída</label><input id="p_jornada_saida" type="time" value="18:00"></div>
+        </div>
+      </div>
       <button class="btn btn-primary" onclick="addColaborador()">Cadastrar colaborador</button>
       `
           : `
@@ -319,6 +328,7 @@ function pageColaboradores() {
           .map((p) => {
             const cargo = state.cargos.find((c) => c.id === p.cargoId);
             const emMovimento = _movimentarColabId === p.id;
+            const editandoJornada = _editarJornadaColabId === p.id;
             return `
           <tr style="${p.inativo ? 'opacity:.6;' : ''}">
             <td><b>${escaparHtml(p.nome)}</b></td>
@@ -332,6 +342,7 @@ function pageColaboradores() {
                 !p.anonimizado
                   ? `
                 <button class="btn btn-ghost btn-sm" onclick="_movimentarColabId='${emMovimento ? '' : p.id}'; render();">${emMovimento ? 'Cancelar' : 'Movimentar'}</button>
+                <button class="btn btn-ghost btn-sm" onclick="_editarJornadaColabId='${editandoJornada ? '' : p.id}'; render();">${editandoJornada ? 'Cancelar' : 'Editar jornada'}</button>
                 ${p.movimentacoes && p.movimentacoes.length ? `<button class="btn btn-ghost btn-sm" onclick="_verHistoricoColabId = _verHistoricoColabId==='${p.id}'?null:'${p.id}'; render();">Histórico (${p.movimentacoes.length})</button>` : ''}
                 ${
                   !p.inativo
@@ -347,6 +358,7 @@ function pageColaboradores() {
             </td>
           </tr>
           ${emMovimento ? renderFormMovimentacao(p, cargosAprovados, unidades, setores, contasGestor) : ''}
+          ${editandoJornada ? renderFormJornada(p) : ''}
           ${_verHistoricoColabId === p.id ? renderHistoricoMovimentacao(p) : ''}
           `;
           })
@@ -403,6 +415,16 @@ function addColaborador() {
     versaoCargoVinculada: cargo.desenho.versao,
     perfilId: perfilVinculado,
     admissao: document.getElementById('p_admissao').value,
+    // Jornada de trabalho — usada pelo módulo Ponto (js/29-page-ponto.js)
+    // pra saber se uma batida está atrasada e pedir justificativa. Definida
+    // por quem cadastra, não pela Unidade — cada colaborador pode ter um
+    // horário diferente mesmo trabalhando no mesmo lugar.
+    jornada: {
+      entrada: document.getElementById('p_jornada_entrada').value || null,
+      almoco: document.getElementById('p_jornada_almoco').value || null,
+      voltaAlmoco: document.getElementById('p_jornada_volta_almoco').value || null,
+      saida: document.getElementById('p_jornada_saida').value || null,
+    },
     movimentacoes: [
       {
         id: uid(),
@@ -461,6 +483,7 @@ function addColaborador() {
 }
 
 let _verHistoricoColabId = null;
+let _editarJornadaColabId = null;
 let _checkinColabId = null;
 
 /* ---------- Feedback contínuo (check-ins 1:1 fora do ciclo formal) ----------
@@ -518,6 +541,38 @@ function registrarFeedbackContinuo(colaboradorId) {
   render();
 }
 
+function renderFormJornada(p) {
+  const j = p.jornada || {};
+  return `
+    <tr>
+      <td colspan="6">
+        <div class="card" style="background:var(--surface-2);margin:0;">
+          <h3 style="font-size:14px;">Jornada de trabalho de ${escaparHtml(p.nome)} <small>Usada pelo módulo Ponto pra saber se uma batida está atrasada</small></h3>
+          <div class="grid4">
+            <div class="field"><label>Entrada</label><input id="jr_entrada_${p.id}" type="time" value="${j.entrada || ''}"></div>
+            <div class="field"><label>Almoço</label><input id="jr_almoco_${p.id}" type="time" value="${j.almoco || ''}"></div>
+            <div class="field"><label>Volta do almoço</label><input id="jr_volta_almoco_${p.id}" type="time" value="${j.voltaAlmoco || ''}"></div>
+            <div class="field"><label>Saída</label><input id="jr_saida_${p.id}" type="time" value="${j.saida || ''}"></div>
+          </div>
+          <button class="btn btn-primary" onclick="salvarJornadaColaborador('${p.id}')">Salvar jornada</button>
+        </div>
+      </td>
+    </tr>
+  `;
+}
+function salvarJornadaColaborador(colabId) {
+  const p = state.colaboradores.find((c) => c.id === colabId);
+  if (!p) return;
+  p.jornada = {
+    entrada: document.getElementById(`jr_entrada_${colabId}`).value || null,
+    almoco: document.getElementById(`jr_almoco_${colabId}`).value || null,
+    voltaAlmoco: document.getElementById(`jr_volta_almoco_${colabId}`).value || null,
+    saida: document.getElementById(`jr_saida_${colabId}`).value || null,
+  };
+  _editarJornadaColabId = null;
+  showToast('Jornada de trabalho atualizada.');
+  render();
+}
 function renderFormMovimentacao(p, cargosAprovados, unidades, setores, contasGestor) {
   return `
     <tr>

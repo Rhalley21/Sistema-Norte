@@ -25,7 +25,7 @@ async function carregarDadosSuperAdmin() {
   ] = await Promise.all([
     sb
       .from('empresas')
-      .select('id, nome_fantasia, cnpj, acesso_suspenso, suspensa_em, created_at')
+      .select('id, nome_fantasia, cnpj, acesso_suspenso, suspensa_em, ponto_incluso, created_at')
       .order('created_at', { ascending: false }),
     sb
       .from('codigos_licenca_empresa')
@@ -179,6 +179,27 @@ async function gerarNovoCodigoLicenca() {
   await carregarDadosSuperAdmin();
 }
 
+// Controla se a empresa tem o módulo Ponto incluso no plano — só o Super
+// Admin pode fazer essa troca (ver sql/20-ponto-incluso-no-plano.sql, que
+// bloqueia por trigger qualquer tentativa de mudança vinda de fora daqui).
+async function alternarPontoIncluso(empresaId, nomeEmpresa, valorAtual) {
+  const novoValor = !valorAtual;
+  if (
+    !confirm(
+      novoValor
+        ? `Conceder acesso ao módulo Ponto para "${nomeEmpresa}"?`
+        : `Remover o acesso ao módulo Ponto de "${nomeEmpresa}"? Ninguém da empresa vai conseguir bater ponto até você conceder de novo.`
+    )
+  )
+    return;
+  const { error } = await sb.from('empresas').update({ ponto_incluso: novoValor }).eq('id', empresaId);
+  if (error) {
+    showToast('Não foi possível alterar: ' + error.message);
+    return;
+  }
+  showToast(`Ponto ${novoValor ? 'liberado para' : 'removido de'} "${nomeEmpresa}".`);
+  await carregarDadosSuperAdmin();
+}
 async function suspenderEmpresa(empresaId, nomeEmpresa) {
   // BUG DE SEGURANÇA CORRIGIDO: nada impedia o Super Admin de suspender a
   // própria empresa onde ele também está cadastrado como colaborador — o
@@ -352,7 +373,7 @@ function pageSuperAdmin() {
       ${
         _superAdminEmpresas.length
           ? `
-        <table><thead><tr><th>Empresa</th><th>CNPJ</th><th>Status</th><th>Pagamento</th><th>Cadastrada em</th><th></th></tr></thead><tbody>
+        <table><thead><tr><th>Empresa</th><th>CNPJ</th><th>Status</th><th>Pagamento</th><th>Ponto</th><th>Cadastrada em</th><th></th></tr></thead><tbody>
           ${_superAdminEmpresas
             .map((e) => {
               const statusPagamento = _superAdminPayloads.find((p) => p.empresa_id === e.id)?.payload?.empresa
@@ -368,6 +389,9 @@ function pageSuperAdmin() {
             <td class="small-muted">${e.cnpj || '—'}</td>
             <td>${e.acesso_suspenso ? '<span class="pill pill-iniciar">Suspensa</span>' : '<span class="pill pill-alavancar">Ativa</span>'}</td>
             <td>${statusPagamento ? `<span class="pill ${corPagamento[statusPagamento] || 'pill-neutral'}">${statusPagamento}</span>` : '<span class="small-muted">—</span>'}</td>
+            <td>
+              <span class="pill ${e.ponto_incluso ? 'pill-alavancar' : 'pill-neutral'}" style="cursor:pointer;" title="Clique para ${e.ponto_incluso ? 'remover' : 'conceder'}" onclick="alternarPontoIncluso('${e.id}','${escaparParaOnclick(e.nome_fantasia)}',${e.ponto_incluso ? 'true' : 'false'})">${e.ponto_incluso ? 'Incluso' : 'Sem acesso'}</span>
+            </td>
             <td class="small-muted">${e.created_at ? new Date(e.created_at).toLocaleDateString('pt-BR') : '—'}</td>
             <td>${
               e.id === empresaIdAtual

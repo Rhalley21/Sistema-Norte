@@ -6,7 +6,7 @@ const STEPS_BASE = [
   { id: 'cargos', label: 'Base de Cargos (CBO)', group: 'Cargos', papeis: ['owner', 'rh'] },
   { id: 'desenho', label: 'Desenho de Cargo', group: 'Cargos', papeis: ['owner', 'rh'] },
   { id: 'colaboradores', label: 'Colaboradores', group: 'Pessoas', papeis: ['owner', 'rh', 'lider'] },
-  { id: 'ponto', label: 'Ponto', group: 'Pessoas' }, // sem `papeis`: visível pra todo mundo — todo mundo bate o próprio ponto, independente do papel de sistema
+  { id: 'ponto', label: 'Ponto', group: 'Pessoas', apenasComPontoNoPlano: true }, // sem `papeis`: visível pra qualquer papel — todo mundo bate o próprio ponto, independente do papel de sistema — mas só se a empresa tiver o módulo incluso no plano (ver sql/20-ponto-incluso-no-plano.sql)
   { id: 'clima', label: 'Pesquisa de Clima / eNPS', group: 'Pessoas' },
   { id: 'sucessao', label: 'Mapa de Sucessão', group: 'Pessoas', papeis: ['owner', 'rh'] },
   { id: 'ciclos', label: 'Ciclos de Avaliação', group: 'Ciclo NORTE' },
@@ -25,6 +25,7 @@ function stepsVisiveis() {
   const perm = state.configuracoes?.permissoesExtras || {};
   return STEPS_BASE.filter((s) => {
     if (s.apenasSuperAdmin) return souSuperAdmin;
+    if (s.apenasComPontoNoPlano) return pontoInclusoNoPlano;
     if (!s.papeis) return true;
     if (s.papeis.includes(meuPapelReal)) return true;
     // RNF002 — exceções configuráveis pelo Administrador

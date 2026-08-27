@@ -368,6 +368,11 @@ h1 {
   grid-template-columns: 1fr 1fr 1fr;
   gap: 14px;
 }
+.grid4 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 14px;
+}
 .field {
   margin-bottom: 14px;
 }
@@ -1177,6 +1182,7 @@ hr.sep {
   }
   .grid2,
   .grid3,
+  .grid4,
   .kpi-grid {
     grid-template-columns: 1fr;
   }

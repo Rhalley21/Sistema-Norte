@@ -3,6 +3,65 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.47.0 — Jornada de trabalho + justificativa de atraso no Ponto
+Grande expansão do módulo Ponto — de um sistema simples de entrada/saída
+pra um com jornada de trabalho por colaborador e justificativa de atraso.
+
+**1) Jornada de trabalho no cadastro de colaborador** (`js/13-page-colaboradores.js`):
+novo campo com 4 horários — Entrada, Almoço, Volta do almoço, Saída — que
+quem cadastra preenche por pessoa (não vinculado à Unidade). Também
+adicionado um botão "Editar jornada" na lista, pra colaboradores já
+existentes receberem esse campo depois.
+
+**2) Ponto passou a ter 4 marcações**, não mais só entrada/saída — o
+banco de ponto (separado, projeto próprio) tinha uma restrição que só
+aceitava 2 tipos; criada uma migração nova
+(`sql-ponto-db/02-jornada-4-marcacoes-e-justificativa.sql`) que expande
+pra 4, sem tocar no schema original já rodado. O ciclo (entrada → saída
+almoço → volta almoço → saída → recomeça) é decidido no servidor, como
+já era — evita duplicidade se a pessoa tiver duas abas abertas.
+
+**3) Justificativa de atraso**: se a batida acontecer mais de 5 minutos
+depois do horário da jornada daquela pessoa, a tela não registra na
+hora — abre um campo pedindo o motivo, e só grava depois de confirmado.
+Esse motivo fica salvo junto do registro e aparece tanto na tela "Hoje"
+do colaborador quanto no relatório semanal em PDF que o RH exporta.
+
+**4) Cálculo de horas trabalhadas corrigido** — com 4 marcações, o
+intervalo do almoço (saída → volta do almoço) nunca conta como tempo
+trabalhado, só os dois blocos de expediente.
+
+Testei isoladamente a lógica de atraso (dentro da tolerância, no limite
+exato, atrasado, sem jornada configurada), o ciclo das 4 marcações, e o
+cálculo de horas excluindo o almoço — todos os cenários bateram com o
+esperado antes de fechar.
+
+## v0.46.1 — Restrição de plano no Ponto, reaplicada sobre o relógio ao vivo
+Esse arquivo tinha o relógio ao vivo (atualiza a cada segundo) adicionado
+manualmente, mas estava numa versão de antes da restrição "Ponto só pra
+quem tem no plano" (v0.46.0). Reaplicada a mesma mudança em cima dessa
+versão, mantendo o relógio ao vivo intacto — mesmas 6 mudanças de antes:
+nova coluna no banco (com o trigger de proteção), carregamento no login,
+alternância pelo Super Admin, bloqueio no menu, bloqueio na Edge
+Function (a barreira de segurança real), e a opção de relatório
+escondida de quem não tem acesso. Detalhes completos na entrada v0.46.0
+abaixo.
+
+Conferido arquivo por arquivo contra a versão anterior antes de aplicar
+cada mudança, pra garantir que a estrutura era idêntica em cada ponto —
+e confirmado ao final que o relógio ao vivo continua funcionando sem
+alteração.
+
+## v0.45.2 — Ponto: relógio agora anda em tempo real
+Correção: o relógio da tela de Ponto estava "congelado" na hora em que a
+tela abria — só mostrava a hora certa se a pessoa saísse e voltasse (era um
+texto desenhado uma vez, sem nada atualizando). Agora ele anda a cada
+segundo (passou a mostrar também os segundos), atualizando só o próprio
+texto, sem redesenhar a página. O timer se desliga sozinho quando a pessoa
+sai do Ponto (quando o elemento some do DOM), então não fica rodando à toa
+nas outras telas. De quebra, ao sair e voltar pro Ponto os dados são
+recarregados — útil se a pessoa bateu ponto em outro dispositivo.
+
 ## v0.45.1 — Ponto: layout reorganizado
 Tela "Ponto" redesenhada, seguindo os mesmos componentes visuais já usados
 no resto do sistema (`.kpi-card-inetris`, ícones em SVG no estilo Feather,

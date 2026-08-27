@@ -22,5 +22,6 @@ let sessaoAtual = null;
 let empresaIdAtual = null;
 let meuPerfilId = null;
 let meuPapelReal = null; // owner | rh | lider | colaborador (papel de verdade, do banco)
+let pontoInclusoNoPlano = false; // controlado só pelo Super Admin — ver sql/20-ponto-incluso-no-plano.sql
 let meuEscopoEstendido = false; // Escopo estendido: exceção concedida pelo Administrador para um Gestor ver a empresa toda (extensão de RBAC — PRD Cap. 3, sem RN própria)
 let souSuperAdmin = false; // Super Admin da plataforma (dono do NORTE) — nível acima do papel dentro da Empresa. Ver sql/11-licenciamento-empresas.sql

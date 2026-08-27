@@ -72,6 +72,23 @@ serve(async (req: Request) => {
       .single();
     if (erroPerfil || !perfil) return jsonResponse({ error: 'Perfil não encontrado.' }, 403);
 
+    // BUG DE SEGURANÇA EVITADO: esta função usa a service_role key do banco
+    // de ponto, que ignora qualquer RLS de lá — e o front-end escondendo o
+    // menu "Ponto" é só conveniência de interface, não barreira de
+    // segurança de verdade (dá pra chamar esta função direto, sem passar
+    // pela tela). A checagem que realmente importa é aqui: sem isso,
+    // qualquer empresa conseguiria bater ponto mesmo sem o módulo incluso
+    // no plano — só o Super Admin concede esse acesso (ver
+    // sql/20-ponto-incluso-no-plano.sql).
+    const { data: empresa, error: erroEmpresa } = await principal
+      .from('empresas')
+      .select('ponto_incluso')
+      .eq('id', perfil.empresa_id)
+      .single();
+    if (erroEmpresa || !empresa?.ponto_incluso) {
+      return jsonResponse({ error: 'Sua empresa não tem o módulo Ponto incluso no plano atual.' }, 403);
+    }
+
     // Cliente do projeto de PONTO — service_role, só usado aqui dentro do
     // servidor, nunca chega no navegador.
     const ponto = createClient(PONTO_SUPABASE_URL, PONTO_SUPABASE_SERVICE_ROLE_KEY);
@@ -87,7 +104,20 @@ serve(async (req: Request) => {
         .order('registrado_em', { ascending: false })
         .limit(1)
         .maybeSingle();
-      const tipo = !ultima || ultima.tipo === 'saida' ? 'entrada' : 'saida';
+      // Ciclo de 4 marcações por dia: entrada → saída pro almoço → volta do
+      // almoço → saída final → (recomeça no próximo dia, já que o histórico
+      // de "hoje" é sempre filtrado por data na tela). Se por algum motivo o
+      // último registro salvo for de um dia anterior, ainda assim o ciclo
+      // recomeça em "entrada" — é o comportamento esperado pro primeiro
+      // registro do dia.
+      const proximoTipo: Record<string, string> = {
+        entrada: 'saida_almoco',
+        saida_almoco: 'volta_almoco',
+        volta_almoco: 'saida',
+        saida: 'entrada',
+      };
+      const tipo = !ultima ? 'entrada' : proximoTipo[ultima.tipo] || 'entrada';
+      const motivoAtraso = typeof body.motivoAtraso === 'string' ? body.motivoAtraso.trim().slice(0, 500) : null;
       const { data, error } = await ponto
         .from('registros_ponto')
         .insert({
@@ -95,9 +125,10 @@ serve(async (req: Request) => {
           perfil_id: perfil.id,
           colaborador_id: body.colaboradorId || null,
           tipo,
+          motivo_atraso: motivoAtraso || null,
           origem: 'web',
         })
-        .select('id, tipo, registrado_em')
+        .select('id, tipo, registrado_em, motivo_atraso')
         .single();
       if (error) return jsonResponse({ error: error.message }, 500);
       return jsonResponse({ registro: data });
@@ -108,7 +139,7 @@ serve(async (req: Request) => {
       if (!inicioDoDia) return jsonResponse({ error: 'inicioDoDiaISO é obrigatório.' }, 400);
       const { data, error } = await ponto
         .from('registros_ponto')
-        .select('id, tipo, registrado_em')
+        .select('id, tipo, registrado_em, motivo_atraso')
         .eq('perfil_id', perfil.id)
         .gte('registrado_em', inicioDoDia)
         .order('registrado_em', { ascending: true });
@@ -125,7 +156,7 @@ serve(async (req: Request) => {
       if (!desde || !ate) return jsonResponse({ error: 'desdeISO e ateISO são obrigatórios.' }, 400);
       const { data, error } = await ponto
         .from('registros_ponto')
-        .select('id, tipo, registrado_em')
+        .select('id, tipo, registrado_em, motivo_atraso')
         .eq('perfil_id', perfil.id)
         .gte('registrado_em', desde)
         .lt('registrado_em', ate)
@@ -143,7 +174,7 @@ serve(async (req: Request) => {
       if (!inicio || !fim) return jsonResponse({ error: 'inicioISO e fimISO são obrigatórios.' }, 400);
       const { data: registros, error } = await ponto
         .from('registros_ponto')
-        .select('id, perfil_id, tipo, registrado_em')
+        .select('id, perfil_id, tipo, registrado_em, motivo_atraso')
         .eq('empresa_id', perfil.empresa_id)
         .gte('registrado_em', inicio)
         .lt('registrado_em', fim)
