@@ -3,6 +3,26 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.48.1 — Jornada: horários digitáveis
+Os campos de horário da jornada (entrada, saída e almoço) deixaram de ser o
+seletor de relógio do navegador e viraram campos de texto, pra digitar
+direto. Aceita vários formatos e arruma sozinho ao salvar: "8" vira 08:00,
+"830" vira 08:30, "1300" vira 13:00, "8h30" vira 08:30. Valor inválido
+(ex: 25:00) é descartado. Vale no cadastro e no editor "Jornada".
+
+## v0.48.0 — Jornada agora tem intervalo de almoço
+A jornada do colaborador ganhou dois campos novos: início e fim do almoço
+(ex: 12:00 às 13:00), preenchíveis no cadastro e no editor "Jornada" da
+lista de colaboradores. Deixar os campos vazios significa "sem almoço".
+
+O almoço é descontado automaticamente das horas trabalhadas: como a pessoa
+não bate ponto no intervalo, o sistema desconta a parte do almoço previsto
+que cai dentro do período trabalhado. A regra é robusta — se um dia a
+pessoa bater ponto na saída/volta do almoço, o intervalo não é descontado
+em dobro; e uma saída no meio do horário de almoço desconta só a parte
+sobreposta. Vale na tela de Ponto (total do dia, gráfico dos 7 dias) e no
+PDF semanal do RH. Nenhuma mudança de banco — jornada é config no state.
+
 ## v0.47.0 — Ponto liga/desliga por Empresa (na geração da licença)
 Antes o módulo de Ponto aparecia pra toda Empresa, sempre. Agora é uma
 chave por Empresa, decidida pelo Super Admin na hora de gerar o código de

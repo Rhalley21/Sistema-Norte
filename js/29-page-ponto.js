@@ -91,6 +91,41 @@ function minutosTrabalhadosEm(registros) {
   });
   return Math.round(minutos);
 }
+
+// Quanto do almoço previsto cai DENTRO do tempo que a pessoa esteve
+// trabalhando naquele dia. Como o colaborador não bate ponto no almoço, o
+// caso normal é um par entrada→saída atravessando o horário de almoço, e aí
+// o intervalo inteiro é descontado. Se um dia a pessoa bater ponto na saída
+// pro almoço, o par não cobre o intervalo e nada é descontado em dobro.
+function descontoAlmocoMin(registrosDoDia, jornada) {
+  if (!jornada || !jornada.almocoInicio || !jornada.almocoFim) return 0;
+  if (registrosDoDia.length === 0) return 0;
+  const diaBase = registrosDoDia[0].registrado_em.slice(0, 10); // AAAA-MM-DD
+  const almocoIni = new Date(`${diaBase}T${jornada.almocoInicio}:00`);
+  const almocoFim = new Date(`${diaBase}T${jornada.almocoFim}:00`);
+  if (almocoFim <= almocoIni) return 0;
+
+  let desconto = 0;
+  let aberta = null;
+  registrosDoDia.forEach((r) => {
+    if (r.tipo === 'entrada') {
+      aberta = new Date(r.registrado_em);
+    } else if (r.tipo === 'saida' && aberta) {
+      const fim = new Date(r.registrado_em);
+      // sobreposição entre [aberta, fim] e [almocoIni, almocoFim]
+      const inicioSobre = Math.max(aberta, almocoIni);
+      const fimSobre = Math.min(fim, almocoFim);
+      if (fimSobre > inicioSobre) desconto += (fimSobre - inicioSobre) / 60000;
+      aberta = null;
+    }
+  });
+  return Math.round(desconto);
+}
+
+// Horas líquidas do dia = brutas (soma dos pares) menos o almoço.
+function minutosLiquidosDia(registrosDoDia, jornada) {
+  return Math.max(0, minutosTrabalhadosEm(registrosDoDia) - descontoAlmocoMin(registrosDoDia, jornada));
+}
 function formatarMinutos(mins) {
   if (!mins) return '0h00';
   const h = Math.floor(mins / 60);
@@ -187,13 +222,14 @@ function iconePonto(nome) {
 // tanto pro gráfico quanto pro KPI "trabalhado na semana".
 function totaisPorDia() {
   const hoje = new Date();
+  const jornada = minhaJornada();
   const dias = [];
   for (let i = PONTO_DIAS_HISTORICO - 1; i >= 0; i--) {
     const d = new Date(hoje);
     d.setDate(d.getDate() - i);
     const chave = d.toISOString().slice(0, 10);
     const doDia = _meuHistoricoPonto.filter((r) => r.registrado_em.slice(0, 10) === chave);
-    dias.push({ data: d, chave, minutos: minutosTrabalhadosEm(doDia) });
+    dias.push({ data: d, chave, minutos: minutosLiquidosDia(doDia, jornada) });
   }
   return dias;
 }
@@ -213,7 +249,7 @@ function pagePonto() {
 
   const proximo = proximoTipoPonto();
   const agora = new Date();
-  const minutosHoje = minutosTrabalhadosEm(_meusRegistrosPontoHoje);
+  const minutosHoje = minutosLiquidosDia(_meusRegistrosPontoHoje, minhaJornada());
   const dias = totaisPorDia();
   const minutosSemana = dias.reduce((soma, d) => soma + d.minutos, 0);
   const ultimaBatida = _meusRegistrosPontoHoje[_meusRegistrosPontoHoje.length - 1];
@@ -274,7 +310,7 @@ function pagePonto() {
       jornada
         ? `
     <div class="card">
-      <h3>Sua jornada hoje <small>previsto: entrada ${jornada.entrada} · saída ${jornada.saida} · tolerância ${jornada.toleranciaMin} min</small></h3>
+      <h3>Sua jornada hoje <small>previsto: entrada ${jornada.entrada} · saída ${jornada.saida}${jornada.almocoInicio && jornada.almocoFim ? ` · almoço ${jornada.almocoInicio}–${jornada.almocoFim}` : ''} · tolerância ${jornada.toleranciaMin} min</small></h3>
       <div class="ponto-jornada-linha">
         <div class="ponto-jornada-item">
           <div class="kpi-card-label">Entrada</div>

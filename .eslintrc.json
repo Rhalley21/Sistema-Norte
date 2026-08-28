@@ -415,7 +415,10 @@
     "salvarJornada": "writable",
     "JORNADA_PADRAO": "writable",
     "pontoHabilitado": "writable",
-    "_superAdminNovoPonto": "writable"
+    "_superAdminNovoPonto": "writable",
+    "minutosLiquidosDia": "writable",
+    "descontoAlmocoMin": "writable",
+    "normalizarHora": "writable"
   },
   "rules": {
     "no-unused-vars": "off",

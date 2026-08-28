@@ -287,8 +287,10 @@ function pageColaboradores() {
           </select>
         </div>
         <div class="field"><label>Data de admissão</label><input id="p_admissao" type="date"></div>
-        <div class="field"><label>Entrada prevista <small>(jornada — usada no controle de ponto)</small></label><input id="p_jornada_entrada" type="time" value="08:00"></div>
-        <div class="field"><label>Saída prevista</label><input id="p_jornada_saida" type="time" value="17:00"></div>
+        <div class="field"><label>Entrada prevista <small>(jornada — HH:MM)</small></label><input id="p_jornada_entrada" type="text" inputmode="numeric" placeholder="08:00" value="08:00"></div>
+        <div class="field"><label>Saída prevista <small>(HH:MM)</small></label><input id="p_jornada_saida" type="text" inputmode="numeric" placeholder="17:00" value="17:00"></div>
+        <div class="field"><label>Início do almoço <small>(HH:MM — vazio se não houver)</small></label><input id="p_jornada_almoco_inicio" type="text" inputmode="numeric" placeholder="12:00" value="12:00"></div>
+        <div class="field"><label>Fim do almoço <small>(HH:MM)</small></label><input id="p_jornada_almoco_fim" type="text" inputmode="numeric" placeholder="13:00" value="13:00"></div>
         <div class="field"><label>Tolerância <small>(minutos sem contar como atraso)</small></label><input id="p_jornada_tolerancia" type="number" min="0" value="10"></div>
       </div>
       <button class="btn btn-primary" onclick="addColaborador()">Cadastrar colaborador</button>
@@ -411,8 +413,10 @@ function addColaborador() {
     perfilId: perfilVinculado,
     admissao: document.getElementById('p_admissao').value,
     jornada: {
-      entrada: document.getElementById('p_jornada_entrada').value || '08:00',
-      saida: document.getElementById('p_jornada_saida').value || '17:00',
+      entrada: normalizarHora(document.getElementById('p_jornada_entrada').value) || '08:00',
+      saida: normalizarHora(document.getElementById('p_jornada_saida').value) || '17:00',
+      almocoInicio: normalizarHora(document.getElementById('p_jornada_almoco_inicio').value),
+      almocoFim: normalizarHora(document.getElementById('p_jornada_almoco_fim').value),
       toleranciaMin: parseInt(document.getElementById('p_jornada_tolerancia').value, 10) || 0,
     },
     movimentacoes: [
@@ -478,7 +482,39 @@ let _editarJornadaColabId = null;
 
 // Jornada padrão pra colaboradores cadastrados antes de existir esse campo —
 // nunca sobrescreve o que já foi definido, só serve de valor inicial no editor.
-const JORNADA_PADRAO = { entrada: '08:00', saida: '17:00', toleranciaMin: 10 };
+const JORNADA_PADRAO = {
+  entrada: '08:00',
+  saida: '17:00',
+  almocoInicio: '12:00',
+  almocoFim: '13:00',
+  toleranciaMin: 10,
+};
+
+// Aceita o que a pessoa digitar e devolve no formato HH:MM. Entende
+// "8" -> 08:00, "830" -> 08:30, "1300" -> 13:00, "8:5" -> 08:05, "8h30" ->
+// 08:30. Se estiver vazio ou não der pra entender, devolve '' (sem horário).
+function normalizarHora(texto) {
+  if (!texto) return '';
+  const s = String(texto).trim().toLowerCase().replace('h', ':');
+  let h;
+  let m;
+  if (s.includes(':')) {
+    const [hp, mp] = s.split(':');
+    h = parseInt(hp, 10);
+    m = parseInt(mp || '0', 10);
+  } else {
+    const digitos = s.replace(/\D/g, '');
+    if (digitos.length <= 2) {
+      h = parseInt(digitos, 10);
+      m = 0;
+    } else {
+      h = parseInt(digitos.slice(0, digitos.length - 2), 10);
+      m = parseInt(digitos.slice(-2), 10);
+    }
+  }
+  if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) return '';
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
 
 function renderFormJornada(p) {
   const j = p.jornada || JORNADA_PADRAO;
@@ -488,9 +524,11 @@ function renderFormJornada(p) {
         <div class="card" style="background:var(--surface-2);margin:0;">
           <h3 style="font-size:14px;">Jornada de ${escaparHtml(p.nome)} <small>Horário previsto — o controle de ponto compara as batidas com ele</small></h3>
           <div class="grid3">
-            <div class="field"><label>Entrada prevista</label><input id="jor_entrada_${p.id}" type="time" value="${j.entrada}"></div>
-            <div class="field"><label>Saída prevista</label><input id="jor_saida_${p.id}" type="time" value="${j.saida}"></div>
+            <div class="field"><label>Entrada prevista <small>(HH:MM)</small></label><input id="jor_entrada_${p.id}" type="text" inputmode="numeric" placeholder="08:00" value="${j.entrada}"></div>
+            <div class="field"><label>Saída prevista <small>(HH:MM)</small></label><input id="jor_saida_${p.id}" type="text" inputmode="numeric" placeholder="17:00" value="${j.saida}"></div>
             <div class="field"><label>Tolerância (min)</label><input id="jor_tol_${p.id}" type="number" min="0" value="${j.toleranciaMin}"></div>
+            <div class="field"><label>Início do almoço <small>(HH:MM — vazio = sem almoço)</small></label><input id="jor_almoco_ini_${p.id}" type="text" inputmode="numeric" placeholder="12:00" value="${j.almocoInicio || ''}"></div>
+            <div class="field"><label>Fim do almoço <small>(HH:MM)</small></label><input id="jor_almoco_fim_${p.id}" type="text" inputmode="numeric" placeholder="13:00" value="${j.almocoFim || ''}"></div>
           </div>
           <button class="btn btn-primary" onclick="salvarJornada('${p.id}')">Salvar jornada</button>
         </div>
@@ -502,8 +540,10 @@ function salvarJornada(colaboradorId) {
   const p = state.colaboradores.find((c) => c.id === colaboradorId);
   if (!p) return;
   p.jornada = {
-    entrada: document.getElementById(`jor_entrada_${colaboradorId}`).value || '08:00',
-    saida: document.getElementById(`jor_saida_${colaboradorId}`).value || '17:00',
+    entrada: normalizarHora(document.getElementById(`jor_entrada_${colaboradorId}`).value) || '08:00',
+    saida: normalizarHora(document.getElementById(`jor_saida_${colaboradorId}`).value) || '17:00',
+    almocoInicio: normalizarHora(document.getElementById(`jor_almoco_ini_${colaboradorId}`).value),
+    almocoFim: normalizarHora(document.getElementById(`jor_almoco_fim_${colaboradorId}`).value),
     toleranciaMin: parseInt(document.getElementById(`jor_tol_${colaboradorId}`).value, 10) || 0,
   };
   registrarAuditoria('colaborador.jornada_atualizada', { colaboradorId, jornada: p.jornada });

@@ -319,18 +319,9 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
         .sort()
         .forEach((dia) => {
           const doDia = porDia[dia];
-          let aberta = null;
-          let minutosDia = 0;
-          const marcacoes = [];
-          doDia.forEach((r) => {
-            marcacoes.push(`${r.tipo === 'entrada' ? 'E' : 'S'} ${formatarHora(r.registrado_em)}`);
-            if (r.tipo === 'entrada') {
-              aberta = r.registrado_em;
-            } else if (r.tipo === 'saida' && aberta) {
-              minutosDia += (new Date(r.registrado_em) - new Date(aberta)) / 60000;
-              aberta = null;
-            }
-          });
+          const marcacoes = doDia.map((r) => `${r.tipo === 'entrada' ? 'E' : 'S'} ${formatarHora(r.registrado_em)}`);
+          // Horas do dia já com o almoço descontado (mesma regra da tela de Ponto).
+          const minutosDia = minutosLiquidosDia(doDia, jornada);
           totalMinutosPessoa += minutosDia;
 
           const analise = analisarDiaVsJornada(doDia, jornada);
@@ -347,7 +338,7 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
               month: '2-digit',
             }),
             marcacoes.join('  ·  '),
-            formatarMinutos(Math.round(minutosDia)),
+            formatarMinutos(minutosDia),
             jornada ? (atrasoDia > 0 ? formatarMinutos(atrasoDia) : '—') : 's/ jornada',
             jornada ? (extraDia > 0 ? formatarMinutos(extraDia) : '—') : '—',
           ]);
