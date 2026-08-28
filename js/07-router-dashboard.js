@@ -15,7 +15,9 @@ function renderRoute() {
     case 'colaboradores':
       return pageColaboradores();
     case 'ponto':
-      return pagePonto();
+      return pontoHabilitado
+        ? pagePonto()
+        : '<div class="notice info">O módulo de Ponto não está habilitado para esta empresa.</div>';
     case 'ciclos':
       return pageCiclos();
     case 'diagnostico':

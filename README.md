@@ -42,6 +42,7 @@ norte-organizado/
     ├── 02-auth-trigger.sql        → cadastro cria empresa + perfil automaticamente
     ├── 03-dados-sistema.sql       → tabela onde os dados do sistema ficam salvos
     └── 04-perfis-acesso.sql       → tabela de convites + permissão de ver colegas
+    (rode também sql/21-ponto-por-empresa.sql para o liga/desliga de Ponto por Empresa)
 ```
 
 ## Como rodar

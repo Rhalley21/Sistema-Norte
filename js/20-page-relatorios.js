@@ -130,7 +130,7 @@ function pageRelatorios() {
           ['pdi', 'PDI individual (PDF)'],
           ['dossie', 'Dossiê completo — Desenho + Avaliação + PDI (PDF)'],
           ['institucional', 'Relatório Institucional Consolidado — raio-x da empresa (PDF)'],
-          ...(pontoInclusoNoPlano ? [['ponto_semanal', 'Ponto — consolidado semanal (PDF)']] : []),
+          ['ponto_semanal', 'Ponto — consolidado semanal (PDF)'],
           ['consolidado', 'Consolidado por Unidade/Setor (Excel)'],
           ['comparativo', 'Comparativo histórico do colaborador (Excel)'],
         ]
@@ -283,10 +283,9 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
     return;
   }
 
-  // Agrupa por pessoa, depois por dia, calculando o tempo trabalhado (as 4
-  // marcações: entrada, saída pro almoço, volta do almoço, saída) — mesma
-  // lógica usada na tela "Ponto" (js/29-page-ponto.js), aqui rodando sobre
-  // a semana inteira e todo mundo, em vez de hoje e só a própria pessoa.
+  // Agrupa por pessoa, depois por dia, calculando pares entrada/saída — a
+  // mesma lógica usada na tela "Ponto" (js/29-page-ponto.js), aqui rodando
+  // sobre a semana inteira e todo mundo, em vez de hoje e só a própria pessoa.
   const porPessoa = {};
   registros.forEach((r) => {
     const nome = r.nome || 'Conta removida';
@@ -295,18 +294,27 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
   });
 
   const linhasTabela = [];
-  const totalPorPessoa = {};
-  const PONTO_ABREVIACAO = { entrada: 'E', saida_almoco: 'SA', volta_almoco: 'VA', saida: 'S' };
+  const totalPorPessoa = {}; // { nome: { trabalhado, atraso, extra } }
   Object.keys(porPessoa)
     .sort((a, b) => a.localeCompare(b))
     .forEach((nome) => {
       const eventos = porPessoa[nome];
+      // Jornada prevista da pessoa — casada pelo perfil_id que veio nas
+      // batidas. Quem não tem cadastro em Colaboradores (ex: uma conta de
+      // Administrador que bate ponto) simplesmente não tem jornada, e as
+      // colunas de atraso/extra ficam em branco pra ela.
+      const perfilId = eventos[0].perfil_id;
+      const colaborador = state.colaboradores.find((c) => c.perfilId === perfilId);
+      const jornada = colaborador?.jornada || null;
+
       const porDia = {};
       eventos.forEach((r) => {
         const dia = r.registrado_em.slice(0, 10);
         (porDia[dia] = porDia[dia] || []).push(r);
       });
       let totalMinutosPessoa = 0;
+      let totalAtraso = 0;
+      let totalExtra = 0;
       Object.keys(porDia)
         .sort()
         .forEach((dia) => {
@@ -315,18 +323,22 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
           let minutosDia = 0;
           const marcacoes = [];
           doDia.forEach((r) => {
-            const marca = `${PONTO_ABREVIACAO[r.tipo] || '?'} ${formatarHora(r.registrado_em)}`;
-            marcacoes.push(r.motivo_atraso ? `${marca} (atraso: ${r.motivo_atraso})` : marca);
-            // Trabalhado = (entrada → saída pro almoço) + (volta do almoço →
-            // saída final) — o intervalo do almoço em si nunca conta.
-            if (r.tipo === 'entrada' || r.tipo === 'volta_almoco') {
+            marcacoes.push(`${r.tipo === 'entrada' ? 'E' : 'S'} ${formatarHora(r.registrado_em)}`);
+            if (r.tipo === 'entrada') {
               aberta = r.registrado_em;
-            } else if ((r.tipo === 'saida_almoco' || r.tipo === 'saida') && aberta) {
+            } else if (r.tipo === 'saida' && aberta) {
               minutosDia += (new Date(r.registrado_em) - new Date(aberta)) / 60000;
               aberta = null;
             }
           });
           totalMinutosPessoa += minutosDia;
+
+          const analise = analisarDiaVsJornada(doDia, jornada);
+          const atrasoDia = analise ? analise.atrasoMin : 0;
+          const extraDia = analise ? analise.extraMin : 0;
+          totalAtraso += atrasoDia;
+          totalExtra += extraDia;
+
           linhasTabela.push([
             nome,
             new Date(`${dia}T00:00:00`).toLocaleDateString('pt-BR', {
@@ -336,9 +348,16 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
             }),
             marcacoes.join('  ·  '),
             formatarMinutos(Math.round(minutosDia)),
+            jornada ? (atrasoDia > 0 ? formatarMinutos(atrasoDia) : '—') : 's/ jornada',
+            jornada ? (extraDia > 0 ? formatarMinutos(extraDia) : '—') : '—',
           ]);
         });
-      totalPorPessoa[nome] = Math.round(totalMinutosPessoa);
+      totalPorPessoa[nome] = {
+        trabalhado: Math.round(totalMinutosPessoa),
+        atraso: Math.round(totalAtraso),
+        extra: Math.round(totalExtra),
+        temJornada: !!jornada,
+      };
     });
 
   const { jsPDF } = window.jspdf;
@@ -359,9 +378,9 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
 
   doc.autoTable({
     startY: 40,
-    head: [['Colaborador', 'Data', 'Batidas (E=entrada, SA=saída almoço, VA=volta almoço, S=saída)', 'Horas no dia']],
+    head: [['Colaborador', 'Data', 'Batidas (E = entrada, S = saída)', 'Horas', 'Atraso', 'Extra']],
     body: linhasTabela,
-    styles: { fontSize: 8.5 },
+    styles: { fontSize: 8 },
     headStyles: { fillColor: hexParaRgb(state.configuracoes?.identidadeVisual?.corPrimaria) },
   });
 
@@ -370,10 +389,18 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
   doc.text('Total na semana, por colaborador', 14, yResumo);
   doc.autoTable({
     startY: yResumo + 4,
-    head: [['Colaborador', 'Total de horas']],
+    head: [['Colaborador', 'Total de horas', 'Total de atrasos', 'Total de horas extras']],
     body: Object.keys(totalPorPessoa)
       .sort((a, b) => a.localeCompare(b))
-      .map((nome) => [nome, formatarMinutos(totalPorPessoa[nome])]),
+      .map((nome) => {
+        const t = totalPorPessoa[nome];
+        return [
+          nome,
+          formatarMinutos(t.trabalhado),
+          t.temJornada ? formatarMinutos(t.atraso) : 's/ jornada',
+          t.temJornada ? formatarMinutos(t.extra) : '—',
+        ];
+      }),
     styles: { fontSize: 9 },
     headStyles: { fillColor: hexParaRgb(state.configuracoes?.identidadeVisual?.corPrimaria) },
   });

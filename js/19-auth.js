@@ -292,12 +292,9 @@ async function iniciarComSessao(sessao) {
 
   // Acesso da Empresa como um todo pode ter sido suspenso pelo Super Admin
   // da plataforma (dono do NORTE) — ver sql/12-suspensao-empresas.sql.
-  // Aproveita a mesma consulta pra já trazer se o Ponto está incluso no
-  // plano dessa empresa (ver sql/20-ponto-incluso-no-plano.sql) — evita
-  // uma segunda ida ao banco só pra isso.
   const { data: empresaCheck } = await sb
     .from('empresas')
-    .select('acesso_suspenso, ponto_incluso')
+    .select('acesso_suspenso, ponto_habilitado')
     .eq('id', perfil.empresa_id)
     .maybeSingle();
   if (empresaCheck?.acesso_suspenso) {
@@ -307,7 +304,9 @@ async function iniciarComSessao(sessao) {
     renderLogin();
     return;
   }
-  pontoInclusoNoPlano = !!empresaCheck?.ponto_incluso;
+  // Módulo de Ponto é liga/desliga por Empresa — a escolha é feita pelo Super
+  // Admin ao gerar o código de licença (ver sql/21-ponto-por-empresa.sql).
+  pontoHabilitado = !!empresaCheck?.ponto_habilitado;
 
   meuPerfilId = perfil.id;
   empresaIdAtual = perfil.empresa_id;

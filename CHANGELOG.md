@@ -3,54 +3,36 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
-## v0.47.0 — Jornada de trabalho + justificativa de atraso no Ponto
-Grande expansão do módulo Ponto — de um sistema simples de entrada/saída
-pra um com jornada de trabalho por colaborador e justificativa de atraso.
+## v0.47.0 — Ponto liga/desliga por Empresa (na geração da licença)
+Antes o módulo de Ponto aparecia pra toda Empresa, sempre. Agora é uma
+chave por Empresa, decidida pelo Super Admin na hora de gerar o código de
+licença: a tela "Super Admin — Empresas" ganhou um campo sim/não
+("Habilitar o módulo de Ponto para esta empresa"), e a lista de códigos
+disponíveis passou a mostrar uma coluna Ponto (Sim/Não).
 
-**1) Jornada de trabalho no cadastro de colaborador** (`js/13-page-colaboradores.js`):
-novo campo com 4 horários — Entrada, Almoço, Volta do almoço, Saída — que
-quem cadastra preenche por pessoa (não vinculado à Unidade). Também
-adicionado um botão "Editar jornada" na lista, pra colaboradores já
-existentes receberem esse campo depois.
+A escolha viaja com o código: quando a Empresa-cliente usa o código no
+cadastro, a trigger de criação copia a flag pra Empresa nova. No login, o
+sistema lê `empresas.ponto_habilitado` e só mostra o menu "Ponto" (e libera
+a rota) se estiver ligado. Requer rodar sql/21-ponto-por-empresa.sql no
+projeto principal — ele adiciona as colunas, atualiza a trigger e, para não
+quebrar quem já usava, marca todas as Empresas EXISTENTES como
+ponto_habilitado = true (só as novas nascem desligadas por padrão).
 
-**2) Ponto passou a ter 4 marcações**, não mais só entrada/saída — o
-banco de ponto (separado, projeto próprio) tinha uma restrição que só
-aceitava 2 tipos; criada uma migração nova
-(`sql-ponto-db/02-jornada-4-marcacoes-e-justificativa.sql`) que expande
-pra 4, sem tocar no schema original já rodado. O ciclo (entrada → saída
-almoço → volta almoço → saída → recomeça) é decidido no servidor, como
-já era — evita duplicidade se a pessoa tiver duas abas abertas.
+## v0.46.0 — Ponto ligado à jornada do colaborador
+Cada colaborador agora tem uma jornada prevista (entrada, saída e tolerância
+em minutos), editável na tela de Colaboradores — no cadastro e num botão
+"Jornada" por linha da lista. É dado de configuração, então fica no
+cadastro dentro do state (banco principal), não no banco de ponto.
 
-**3) Justificativa de atraso**: se a batida acontecer mais de 5 minutos
-depois do horário da jornada daquela pessoa, a tela não registra na
-hora — abre um campo pedindo o motivo, e só grava depois de confirmado.
-Esse motivo fica salvo junto do registro e aparece tanto na tela "Hoje"
-do colaborador quanto no relatório semanal em PDF que o RH exporta.
-
-**4) Cálculo de horas trabalhadas corrigido** — com 4 marcações, o
-intervalo do almoço (saída → volta do almoço) nunca conta como tempo
-trabalhado, só os dois blocos de expediente.
-
-Testei isoladamente a lógica de atraso (dentro da tolerância, no limite
-exato, atrasado, sem jornada configurada), o ciclo das 4 marcações, e o
-cálculo de horas excluindo o almoço — todos os cenários bateram com o
-esperado antes de fechar.
-
-## v0.46.1 — Restrição de plano no Ponto, reaplicada sobre o relógio ao vivo
-Esse arquivo tinha o relógio ao vivo (atualiza a cada segundo) adicionado
-manualmente, mas estava numa versão de antes da restrição "Ponto só pra
-quem tem no plano" (v0.46.0). Reaplicada a mesma mudança em cima dessa
-versão, mantendo o relógio ao vivo intacto — mesmas 6 mudanças de antes:
-nova coluna no banco (com o trigger de proteção), carregamento no login,
-alternância pelo Super Admin, bloqueio no menu, bloqueio na Edge
-Function (a barreira de segurança real), e a opção de relatório
-escondida de quem não tem acesso. Detalhes completos na entrada v0.46.0
-abaixo.
-
-Conferido arquivo por arquivo contra a versão anterior antes de aplicar
-cada mudança, pra garantir que a estrutura era idêntica em cada ponto —
-e confirmado ao final que o relógio ao vivo continua funcionando sem
-alteração.
+Com isso, o ponto passa a comparar a batida real com o previsto:
+- Na tela "Ponto", um card novo mostra a entrada e a saída de hoje com um
+  selo de "No horário", "X de atraso", "+X extra" ou "X antes", já
+  descontada a tolerância. Quem ainda não tem jornada cadastrada vê um
+  aviso pedindo pro RH definir.
+- No PDF semanal do RH, a tabela ganhou colunas de Atraso e Extra por dia,
+  e o resumo por pessoa passou a mostrar total de atrasos e de horas extras
+  na semana. Quem bate ponto sem ter cadastro/jornada aparece como
+  "s/ jornada" nessas colunas, sem quebrar o relatório.
 
 ## v0.45.2 — Ponto: relógio agora anda em tempo real
 Correção: o relógio da tela de Ponto estava "congelado" na hora em que a
