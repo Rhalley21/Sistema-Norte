@@ -303,8 +303,7 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
   }
 
   const linhasTabela = [];
-  // Acumuladores gerais da empresa (para a linha TOTAL GERAL no rodapé).
-  const geralPorDia = chavesDias.map(() => 0);
+  // Acumuladores gerais da empresa (para o bloco "Resumo da empresa").
   let geralTotal = 0;
   let geralAtraso = 0;
   let geralExtra = 0;
@@ -329,12 +328,11 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
       let totalMin = 0;
       let totalAtraso = 0;
       let totalExtra = 0;
-      const celulasDias = chavesDias.map((ch, idx) => {
+      const celulasDias = chavesDias.map((ch) => {
         const doDia = porDia[ch];
         if (!doDia || !doDia.length) return '·'; // dia sem batida
         const minutosDia = minutosLiquidosDia(doDia, jornada);
         totalMin += minutosDia;
-        geralPorDia[idx] += minutosDia;
         const analise = analisarDiaVsJornada(doDia, jornada);
         if (analise) {
           totalAtraso += analise.atrasoMin;
@@ -355,15 +353,6 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
         jornada ? formatarMinutos(Math.round(totalExtra)) : '—',
       ]);
     });
-
-  // Linha de rodapé com o consolidado da empresa inteira.
-  const linhaTotalGeral = [
-    'TOTAL GERAL',
-    ...geralPorDia.map((m) => formatarMinutos(Math.round(m))),
-    formatarMinutos(Math.round(geralTotal)),
-    formatarMinutos(Math.round(geralAtraso)),
-    formatarMinutos(Math.round(geralExtra)),
-  ];
 
   const { jsPDF } = window.jspdf;
   // Paisagem: são 7 dias + 3 colunas de total, precisa de largura.
@@ -396,8 +385,6 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
     startY: 41,
     head: [['Colaborador', ...cabecalhoDias, 'Total', 'Atrasos', 'Extras']],
     body: linhasTabela,
-    foot: [linhaTotalGeral],
-    showFoot: 'lastPage',
     styles: { fontSize: 8.5, halign: 'center', valign: 'middle', cellPadding: 2.5 },
     columnStyles: {
       0: { halign: 'left', fontStyle: 'bold' },
@@ -406,10 +393,30 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
       10: { textColor: [63, 107, 78] }, // Extras (verde)
     },
     headStyles: { fillColor: hexParaRgb(state.configuracoes?.identidadeVisual?.corPrimaria), halign: 'center' },
-    footStyles: { fillColor: [237, 232, 216], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'center' },
-    didParseCell: function (d) {
-      if (d.section === 'foot' && d.column.index === 0) d.cell.styles.halign = 'left';
+  });
+
+  // Bloco separado embaixo: resumo consolidado da empresa inteira na semana.
+  const yResumo = doc.lastAutoTable.finalY + 12;
+  doc.setFontSize(12);
+  doc.text('Resumo da empresa na semana', 14, yResumo);
+  doc.autoTable({
+    startY: yResumo + 4,
+    head: [['Total de horas trabalhadas', 'Total de atrasos', 'Total de horas extras']],
+    body: [
+      [
+        formatarMinutos(Math.round(geralTotal)),
+        formatarMinutos(Math.round(geralAtraso)),
+        formatarMinutos(Math.round(geralExtra)),
+      ],
+    ],
+    styles: { fontSize: 12, halign: 'center', cellPadding: 6, fontStyle: 'bold' },
+    headStyles: {
+      fillColor: hexParaRgb(state.configuracoes?.identidadeVisual?.corPrimaria),
+      halign: 'center',
+      fontSize: 9,
     },
+    columnStyles: { 1: { textColor: [181, 72, 47] }, 2: { textColor: [63, 107, 78] } },
+    tableWidth: 200,
   });
 
   doc.save(`ponto_semanal_${dataInicioISO}.pdf`);

@@ -3,6 +3,13 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.52.2 — Relatório de ponto: resumo da empresa em bloco separado
+O total geral da empresa saiu da linha de rodapé e virou um bloco próprio
+embaixo da grade ("Resumo da empresa na semana"), com os números em
+destaque: total de horas trabalhadas, total de atrasos e total de horas
+extras da equipe. Fica igual à estrutura de dois blocos (detalhe em cima,
+consolidado embaixo) do restante dos relatórios do sistema.
+
 ## v0.52.1 — Relatório de ponto: linha de TOTAL GERAL
 Adicionada uma linha "TOTAL GERAL" no rodapé da grade semanal, somando toda
 a empresa: total de horas por dia, total de horas da semana, total de
