@@ -3,6 +3,24 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.50.0 — Organização geral para celular
+Passada ampla de responsividade, tratando os problemas na raiz em vez de
+tela por tela: tabelas largas (colaboradores, relatórios, licenças) agora
+rolam só na própria tabela sem espremer o card; todos os grids de 2/3/4
+colunas (KPIs, jornada, papéis do totem, módulos) empilham em 1 no celular;
+as barras de ação e a busca do topo ocupam a largura toda e empilham;
+campos de formulário viram 100% de largura com fonte 16px (evita o zoom
+automático do iOS ao focar); botões ganham alvo de toque de no mínimo 44px;
+relógio do ponto, KPIs e o QR do totem foram redimensionados para caber bem.
+Inclui um ajuste extra para telas bem estreitas (≤ 380px).
+
+## v0.49.1 — Correção: QR do totem não aparecia
+A biblioteca de geração de QR escolhida na 0.49.0 (pacote `qrcode`) é feita
+para uso com empacotador e não expunha o `QRCode` global quando carregada
+direto no navegador — por isso o totem não desenhava o código. Troquei pela
+`qrcodejs` (feita para rodar direto no browser) e ajustei a chamada para a
+API dela. Testado: gera o QR com o token do servidor corretamente.
+
 ## v0.49.0 — Ponto seguro: QR do local + selfie
 Novo: a empresa pode exigir que o ponto só seja batido presencialmente,
 escaneando um QR Code exibido na entrada, e/ou com uma selfie na hora.

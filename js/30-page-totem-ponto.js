@@ -25,12 +25,14 @@ async function atualizarQrTotem() {
     alvo.innerHTML = '<div class="empty">Biblioteca de QR não carregou. Recarregue a página.</div>';
     return;
   }
-  // QRCode.toCanvas desenha o token atual num canvas limpo.
+  // qrcodejs (davidshimjs) desenha dentro do elemento alvo. Como ele acumula,
+  // limpamos antes de gerar o código do momento.
   alvo.innerHTML = '';
-  const canvas = document.createElement('canvas');
-  alvo.appendChild(canvas);
-  QRCode.toCanvas(canvas, data.token, { width: 300, margin: 1 }, (err) => {
-    if (err) console.error('Falha ao desenhar QR', err);
+  new QRCode(alvo, {
+    text: data.token,
+    width: 300,
+    height: 300,
+    correctLevel: QRCode.CorrectLevel.M,
   });
 }
 

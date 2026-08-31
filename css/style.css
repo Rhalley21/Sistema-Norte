@@ -1789,7 +1789,8 @@ hr.sep {
   align-items: center;
   justify-content: center;
 }
-.totem-qr canvas {
+.totem-qr canvas,
+.totem-qr img {
   display: block;
 }
 .totem-legenda {
@@ -1816,5 +1817,140 @@ hr.sep {
   50% {
     opacity: 0.6;
     box-shadow: 0 0 0 8px rgba(63, 107, 78, 0);
+  }
+}
+
+/* =========================================================================
+   RESPONSIVIDADE GERAL — passada de organização para celular (v0.50.0)
+   Trata na raiz os problemas comuns: tabelas largas, grids de 3/4 colunas,
+   formulários espremidos, barras de ação e alvos de toque. Usa os mesmos
+   breakpoints já existentes no arquivo, sem refazer o que já funciona.
+   ========================================================================= */
+
+/* ---- Tablet e abaixo (≤ 900px): grids largos deixam de forçar colunas ---- */
+@media (max-width: 900px) {
+  .painel-visao-geral {
+    grid-template-columns: 1fr 1fr;
+  }
+  /* Qualquer grid de 4 colunas (KPIs, papéis do totem, etc.) vira 2 colunas. */
+  .kpi-grid,
+  .papeis-wrap {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+/* ---- Celular (≤ 640px): a passada principal ---- */
+@media (max-width: 640px) {
+  /* 1) Rolagem horizontal só na TABELA, não no card inteiro — assim o card
+        continua se comportando e apenas a tabela "desliza" se for larga.
+        Um leve indicador de que dá pra rolar. */
+  .card {
+    overflow-x: visible;
+  }
+  .card table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  /* 2) Todos os grids multi-coluna empilham em 1 no celular. */
+  .grid2,
+  .grid3,
+  .kpi-grid,
+  .painel-visao-geral,
+  .papeis-wrap,
+  .ponto-jornada-linha,
+  .norte-modulos,
+  .norte-destaques {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* 3) Cabeçalho da página mais compacto. */
+  h1 {
+    font-size: 20px;
+  }
+  .page-head {
+    margin-bottom: 16px;
+  }
+
+  /* 4) Barras de ação (grupos de botões) empilham e ocupam a largura toda,
+        com alvo de toque confortável (mín. 44px de altura). */
+  .topo-pagina-acoes,
+  .tree-node-acoes {
+    flex-direction: column;
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+  .topo-pagina-acoes .btn,
+  .tree-node-acoes .btn,
+  .acoes-grid .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .topo-pagina-inetris {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .topo-pagina-busca,
+  .topo-pagina-busca input {
+    width: 100%;
+  }
+  .btn {
+    min-height: 44px;
+  }
+  .btn-sm {
+    min-height: 38px;
+  }
+
+  /* 5) Botões pequenos que ficam lado a lado numa linha da tabela/lista:
+        deixa quebrar em vez de espremer. */
+  td .btn,
+  .lista-acoes {
+    margin-bottom: 4px;
+  }
+
+  /* 6) Campos de formulário ocupam a largura toda e com fonte 16px, que
+        evita o "zoom" automático do iOS ao focar num input. */
+  .field input,
+  .field select,
+  .field textarea {
+    width: 100%;
+    font-size: 16px;
+  }
+
+  /* 7) Relógio e números grandes cabem melhor. */
+  .ponto-hero-relogio {
+    font-size: 30px;
+  }
+  .kpi-card-valor {
+    font-size: 20px;
+  }
+
+  /* 8) O totem: QR um pouco menor pra caber com folga na tela do celular
+        (caso alguém abra o totem no próprio celular). */
+  .totem-qr {
+    min-width: 240px;
+    min-height: 240px;
+    padding: 12px;
+  }
+  .totem-qr canvas,
+  .totem-qr img {
+    max-width: 240px;
+    height: auto;
+  }
+}
+
+/* ---- Telas bem estreitas (≤ 380px): respiro extra ---- */
+@media (max-width: 380px) {
+  main {
+    padding: 16px 12px 44px;
+  }
+  .card {
+    padding: 14px;
+  }
+  .ponto-hero-relogio {
+    font-size: 26px;
   }
 }
