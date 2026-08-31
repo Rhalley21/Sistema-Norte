@@ -2,7 +2,39 @@
    MÓDULO CONFIGURAÇÕES (4.14)
    ========================================================= */
 
+// Espelho local das configurações de segurança do ponto (moram na Edge
+// Function, não no state). Carregado ao abrir a tela.
+let _segurancaPontoUI = { exigeQr: false, exigeSelfie: false };
+let _segurancaPontoCarregada = false;
+
+async function carregarSegurancaPonto() {
+  const { data, error } = await sb.functions.invoke('ponto', { body: { action: 'seguranca_ler' } });
+  if (!error && data && !data.error) {
+    _segurancaPontoUI = { exigeQr: !!data.exigeQr, exigeSelfie: !!data.exigeSelfie };
+    render();
+  }
+}
+
+async function salvarSegurancaPonto() {
+  const exigeQr = document.getElementById('cfg_ponto_qr').checked;
+  const exigeSelfie = document.getElementById('cfg_ponto_selfie').checked;
+  const { data, error } = await sb.functions.invoke('ponto', {
+    body: { action: 'seguranca_salvar', exigeQr, exigeSelfie },
+  });
+  if (error || data?.error) {
+    showToast((data && data.error) || 'Não foi possível salvar.');
+    return;
+  }
+  _segurancaPontoUI = { exigeQr, exigeSelfie };
+  showToast('Segurança do ponto atualizada.');
+}
+
 function pageConfiguracoes() {
+  // Carrega as configs de segurança uma vez ao abrir a tela.
+  if (pontoHabilitado && !_segurancaPontoCarregada) {
+    _segurancaPontoCarregada = true;
+    carregarSegurancaPonto();
+  }
   const c = state.configuracoes || {};
   const iv = c.identidadeVisual || {};
   return `
@@ -11,6 +43,27 @@ function pageConfiguracoes() {
       <h1>Configurações</h1>
       <p class="page-desc">Parametrizações do tenant — só o Administrador acessa esta tela.</p>
     </div>
+
+    ${
+      pontoHabilitado
+        ? `
+    <div class="card">
+      <h3>Segurança do Ponto</h3>
+      <p class="page-desc" style="margin-bottom:12px;">Controle onde e como os colaboradores podem bater o ponto. As configurações abaixo valem para toda a empresa.</p>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px;">
+        <input type="checkbox" id="cfg_ponto_qr" ${_segurancaPontoUI.exigeQr ? 'checked' : ''}>
+        Exigir escanear o <b>QR Code do local</b> para bater o ponto
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:12px;">
+        <input type="checkbox" id="cfg_ponto_selfie" ${_segurancaPontoUI.exigeSelfie ? 'checked' : ''}>
+        Exigir <b>selfie</b> no momento da batida
+      </label>
+      <button class="btn btn-primary" onclick="salvarSegurancaPonto()">Salvar segurança do ponto</button>
+      <div class="notice info" style="margin-top:12px;">Com o QR ligado, deixe a tela <b>Totem de ponto</b> aberta na entrada da empresa. A selfie fica registrada junto de cada batida para conferência do RH (atenção à LGPD ao usar imagens).</div>
+    </div>
+    `
+        : ''
+    }
 
     <div class="card">
       <h3>Ciclo de Avaliação</h3>

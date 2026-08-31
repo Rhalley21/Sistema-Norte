@@ -7,6 +7,13 @@ const STEPS_BASE = [
   { id: 'desenho', label: 'Desenho de Cargo', group: 'Cargos', papeis: ['owner', 'rh'] },
   { id: 'colaboradores', label: 'Colaboradores', group: 'Pessoas', papeis: ['owner', 'rh', 'lider'] },
   { id: 'ponto', label: 'Ponto', group: 'Pessoas', apenasSePontoHabilitado: true }, // liga/desliga por Empresa (Super Admin decide ao gerar a licença). Sem `papeis`: quando ligado, todo mundo bate o próprio ponto.
+  {
+    id: 'totem_ponto',
+    label: 'Totem de ponto',
+    group: 'Pessoas',
+    papeis: ['owner', 'rh'],
+    apenasSePontoHabilitado: true,
+  }, // tela do QR pra deixar na entrada — só RH/Admin
   { id: 'clima', label: 'Pesquisa de Clima / eNPS', group: 'Pessoas' },
   { id: 'sucessao', label: 'Mapa de Sucessão', group: 'Pessoas', papeis: ['owner', 'rh'] },
   { id: 'ciclos', label: 'Ciclos de Avaliação', group: 'Ciclo NORTE' },
@@ -54,6 +61,8 @@ function stepUnlocked(id) {
     case 'colaboradores':
       return state.cargos.some((c) => c.desenho.aprovado && !c.descontinuado);
     case 'ponto':
+      return true;
+    case 'totem_ponto':
       return true;
     case 'ciclos':
       return state.colaboradores.length > 0;

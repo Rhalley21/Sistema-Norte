@@ -32,6 +32,7 @@ norte-organizado/
 │   ├── 19-auth.js                  → login, cadastro, sessão
 │   ├── 20-page-relatorios.js       → tela "Relatórios" (inclui o PDF semanal de Ponto)
 │   └── 29-page-ponto.js            → tela "Ponto" — bater ponto online (fala com a Edge Function "ponto", não com um banco direto)
+│   └── 30-page-totem-ponto.js      → tela "Totem de ponto" — exibe o QR do local que se renova (só RH/Admin)
 ├── supabase/functions/
 │   ├── enviar-email/               → Edge Function que manda e-mails via Resend
 │   └── ponto/                      → Edge Function que faz a ponte com o banco de ponto SEPARADO (ver sql-ponto-db/)
@@ -43,6 +44,7 @@ norte-organizado/
     ├── 03-dados-sistema.sql       → tabela onde os dados do sistema ficam salvos
     └── 04-perfis-acesso.sql       → tabela de convites + permissão de ver colegas
     (rode também sql/21-ponto-por-empresa.sql para o liga/desliga de Ponto por Empresa)
+    (rode também sql/22-ponto-seguranca.sql para a segurança do Ponto — QR + selfie)
 ```
 
 ## Como rodar

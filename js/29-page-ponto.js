@@ -19,6 +19,11 @@ let _pontoCarregando = false;
 let _pontoBatendoAgora = false;
 let _pontoJaCarregouUmaVez = false;
 let _pontoRelogioTimer = null;
+let _pontoSeguranca = { exigeQr: false, exigeSelfie: false }; // carregado da Edge Function
+let _pontoScanner = null; // instância do leitor de QR (html5-qrcode), quando ativo
+let _pontoQrLido = null; // token do QR já escaneado, aguardando a batida
+let _pontoSelfieBase64 = null; // selfie capturada, aguardando a batida
+let _pontoFluxoAberto = false; // painel de escanear/selfie aberto?
 
 // Mantém o relógio da tela de Ponto "vivo", atualizando a cada segundo, sem
 // redesenhar a página inteira (que apagaria estado e piscaria a tela). O
@@ -52,12 +57,16 @@ async function carregarDadosPonto() {
   const desde = new Date(hoje);
   desde.setDate(desde.getDate() - (PONTO_DIAS_HISTORICO - 1));
 
-  const [respHoje, respHistorico] = await Promise.all([
+  const [respHoje, respHistorico, respSeg] = await Promise.all([
     sb.functions.invoke('ponto', { body: { action: 'hoje', inicioDoDiaISO: inicioDoDiaISO(hoje) } }),
     sb.functions.invoke('ponto', {
       body: { action: 'periodo', desdeISO: inicioDoDiaISO(desde), ateISO: new Date().toISOString() },
     }),
+    sb.functions.invoke('ponto', { body: { action: 'seguranca_ler' } }),
   ]);
+  if (!respSeg.error && respSeg.data && !respSeg.data.error) {
+    _pontoSeguranca = { exigeQr: !!respSeg.data.exigeQr, exigeSelfie: !!respSeg.data.exigeSelfie };
+  }
   _pontoCarregando = false;
 
   if (respHoje.error || respHoje.data?.error) {
@@ -185,21 +194,136 @@ function minhaJornada() {
   return colaborador?.jornada || null;
 }
 
+// Botão principal: se a empresa não exige nada, bate direto. Se exige QR
+// e/ou selfie, abre o painel de escanear/tirar foto em vez de bater na hora.
+function acaoBaterPonto() {
+  if (_pontoSeguranca.exigeQr || _pontoSeguranca.exigeSelfie) {
+    abrirFluxoSeguro();
+  } else {
+    baterPonto();
+  }
+}
+
+async function abrirFluxoSeguro() {
+  _pontoFluxoAberto = true;
+  _pontoQrLido = null;
+  _pontoSelfieBase64 = null;
+  render();
+  // Espera o DOM do painel montar antes de ligar a câmera.
+  setTimeout(() => {
+    if (_pontoSeguranca.exigeQr) iniciarLeitorQr();
+    else if (_pontoSeguranca.exigeSelfie) iniciarCameraSelfie();
+  }, 60);
+}
+
+function fecharFluxoSeguro() {
+  pararLeitorQr();
+  pararCameraSelfie();
+  _pontoFluxoAberto = false;
+  _pontoQrLido = null;
+  _pontoSelfieBase64 = null;
+  render();
+}
+
+function iniciarLeitorQr() {
+  const alvo = document.getElementById('leitor-qr');
+  if (!alvo || typeof Html5Qrcode === 'undefined') return;
+  pararLeitorQr();
+  _pontoScanner = new Html5Qrcode('leitor-qr');
+  _pontoScanner
+    .start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: 220 },
+      (texto) => {
+        _pontoQrLido = texto;
+        pararLeitorQr();
+        // Com o QR lido: se ainda precisa de selfie, vai pra câmera frontal;
+        // senão já bate.
+        if (_pontoSeguranca.exigeSelfie) {
+          render();
+          setTimeout(iniciarCameraSelfie, 60);
+        } else {
+          baterPonto();
+        }
+      },
+      () => {} // ignora erros de frame sem QR
+    )
+    .catch((e) => {
+      console.error('Falha ao abrir a câmera para QR', e);
+      showToast('Não foi possível abrir a câmera. Verifique a permissão.');
+    });
+}
+function pararLeitorQr() {
+  if (_pontoScanner) {
+    try {
+      _pontoScanner.stop().catch(() => {});
+    } catch (e) {
+      /* já parado */
+    }
+    _pontoScanner = null;
+  }
+}
+
+let _selfieStream = null;
+function iniciarCameraSelfie() {
+  const video = document.getElementById('selfie-video');
+  if (!video || !navigator.mediaDevices?.getUserMedia) return;
+  navigator.mediaDevices
+    .getUserMedia({ video: { facingMode: 'user' } })
+    .then((stream) => {
+      _selfieStream = stream;
+      video.srcObject = stream;
+      video.play();
+    })
+    .catch((e) => {
+      console.error('Falha na câmera frontal', e);
+      showToast('Não foi possível abrir a câmera frontal.');
+    });
+}
+function pararCameraSelfie() {
+  if (_selfieStream) {
+    _selfieStream.getTracks().forEach((t) => t.stop());
+    _selfieStream = null;
+  }
+}
+function capturarSelfie() {
+  const video = document.getElementById('selfie-video');
+  if (!video) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = 320;
+  canvas.height = 240;
+  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+  _pontoSelfieBase64 = canvas.toDataURL('image/jpeg', 0.7);
+  pararCameraSelfie();
+  baterPonto();
+}
+
 async function baterPonto() {
   if (_pontoBatendoAgora) return; // trava contra duplo-clique/duplo-toque
   _pontoBatendoAgora = true;
   render();
   const colaborador = state.colaboradores.find((c) => c.perfilId === meuPerfilId);
   const { data, error } = await sb.functions.invoke('ponto', {
-    body: { action: 'bater', colaboradorId: colaborador ? colaborador.id : null },
+    body: {
+      action: 'bater',
+      colaboradorId: colaborador ? colaborador.id : null,
+      qrToken: _pontoQrLido || undefined,
+      selfieBase64: _pontoSelfieBase64 || undefined,
+    },
   });
   _pontoBatendoAgora = false;
   if (error || data?.error) {
-    console.error('Falha ao bater ponto', error || data.error);
-    showToast('Não foi possível registrar o ponto. Tente novamente.');
+    console.error('Falha ao bater ponto', error || data?.error);
+    showToast((data && data.error) || 'Não foi possível registrar o ponto. Tente novamente.');
+    // Deixa o painel aberto pra tentar de novo quando o erro é de QR/selfie.
     render();
     return;
   }
+  pararLeitorQr();
+  pararCameraSelfie();
+  _pontoFluxoAberto = false;
+  _pontoQrLido = null;
+  _pontoSelfieBase64 = null;
   // O tipo (entrada/saída) é decidido pela Edge Function, não aqui — evita
   // que duas abas/toques quase simultâneos gerem duas entradas seguidas.
   showToast(data.registro.tipo === 'entrada' ? 'Entrada registrada.' : 'Saída registrada.');
@@ -210,6 +334,7 @@ function iconePonto(nome) {
   const icones = {
     relogio: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     calendario: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18"/>',
+    escudo: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/>',
     entrada:
       '<path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5"/><polyline points="9 16 14 12 9 8"/><line x1="14" y1="12" x2="2" y2="12"/>',
     saida:
@@ -232,6 +357,35 @@ function totaisPorDia() {
     dias.push({ data: d, chave, minutos: minutosLiquidosDia(doDia, jornada) });
   }
   return dias;
+}
+
+// Painel do fluxo seguro (escanear QR e/ou tirar selfie), mostrado no lugar
+// dos KPIs quando a pessoa toca em "Escanear e bater ponto".
+function renderFluxoSeguro() {
+  const precisaQr = _pontoSeguranca.exigeQr && !_pontoQrLido;
+  const precisaSelfie = _pontoSeguranca.exigeSelfie && !precisaQr;
+  return `
+    <div class="card ponto-fluxo">
+      <div class="ponto-fluxo-head">
+        <h3 style="margin:0;">${precisaQr ? 'Escaneie o QR do local' : precisaSelfie ? 'Tire uma selfie' : 'Registrando…'}</h3>
+        <button class="btn btn-ghost btn-sm" onclick="fecharFluxoSeguro()">Cancelar</button>
+      </div>
+      ${
+        precisaQr
+          ? `
+        <p class="small-muted">Aponte a câmera para o QR Code exibido na entrada da empresa.</p>
+        <div id="leitor-qr" class="ponto-leitor-qr"></div>
+      `
+          : precisaSelfie
+            ? `
+        <p class="small-muted">Enquadre seu rosto e confirme. A foto fica registrada junto do ponto.</p>
+        <video id="selfie-video" class="ponto-selfie-video" playsinline muted></video>
+        <button class="btn btn-primary" style="margin-top:14px;width:100%;" onclick="capturarSelfie()">Tirar foto e bater ponto</button>
+        <p class="small-muted" style="margin-top:10px;font-size:11px;">Ao continuar, você concorda que sua imagem seja registrada para fins de controle de ponto (LGPD).</p>
+      `
+            : `<p class="small-muted">Processando sua batida…</p>`
+      }
+    </div>`;
 }
 
 function pagePonto() {
@@ -274,10 +428,17 @@ function pagePonto() {
         <span class="pill ${proximo === 'entrada' ? 'pill-alavancar' : 'pill-iniciar'}" style="margin-top:14px;">
           ${iconePonto(proximo)} Próximo registro: ${proximo === 'entrada' ? 'entrada' : 'saída'}
         </span>
-        <button class="btn btn-primary ponto-btn-bater" ${_pontoBatendoAgora || _pontoCarregando ? 'disabled' : ''} onclick="baterPonto()">
-          ${_pontoBatendoAgora ? 'Registrando…' : 'Bater ponto'}
+        <button class="btn btn-primary ponto-btn-bater" ${_pontoBatendoAgora || _pontoCarregando ? 'disabled' : ''} onclick="acaoBaterPonto()">
+          ${_pontoBatendoAgora ? 'Registrando…' : _pontoSeguranca.exigeQr ? 'Escanear e bater ponto' : 'Bater ponto'}
         </button>
+        ${
+          _pontoSeguranca.exigeQr || _pontoSeguranca.exigeSelfie
+            ? `<div class="small-muted" style="margin-top:10px;">${iconePonto('escudo')} Batida protegida${_pontoSeguranca.exigeQr ? ' · QR do local' : ''}${_pontoSeguranca.exigeSelfie ? ' · selfie' : ''}</div>`
+            : ''
+        }
       </div>
+
+      ${_pontoFluxoAberto ? renderFluxoSeguro() : ''}
 
       <div class="ponto-kpis">
         <div class="kpi-card-inetris">

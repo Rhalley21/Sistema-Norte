@@ -3,6 +3,34 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.49.0 — Ponto seguro: QR do local + selfie
+Novo: a empresa pode exigir que o ponto só seja batido presencialmente,
+escaneando um QR Code exibido na entrada, e/ou com uma selfie na hora.
+
+- **Totem** (nova tela, só RH/Admin): exibe um QR Code que se renova sozinho
+  a cada poucos segundos. É pra deixar aberto num tablet/monitor na entrada.
+- **Bater ponto**: quando o QR é exigido, o colaborador abre a câmera, lê o
+  código do totem e (se exigido) tira uma selfie; só então a batida é
+  registrada. Quem tenta de fora não consegue — o código do momento só
+  existe na tela da empresa.
+- **Configurações → Segurança do Ponto**: chaves liga/desliga para "exigir
+  QR" e "exigir selfie".
+- **Segurança de verdade, no servidor**: o QR é um token assinado por tempo
+  (HMAC) com um segredo por empresa que o navegador nunca vê — mora numa
+  tabela sem acesso do cliente (sql/22-ponto-seguranca.sql), lida só pela
+  Edge Function. A validação acontece no servidor, não dá pra burlar pelo
+  front. As selfies vão para um bucket de Storage privado no banco de ponto.
+
+Requer, uma vez: rodar sql/22-ponto-seguranca.sql no projeto principal;
+rodar sql-ponto-db/02-seguranca-batida.sql e criar o bucket "selfies-ponto"
+no projeto de ponto; e reimplantar a Edge Function "ponto". Também passa a
+carregar duas bibliotecas (geração e leitura de QR) via CDN no index.html.
+
+Observação honesta: nenhuma trava só-software é infalível (o print do QR
+compartilhado em tempo real é o furo possível) — a selfie existe justamente
+para cobrir esse caso. Para valor jurídico pleno, o caminho é um REP
+homologado (hardware).
+
 ## v0.48.1 — Jornada: horários digitáveis
 Os campos de horário da jornada (entrada, saída e almoço) deixaram de ser o
 seletor de relógio do navegador e viraram campos de texto, pra digitar
