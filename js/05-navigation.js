@@ -11,9 +11,9 @@ const STEPS_BASE = [
     id: 'totem_ponto',
     label: 'Totem de ponto',
     group: 'Pessoas',
-    papeis: ['owner', 'rh'],
+    papeis: ['owner'],
     apenasSePontoHabilitado: true,
-  }, // tela do QR pra deixar na entrada — só RH/Admin
+  }, // tela do QR pra deixar na entrada — só o Administrador (owner)
   { id: 'clima', label: 'Pesquisa de Clima / eNPS', group: 'Pessoas' },
   { id: 'sucessao', label: 'Mapa de Sucessão', group: 'Pessoas', papeis: ['owner', 'rh'] },
   { id: 'ciclos', label: 'Ciclos de Avaliação', group: 'Ciclo NORTE' },
@@ -151,9 +151,23 @@ let _menuMobileAberto = false;
 // principais aparecem); o grupo que contém a rota atual abre automático,
 // pra pessoa não perder onde está ao navegar.
 let _gruposExpandidos = new Set();
+let _gruposFechadosManualmente = new Set(); // grupos que o usuário fechou de propósito
 function toggleGrupoMenu(nome) {
-  if (_gruposExpandidos.has(nome)) _gruposExpandidos.delete(nome);
-  else _gruposExpandidos.add(nome);
+  // Um grupo aparece aberto quando está em _gruposExpandidos OU contém a rota
+  // ativa. Por isso, pra FECHAR um grupo que contém a rota ativa, não basta
+  // tirar de _gruposExpandidos — precisamos marcar que foi fechado de
+  // propósito. Este toggle decide com base no estado VISÍVEL atual.
+  const itensDoGrupo = STEPS.filter((s) => s.group === nome);
+  const temRotaAtiva = itensDoGrupo.some((s) => s.id === state.route);
+  const estaVisivelmenteAberto = (_gruposExpandidos.has(nome) || temRotaAtiva) && !_gruposFechadosManualmente.has(nome);
+
+  if (estaVisivelmenteAberto) {
+    _gruposExpandidos.delete(nome);
+    _gruposFechadosManualmente.add(nome);
+  } else {
+    _gruposExpandidos.add(nome);
+    _gruposFechadosManualmente.delete(nome);
+  }
   render();
 }
 
@@ -197,7 +211,7 @@ function renderSidebar() {
           .map((g) => {
             const itensDoGrupo = STEPS.filter((s) => s.group === g);
             const grupoTemRotaAtiva = itensDoGrupo.some((s) => s.id === state.route);
-            const expandido = _gruposExpandidos.has(g) || grupoTemRotaAtiva;
+            const expandido = (_gruposExpandidos.has(g) || grupoTemRotaAtiva) && !_gruposFechadosManualmente.has(g);
             return `
           <button class="step-group-label step-group-toggle" onclick="toggleGrupoMenu('${g}')">
             <span class="step-group-chevron ${expandido ? 'aberto' : ''}">▸</span>${g}
@@ -266,6 +280,10 @@ function goto(id) {
   }
   state.route = id;
   _menuMobileAberto = false;
+  // Se a pessoa navegou pra um item, o grupo dele deve aparecer aberto —
+  // desfaz um eventual "fechado manualmente" desse grupo.
+  const item = STEPS.find((s) => s.id === id);
+  if (item) _gruposFechadosManualmente.delete(item.group);
   if (id === 'usuarios') carregarUsuarios();
   if (id === 'colaboradores') carregarUsuarios(); // usado pra detectar inconsistências (ver banner de "desligado mas com login ativo")
   if (id === 'auditoria') carregarUsuarios(); // usado pra resolver nome de quem fez cada evento

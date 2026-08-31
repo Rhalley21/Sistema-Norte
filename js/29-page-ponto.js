@@ -225,11 +225,31 @@ function fecharFluxoSeguro() {
   render();
 }
 
+function mostrarErroLeitor(msg) {
+  const alvo = document.getElementById('leitor-qr');
+  if (alvo) {
+    alvo.innerHTML = `<div class="empty" style="padding:18px;text-align:center;">${msg}</div>`;
+  }
+  showToast(msg);
+}
+
 function iniciarLeitorQr() {
   const alvo = document.getElementById('leitor-qr');
-  if (!alvo || typeof Html5Qrcode === 'undefined') return;
+  if (!alvo) return;
+  // Se a biblioteca de leitura não carregou (rede/CDN bloqueado), avisa em
+  // vez de deixar o painel vazio e mudo.
+  if (typeof Html5Qrcode === 'undefined') {
+    mostrarErroLeitor('O leitor de QR não carregou. Verifique a conexão e recarregue a página (Ctrl+Shift+R).');
+    return;
+  }
   pararLeitorQr();
-  _pontoScanner = new Html5Qrcode('leitor-qr');
+  try {
+    _pontoScanner = new Html5Qrcode('leitor-qr');
+  } catch (e) {
+    console.error('Falha ao criar o leitor', e);
+    mostrarErroLeitor('Não foi possível iniciar o leitor de QR.');
+    return;
+  }
   _pontoScanner
     .start(
       { facingMode: 'environment' },
@@ -250,7 +270,18 @@ function iniciarLeitorQr() {
     )
     .catch((e) => {
       console.error('Falha ao abrir a câmera para QR', e);
-      showToast('Não foi possível abrir a câmera. Verifique a permissão.');
+      // Mensagem específica conforme o motivo, pra ajudar o usuário.
+      const nome = e && (e.name || e.toString());
+      let msg = 'Não foi possível abrir a câmera.';
+      if (String(nome).includes('NotAllowed') || String(nome).includes('Permission')) {
+        msg =
+          'Permissão de câmera negada. Autorize a câmera para este site nas configurações do navegador e tente de novo.';
+      } else if (String(nome).includes('NotFound') || String(nome).includes('Devices')) {
+        msg = 'Nenhuma câmera encontrada neste aparelho.';
+      } else if (String(nome).includes('NotReadable') || String(nome).includes('Track')) {
+        msg = 'A câmera está sendo usada por outro app. Feche os outros apps de câmera e tente de novo.';
+      }
+      mostrarErroLeitor(msg);
     });
 }
 function pararLeitorQr() {

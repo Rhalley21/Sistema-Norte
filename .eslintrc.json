@@ -445,7 +445,9 @@
     "_segurancaPontoUI": "writable",
     "_segurancaPontoCarregada": "writable",
     "carregarSegurancaPonto": "writable",
-    "salvarSegurancaPonto": "writable"
+    "salvarSegurancaPonto": "writable",
+    "mostrarErroLeitor": "writable",
+    "_gruposFechadosManualmente": "writable"
   },
   "rules": {
     "no-unused-vars": "off",

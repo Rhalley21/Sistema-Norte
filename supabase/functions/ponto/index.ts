@@ -157,10 +157,10 @@ serve(async (req: Request) => {
       return jsonResponse({ exigeQr: !!body.exigeQr, exigeSelfie: !!body.exigeSelfie });
     }
 
-    // ---- Totem: código QR do momento (só owner/rh podem exibir) ----
+    // ---- Totem: código QR do momento (só o Administrador/owner pode exibir) ----
     if (action === 'qr_atual') {
-      if (perfil.papel !== 'owner' && perfil.papel !== 'rh') {
-        return jsonResponse({ error: 'Sem permissão para exibir o totem.' }, 403);
+      if (perfil.papel !== 'owner') {
+        return jsonResponse({ error: 'Apenas o Administrador da empresa pode exibir o totem.' }, 403);
       }
       const seg = await segurancaDaEmpresa();
       const token = await gerarTokenQr(perfil.empresa_id, seg.qr_secret);

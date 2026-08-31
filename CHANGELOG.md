@@ -3,6 +3,45 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.52.1 — Relatório de ponto: linha de TOTAL GERAL
+Adicionada uma linha "TOTAL GERAL" no rodapé da grade semanal, somando toda
+a empresa: total de horas por dia, total de horas da semana, total de
+atrasos e total de horas extras da equipe inteira. Assim o RH vê o
+individual (cada linha) e o consolidado da empresa num relatório só.
+
+## v0.52.0 — Relatório de ponto em grade semanal
+O PDF do consolidado semanal foi reformatado: em vez de uma linha por dia
+com as batidas, agora é uma grade com uma linha por colaborador e uma
+coluna por dia (Seg a Dom) mostrando as horas trabalhadas naquele dia (com
+almoço já descontado; "·" nos dias sem batida). No fim de cada linha, três
+colunas fecham a semana: Total de horas, Atrasos (em vermelho) e Extras (em
+verde). O PDF passou a sair em paisagem para caber os sete dias com folga.
+Fica muito mais fácil bater o olho e ver quem trabalhou em quais dias.
+
+## v0.51.1 — Correção do menu lateral (grupos travados)
+Corrigido o bug em que um grupo do menu "não respondia ao comando": quando
+o grupo continha a tela aberta no momento, ele ficava forçado a permanecer
+aberto — tentar fechá-lo pelo cabeçalho não fazia nada, porque a lógica o
+reabria na hora. Agora um clique explícito no cabeçalho do grupo tem
+prioridade: fecha mesmo que contenha a tela atual, e reabre normalmente.
+Ao navegar para um item, o grupo dele volta a aparecer aberto como esperado.
+
+## v0.51.0 — Totem: só o Administrador
+A tela "Totem de ponto" (que exibe o QR Code do local) passou a ser
+exclusiva do Administrador (owner) da empresa — o RH deixou de vê-la no
+menu. A restrição vale também no servidor: a ação `qr_atual` da Edge
+Function agora só gera o código para o owner, então nem forçando a URL um
+RH consegue exibir o QR. Ligar/desligar a segurança em Configurações
+continua acessível a RH e Admin (só a exibição do totem foi restrita).
+Requer redeploy da Edge Function "ponto".
+
+## v0.50.1 — Ponto: mensagens claras quando a câmera não abre
+O painel de escanear passava a impressão de estar "vazio" quando a câmera
+falhava, porque o erro era engolido. Agora ele mostra na própria tela o
+motivo — permissão negada, nenhuma câmera no aparelho (caso de PC sem
+webcam), câmera em uso por outro app, ou biblioteca de leitura não
+carregada — para o usuário saber o que fazer.
+
 ## v0.50.0 — Organização geral para celular
 Passada ampla de responsividade, tratando os problemas na raiz em vez de
 tela por tela: tabelas largas (colaboradores, relatórios, licenças) agora

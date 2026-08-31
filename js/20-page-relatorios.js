@@ -283,9 +283,9 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
     return;
   }
 
-  // Agrupa por pessoa, depois por dia, calculando pares entrada/saída — a
-  // mesma lógica usada na tela "Ponto" (js/29-page-ponto.js), aqui rodando
-  // sobre a semana inteira e todo mundo, em vez de hoje e só a própria pessoa.
+  // Monta a grade semanal: uma linha por pessoa, uma coluna por dia
+  // (Seg..Dom) com as horas trabalhadas, e no fim Total, Atrasos e Extras da
+  // semana. A lógica de horas/almoço/atraso/extra é a mesma da tela de Ponto.
   const porPessoa = {};
   registros.forEach((r) => {
     const nome = r.nome || 'Conta removida';
@@ -293,8 +293,21 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
     porPessoa[nome].push(r);
   });
 
+  // Chaves e rótulos dos 7 dias da semana, a partir da segunda-feira.
+  const rotulosDias = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+  const chavesDias = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(inicio);
+    d.setDate(d.getDate() + i);
+    chavesDias.push(d.toISOString().slice(0, 10));
+  }
+
   const linhasTabela = [];
-  const totalPorPessoa = {}; // { nome: { trabalhado, atraso, extra } }
+  // Acumuladores gerais da empresa (para a linha TOTAL GERAL no rodapé).
+  const geralPorDia = chavesDias.map(() => 0);
+  let geralTotal = 0;
+  let geralAtraso = 0;
+  let geralExtra = 0;
   Object.keys(porPessoa)
     .sort((a, b) => a.localeCompare(b))
     .forEach((nome) => {
@@ -302,7 +315,7 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
       // Jornada prevista da pessoa — casada pelo perfil_id que veio nas
       // batidas. Quem não tem cadastro em Colaboradores (ex: uma conta de
       // Administrador que bate ponto) simplesmente não tem jornada, e as
-      // colunas de atraso/extra ficam em branco pra ela.
+      // colunas de atraso/extra ficam como "s/ jornada" pra ela.
       const perfilId = eventos[0].perfil_id;
       const colaborador = state.colaboradores.find((c) => c.perfilId === perfilId);
       const jornada = colaborador?.jornada || null;
@@ -312,47 +325,49 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
         const dia = r.registrado_em.slice(0, 10);
         (porDia[dia] = porDia[dia] || []).push(r);
       });
-      let totalMinutosPessoa = 0;
+
+      let totalMin = 0;
       let totalAtraso = 0;
       let totalExtra = 0;
-      Object.keys(porDia)
-        .sort()
-        .forEach((dia) => {
-          const doDia = porDia[dia];
-          const marcacoes = doDia.map((r) => `${r.tipo === 'entrada' ? 'E' : 'S'} ${formatarHora(r.registrado_em)}`);
-          // Horas do dia já com o almoço descontado (mesma regra da tela de Ponto).
-          const minutosDia = minutosLiquidosDia(doDia, jornada);
-          totalMinutosPessoa += minutosDia;
+      const celulasDias = chavesDias.map((ch, idx) => {
+        const doDia = porDia[ch];
+        if (!doDia || !doDia.length) return '·'; // dia sem batida
+        const minutosDia = minutosLiquidosDia(doDia, jornada);
+        totalMin += minutosDia;
+        geralPorDia[idx] += minutosDia;
+        const analise = analisarDiaVsJornada(doDia, jornada);
+        if (analise) {
+          totalAtraso += analise.atrasoMin;
+          totalExtra += analise.extraMin;
+        }
+        return formatarMinutos(minutosDia);
+      });
 
-          const analise = analisarDiaVsJornada(doDia, jornada);
-          const atrasoDia = analise ? analise.atrasoMin : 0;
-          const extraDia = analise ? analise.extraMin : 0;
-          totalAtraso += atrasoDia;
-          totalExtra += extraDia;
+      geralTotal += totalMin;
+      geralAtraso += totalAtraso;
+      geralExtra += totalExtra;
 
-          linhasTabela.push([
-            nome,
-            new Date(`${dia}T00:00:00`).toLocaleDateString('pt-BR', {
-              weekday: 'short',
-              day: '2-digit',
-              month: '2-digit',
-            }),
-            marcacoes.join('  ·  '),
-            formatarMinutos(minutosDia),
-            jornada ? (atrasoDia > 0 ? formatarMinutos(atrasoDia) : '—') : 's/ jornada',
-            jornada ? (extraDia > 0 ? formatarMinutos(extraDia) : '—') : '—',
-          ]);
-        });
-      totalPorPessoa[nome] = {
-        trabalhado: Math.round(totalMinutosPessoa),
-        atraso: Math.round(totalAtraso),
-        extra: Math.round(totalExtra),
-        temJornada: !!jornada,
-      };
+      linhasTabela.push([
+        nome,
+        ...celulasDias,
+        formatarMinutos(Math.round(totalMin)),
+        jornada ? formatarMinutos(Math.round(totalAtraso)) : 's/ jorn.',
+        jornada ? formatarMinutos(Math.round(totalExtra)) : '—',
+      ]);
     });
 
+  // Linha de rodapé com o consolidado da empresa inteira.
+  const linhaTotalGeral = [
+    'TOTAL GERAL',
+    ...geralPorDia.map((m) => formatarMinutos(Math.round(m))),
+    formatarMinutos(Math.round(geralTotal)),
+    formatarMinutos(Math.round(geralAtraso)),
+    formatarMinutos(Math.round(geralExtra)),
+  ];
+
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
+  // Paisagem: são 7 dias + 3 colunas de total, precisa de largura.
+  const doc = new jsPDF({ orientation: 'landscape' });
 
   doc.setFontSize(16);
   doc.text('Ponto — Consolidado Semanal', 14, 18);
@@ -360,40 +375,41 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
   doc.setTextColor(120);
   doc.text(state.empresa?.nomeFantasia || '', 14, 24);
   doc.setTextColor(0);
-  desenharLogoNoPDF(doc, 165, 10, 30, 18);
+  desenharLogoNoPDF(doc, 250, 10, 30, 18);
 
   const fimExibicao = new Date(fim);
   fimExibicao.setDate(fimExibicao.getDate() - 1);
   doc.setFontSize(11);
   doc.text(`Semana de ${inicio.toLocaleDateString('pt-BR')} a ${fimExibicao.toLocaleDateString('pt-BR')}`, 14, 32);
+  doc.setFontSize(8);
+  doc.setTextColor(120);
+  doc.text('Horas trabalhadas por dia (com almoço descontado). "·" = sem batida.', 14, 37);
+  doc.setTextColor(0);
 
-  doc.autoTable({
-    startY: 40,
-    head: [['Colaborador', 'Data', 'Batidas (E = entrada, S = saída)', 'Horas', 'Atraso', 'Extra']],
-    body: linhasTabela,
-    styles: { fontSize: 8 },
-    headStyles: { fillColor: hexParaRgb(state.configuracoes?.identidadeVisual?.corPrimaria) },
+  const cabecalhoDias = rotulosDias.map((r, i) => {
+    const d = new Date(inicio);
+    d.setDate(d.getDate() + i);
+    return `${r}\n${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
   });
 
-  const yResumo = doc.lastAutoTable.finalY + 10;
-  doc.setFontSize(11);
-  doc.text('Total na semana, por colaborador', 14, yResumo);
   doc.autoTable({
-    startY: yResumo + 4,
-    head: [['Colaborador', 'Total de horas', 'Total de atrasos', 'Total de horas extras']],
-    body: Object.keys(totalPorPessoa)
-      .sort((a, b) => a.localeCompare(b))
-      .map((nome) => {
-        const t = totalPorPessoa[nome];
-        return [
-          nome,
-          formatarMinutos(t.trabalhado),
-          t.temJornada ? formatarMinutos(t.atraso) : 's/ jornada',
-          t.temJornada ? formatarMinutos(t.extra) : '—',
-        ];
-      }),
-    styles: { fontSize: 9 },
-    headStyles: { fillColor: hexParaRgb(state.configuracoes?.identidadeVisual?.corPrimaria) },
+    startY: 41,
+    head: [['Colaborador', ...cabecalhoDias, 'Total', 'Atrasos', 'Extras']],
+    body: linhasTabela,
+    foot: [linhaTotalGeral],
+    showFoot: 'lastPage',
+    styles: { fontSize: 8.5, halign: 'center', valign: 'middle', cellPadding: 2.5 },
+    columnStyles: {
+      0: { halign: 'left', fontStyle: 'bold' },
+      8: { fontStyle: 'bold' }, // Total
+      9: { textColor: [181, 72, 47] }, // Atrasos (vermelho)
+      10: { textColor: [63, 107, 78] }, // Extras (verde)
+    },
+    headStyles: { fillColor: hexParaRgb(state.configuracoes?.identidadeVisual?.corPrimaria), halign: 'center' },
+    footStyles: { fillColor: [237, 232, 216], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'center' },
+    didParseCell: function (d) {
+      if (d.section === 'foot' && d.column.index === 0) d.cell.styles.halign = 'left';
+    },
   });
 
   doc.save(`ponto_semanal_${dataInicioISO}.pdf`);
