@@ -32,6 +32,8 @@ function renderRoute() {
       return pageRelatorios();
     case 'configuracoes':
       return pageConfiguracoes();
+    case 'pagamento':
+      return pagePagamento();
     case 'auditoria':
       return pageAuditoria();
     case 'clima':

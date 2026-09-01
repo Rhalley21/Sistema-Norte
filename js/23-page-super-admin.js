@@ -317,6 +317,46 @@ function pageSuperAdmin() {
     </div>
 
     <div class="card">
+      <h3>Cobrança por WhatsApp <small>Envie o link de pagamento da InfinitePay direto pro WhatsApp de cada empresa</small></h3>
+      ${(() => {
+        // Junta cada empresa (tabela) com o payload dela (faturamento + whatsapp).
+        const porId = {};
+        _superAdminPayloads.forEach((d) => (porId[d.empresa_id] = d.payload || {}));
+        const linhas = _superAdminEmpresas.map((e) => {
+          const p = porId[e.id] || {};
+          const f = p.faturamento || {};
+          return {
+            id: e.id,
+            nome: p.nomeFantasia || e.nome_fantasia || 'Empresa',
+            whatsapp: p.whatsappCobranca || null,
+            link: f.linkPagamento || null,
+            status: f.statusPagamento || 'Pendente',
+            valor: f.valorMensal || null,
+          };
+        });
+        if (!linhas.length) return '<div class="empty">Nenhuma empresa cadastrada ainda.</div>';
+        return `
+        <table><thead><tr><th>Empresa</th><th>WhatsApp</th><th>Status</th><th>Link</th><th></th></tr></thead><tbody>
+          ${linhas
+            .map((l) => {
+              const podeCobrar = l.whatsapp && l.link;
+              return `<tr>
+              <td><b>${escaparHtml(l.nome)}</b></td>
+              <td class="small-muted">${l.whatsapp ? escaparHtml(l.whatsapp) : '<span style="color:var(--iniciar);">sem WhatsApp</span>'}</td>
+              <td><span class="pill ${l.status === 'Em dia' ? 'pill-alavancar' : l.status === 'Atrasado' || l.status === 'Cancelado' ? 'pill-iniciar' : 'pill-neutral'}">${l.status}</span></td>
+              <td>${l.link ? '<span class="small-muted">configurado</span>' : '<span style="color:var(--iniciar);">sem link</span>'}</td>
+              <td style="text-align:right;">
+                <button class="btn btn-sm btn-primary" ${podeCobrar ? '' : 'disabled'} onclick="cobrarViaWhatsApp('${l.id}')">Cobrar via WhatsApp</button>
+              </td>
+            </tr>`;
+            })
+            .join('')}
+        </tbody></table>
+        <div class="notice info" style="margin-top:12px;">O botão abre o WhatsApp com a mensagem e o link já prontos — você confere e aperta enviar. As empresas sem WhatsApp ou sem link de pagamento aparecem com o botão desabilitado (preencha esses dados no Cadastro da Empresa).</div>`;
+      })()}
+    </div>
+
+    <div class="card">
       <h3>Gerar novo código de licença</h3>
       <p class="page-desc">Cria um código de uso único. Envie por WhatsApp/e-mail pra empresa-cliente — ela usa esse código na tela de cadastro, no lugar de "Nome da empresa" sozinho.</p>
       <div class="field"><label>Rótulo (opcional, só pra você identificar depois — ex.: "Lacle")</label>
@@ -418,4 +458,42 @@ function pageSuperAdmin() {
     `
     }
   `;
+}
+
+/* ---------- Cobrança por WhatsApp (Fase 1) ----------
+   Monta a mensagem com o link de pagamento e abre o WhatsApp "clique para
+   conversar" (wa.me). Não envia sozinho — abre a conversa com o texto pronto
+   pra você conferir e enviar. Grátis, sem API, sem risco de banimento. */
+function cobrarViaWhatsApp(empresaId) {
+  const empresa = _superAdminEmpresas.find((e) => e.id === empresaId);
+  const payload = (_superAdminPayloads.find((d) => d.empresa_id === empresaId) || {}).payload || {};
+  const f = payload.faturamento || {};
+  const nome = payload.nomeFantasia || empresa?.nome_fantasia || 'Empresa';
+  const whatsapp = payload.whatsappCobranca;
+  const link = f.linkPagamento;
+
+  if (!whatsapp || !link) {
+    showToast('Esta empresa está sem WhatsApp ou sem link de pagamento. Preencha no Cadastro da Empresa.');
+    return;
+  }
+
+  // Só dígitos; se não vier com código do país (55), adiciona.
+  let numero = String(whatsapp).replace(/\D/g, '');
+  if (numero.length <= 11) numero = '55' + numero;
+
+  const valor = f.valorMensal
+    ? parseFloat(f.valorMensal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    : null;
+
+  const mensagem =
+    `Olá! Aqui é do Instituto INETRIS. 👋\n\n` +
+    `Segue o link para pagamento da sua assinatura da plataforma NORTE` +
+    (nome ? ` (${nome})` : '') +
+    (valor ? ` — mensalidade de ${valor}` : '') +
+    `:\n\n${link}\n\n` +
+    `Qualquer dúvida, estamos à disposição. Obrigado!`;
+
+  const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
+  window.open(url, '_blank', 'noopener');
+  registrarAuditoria('cobranca.whatsapp_aberta', { empresaId, nome });
 }

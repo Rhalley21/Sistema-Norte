@@ -127,6 +127,12 @@ function pageEmpresa() {
         </div>
         <div class="field"><label>Próxima cobrança</label><input id="f_proxima_cobranca" type="date" value="${e.faturamento?.proximaCobranca || ''}"></div>
       </div>
+
+      <div class="small-muted" style="text-transform:uppercase;letter-spacing:.06em;font-size:11px;margin:16px 0 8px;">Link de pagamento <small style="text-transform:none;letter-spacing:normal;">(InfinitePay — cole aqui o link da cobrança/assinatura desta empresa; ela verá um botão "Pagar" na tela de Pagamento)</small></div>
+      <div class="grid2">
+        <div class="field"><label>Link de pagamento (InfinitePay)</label><input id="f_link_pagamento" type="url" placeholder="https://invoice.infinitepay.io/..." value="${e.faturamento?.linkPagamento || ''}"></div>
+        <div class="field"><label>WhatsApp de cobrança <small>(com DDD — ex: 89 98807-5328)</small></label><input id="f_whatsapp" type="tel" placeholder="89 98807-5328" value="${escaparHtml(e.whatsappCobranca || '')}"></div>
+      </div>
     </div>
 
     <button class="btn btn-primary" onclick="salvarEmpresa()">Salvar e ativar empresa</button>
@@ -195,6 +201,7 @@ async function salvarEmpresa() {
   state.empresa = {
     razaoSocial: document.getElementById('f_razao').value || 'Empresa sem nome',
     nomeFantasia: document.getElementById('f_fantasia').value,
+    whatsappCobranca: document.getElementById('f_whatsapp').value || null,
     cnpj,
     segmento: document.getElementById('f_segmento').value,
     segmentoDetalhe: document.getElementById('f_segmento_detalhe')?.value || '',
@@ -210,6 +217,11 @@ async function salvarEmpresa() {
       formaPagamento: document.getElementById('f_pagamento').value,
       statusPagamento: document.getElementById('f_status_pagamento').value,
       proximaCobranca: document.getElementById('f_proxima_cobranca').value,
+      // Link de pagamento da InfinitePay (Fase 1 do pagamento): a empresa vê
+      // um botão "Pagar mensalidade" que abre este link. A confirmação do
+      // pagamento é manual por enquanto (status acima); a automação por
+      // webhook é a Fase 2.
+      linkPagamento: document.getElementById('f_link_pagamento').value || null,
       // Preenchido futuramente pela integração com o gateway de pagamento
       // (ver conversa sobre Asaas) — por enquanto não existe, e o status
       // acima é atualizado manualmente.

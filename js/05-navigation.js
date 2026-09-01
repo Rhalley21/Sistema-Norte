@@ -22,6 +22,7 @@ const STEPS_BASE = [
   { id: 'relatorios', label: 'Relatórios', group: 'Base', papeis: ['owner', 'rh'] },
   { id: 'webhooks', label: 'Webhooks (integrações)', group: 'Base', papeis: ['owner', 'rh'] },
   { id: 'configuracoes', label: 'Configurações', group: 'Base', papeis: ['owner'] },
+  { id: 'pagamento', label: 'Pagamento', group: 'Base', papeis: ['owner'] }, // assinatura/mensalidade — só o Administrador da empresa
   { id: 'auditoria', label: 'Auditoria', group: 'Base', papeis: ['owner', 'rh'] },
   { id: 'dashboard_role', label: 'Dashboards', group: 'Base' },
   // Só visível pra quem é Super Admin da PLATAFORMA (dono do NORTE) — não
@@ -73,6 +74,8 @@ function stepUnlocked(id) {
     case 'relatorios':
       return true;
     case 'configuracoes':
+      return true;
+    case 'pagamento':
       return true;
     case 'dashboard_role':
       return true;

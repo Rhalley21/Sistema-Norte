@@ -3,6 +3,28 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.54.0 — Cobrança por WhatsApp no painel do Super Admin
+Novo campo "WhatsApp de cobrança" no Cadastro da Empresa. E no painel do
+Super Admin, uma seção "Cobrança por WhatsApp": lista todas as empresas com
+seu WhatsApp, status de pagamento e se têm link configurado, com um botão
+"Cobrar via WhatsApp" por empresa. O botão monta a mensagem com o link de
+pagamento da InfinitePay já pronto e abre o WhatsApp (wa.me) para você
+conferir e enviar — semi-automático, sem API paga e sem risco de banimento.
+Empresas sem WhatsApp ou sem link aparecem com o botão desabilitado. O
+Super Admin já lia o payload de todas as empresas (métricas), então não foi
+preciso mexer em permissões de banco.
+
+## v0.53.0 — Pagamento (Fase 1): planos e link da InfinitePay
+Primeira fase do pagamento dentro da plataforma. No Cadastro da Empresa, um
+campo novo guarda o link de pagamento da InfinitePay daquela empresa. E uma
+tela nova "Pagamento" (menu Base, só o Administrador da empresa) mostra os
+planos (Essencial, Profissional, Enterprise), destaca o plano contratado,
+exibe valor e status, e traz o botão "Pagar mensalidade" que abre o link da
+InfinitePay. Por enquanto a confirmação do pagamento é manual (o status vem
+de faturamento.statusPagamento); a automação por webhook fica para a Fase 2,
+quando a documentação do webhook da InfinitePay estiver disponível. Nenhuma
+mudança de banco — tudo mora no faturamento que já existia no state.
+
 ## v0.52.2 — Relatório de ponto: resumo da empresa em bloco separado
 O total geral da empresa saiu da linha de rodapé e virou um bloco próprio
 embaixo da grade ("Resumo da empresa na semana"), com os números em

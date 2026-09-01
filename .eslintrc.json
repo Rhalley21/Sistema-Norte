@@ -447,7 +447,12 @@
     "carregarSegurancaPonto": "writable",
     "salvarSegurancaPonto": "writable",
     "mostrarErroLeitor": "writable",
-    "_gruposFechadosManualmente": "writable"
+    "_gruposFechadosManualmente": "writable",
+    "pagePagamento": "writable",
+    "PLANOS_NORTE": "writable",
+    "corDoStatusPagamento": "writable",
+    "formatarValorMensal": "writable",
+    "cobrarViaWhatsApp": "writable"
   },
   "rules": {
     "no-unused-vars": "off",
