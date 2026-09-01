@@ -3,6 +3,13 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.54.1 — Correção: WhatsApp/link não apareciam no Super Admin
+Na seção "Cobrança por WhatsApp", as empresas apareciam como "sem WhatsApp"
+e "sem link" mesmo com os dados preenchidos. Causa: os dados da empresa
+ficam aninhados em `payload.empresa` dentro do blob salvo, e o painel os
+lia da raiz do payload. Corrigido para ler de `payload.empresa` (tanto na
+tabela quanto no botão de cobrança).
+
 ## v0.54.0 — Cobrança por WhatsApp no painel do Super Admin
 Novo campo "WhatsApp de cobrança" no Cadastro da Empresa. E no painel do
 Super Admin, uma seção "Cobrança por WhatsApp": lista todas as empresas com

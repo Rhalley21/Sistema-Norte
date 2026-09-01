@@ -324,11 +324,12 @@ function pageSuperAdmin() {
         _superAdminPayloads.forEach((d) => (porId[d.empresa_id] = d.payload || {}));
         const linhas = _superAdminEmpresas.map((e) => {
           const p = porId[e.id] || {};
-          const f = p.faturamento || {};
+          const emp = p.empresa || {}; // os dados da empresa ficam em payload.empresa
+          const f = emp.faturamento || {};
           return {
             id: e.id,
-            nome: p.nomeFantasia || e.nome_fantasia || 'Empresa',
-            whatsapp: p.whatsappCobranca || null,
+            nome: emp.nomeFantasia || e.nome_fantasia || 'Empresa',
+            whatsapp: emp.whatsappCobranca || null,
             link: f.linkPagamento || null,
             status: f.statusPagamento || 'Pendente',
             valor: f.valorMensal || null,
@@ -467,9 +468,10 @@ function pageSuperAdmin() {
 function cobrarViaWhatsApp(empresaId) {
   const empresa = _superAdminEmpresas.find((e) => e.id === empresaId);
   const payload = (_superAdminPayloads.find((d) => d.empresa_id === empresaId) || {}).payload || {};
-  const f = payload.faturamento || {};
-  const nome = payload.nomeFantasia || empresa?.nome_fantasia || 'Empresa';
-  const whatsapp = payload.whatsappCobranca;
+  const emp = payload.empresa || {}; // os dados da empresa ficam em payload.empresa
+  const f = emp.faturamento || {};
+  const nome = emp.nomeFantasia || empresa?.nome_fantasia || 'Empresa';
+  const whatsapp = emp.whatsappCobranca;
   const link = f.linkPagamento;
 
   if (!whatsapp || !link) {
