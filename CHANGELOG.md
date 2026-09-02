@@ -3,6 +3,34 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.56.1 — Estrutura: botão "Adicionar estrutura" no topo
+Acrescentado o botão azul "Adicionar estrutura" no canto superior direito da
+tela (como na referência), ao lado do título. Ele abre/fecha o formulário de
+novo nível hierárquico, que antes ficava sempre visível como um card. O
+botão "Expandir tudo" (com ícone) foi mantido junto da árvore.
+
+## v0.56.0 — Estrutura com cards de resumo e novo nome do sistema
+A tela de Estrutura Organizacional ganhou quatro cards de resumo no topo
+(Unidades, Departamentos, Setores, Colaboradores) e um botão "Expandir
+tudo / Recolher tudo" ao lado da árvore, no estilo da referência enviada.
+A árvore hierárquica (com avatares e responsáveis) foi mantida.
+
+O nome principal do sistema passou de "NORTE" para "INETRIS — Sistema de
+Avaliação e Desempenho" no menu lateral, na tela de login, no cabeçalho dos
+e-mails e no título da aba. As expressões "Metodologia NORTE" e "Ciclo
+NORTE" foram mantidas onde apareciam, conforme solicitado.
+
+## v0.55.0 — Super Admin edita o link de pagamento das empresas
+Agora o link de pagamento de cada empresa é editável direto no painel do
+Super Admin (seção "Cobrança por WhatsApp"): um campo por empresa com botão
+"Salvar link". Assim você controla os links de todas as empresas de um lugar
+só, sem precisar entrar no cadastro de cada uma. O WhatsApp continua sendo
+o dono da empresa quem preenche. Para não abrir um buraco de segurança
+(dar escrita ampla ao Super Admin), a gravação passa por uma função SQL
+(super_admin_definir_link_pagamento) que altera SÓ esse campo e só roda pra
+Super Admin. Requer rodar sql/23-super-admin-link-pagamento.sql no projeto
+principal.
+
 ## v0.54.1 — Correção: WhatsApp/link não apareciam no Super Admin
 Na seção "Cobrança por WhatsApp", as empresas apareciam como "sem WhatsApp"
 e "sem link" mesmo com os dados preenchidos. Causa: os dados da empresa

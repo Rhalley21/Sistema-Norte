@@ -49,11 +49,22 @@ function colaboradoresDoNo(node) {
 let _tipoNovoEstrutura = 'unidade';
 let _paiNovoEstrutura = '';
 let _moverEstruturaId = null;
+let _formAddEstruturaAberto = false; // formulário "Adicionar estrutura" começa fechado; abre pelo botão do topo
 let _expandidosEstrutura = new Set();
 
 function toggleExpandirEstrutura(nodeId) {
   if (_expandidosEstrutura.has(nodeId)) _expandidosEstrutura.delete(nodeId);
   else _expandidosEstrutura.add(nodeId);
+  render();
+}
+
+function expandirTudoEstrutura() {
+  // Se algo já está expandido, colapsa tudo; senão, abre todos os nós.
+  if (_expandidosEstrutura.size > 0) {
+    _expandidosEstrutura.clear();
+  } else {
+    state.estrutura.forEach((n) => _expandidosEstrutura.add(n.id));
+  }
   render();
 }
 
@@ -149,13 +160,49 @@ function pageEstrutura() {
 
   const paisDisponiveis = paisValidosPara(_tipoNovoEstrutura);
 
+  // Contadores para os cards de resumo (iguais aos da imagem de referência).
+  const totUnidades = state.estrutura.filter((n) => n.tipo === 'unidade').length;
+  const totDepartamentos = state.estrutura.filter((n) => n.tipo === 'departamento').length;
+  const totSetores = state.estrutura.filter((n) => n.tipo === 'setor').length;
+  const totColaboradores = state.colaboradores.filter((p) => !p.inativo).length;
+  const icoEstrutura = (paths) =>
+    `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+
   return `
-    <div class="page-head">
-      <div class="eyebrow">Etapa 02 · Fundação</div>
-      <h1>Estrutura Organizacional</h1>
-      <p class="page-desc">Hierarquia sequencial: Unidade → Departamento → Setor → Equipe. <b>Unidade é o local físico</b> onde a empresa funciona (ex: a matriz, uma filial) — os demais níveis organizam quem trabalha dentro dela. Cada nível só pode ficar diretamente dentro do nível imediatamente acima — não é possível pular etapas (ex: um Setor precisa estar dentro de um Departamento, não direto na Unidade).</p>
+    <div class="page-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+      <div>
+        <div class="eyebrow">Etapa 02 · Fundação</div>
+        <h1>Estrutura Organizacional</h1>
+        <p class="page-desc">Defina como sua organização está estruturada em unidades, departamentos, setores e equipes.</p>
+      </div>
+      <button class="btn btn-primary" style="display:inline-flex;align-items:center;gap:7px;white-space:nowrap;" onclick="_formAddEstruturaAberto=!_formAddEstruturaAberto; render();">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        ${_formAddEstruturaAberto ? 'Fechar' : 'Adicionar estrutura'}
+      </button>
     </div>
 
+    <div class="kpi-grid" style="margin-bottom:18px;">
+      <div class="kpi-card-inetris">
+        <div class="kpi-card-icone">${icoEstrutura('<rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="8" width="7" height="13" rx="1"/><path d="M6 7h1M6 11h1M6 15h1M17 12h1M17 16h1"/>')}</div>
+        <div><div class="kpi-card-valor">${totUnidades}</div><div class="kpi-card-label">Unidades</div></div>
+      </div>
+      <div class="kpi-card-inetris">
+        <div class="kpi-card-icone">${icoEstrutura('<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>')}</div>
+        <div><div class="kpi-card-valor">${totDepartamentos}</div><div class="kpi-card-label">Departamentos</div></div>
+      </div>
+      <div class="kpi-card-inetris">
+        <div class="kpi-card-icone">${icoEstrutura('<rect x="9" y="3" width="6" height="6" rx="1"/><rect x="3" y="15" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><path d="M12 9v3M12 12H6v3M12 12h6v3"/>')}</div>
+        <div><div class="kpi-card-valor">${totSetores}</div><div class="kpi-card-label">Setores</div></div>
+      </div>
+      <div class="kpi-card-inetris">
+        <div class="kpi-card-icone">${icoEstrutura('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11"/>')}</div>
+        <div><div class="kpi-card-valor">${totColaboradores}</div><div class="kpi-card-label">Colaboradores</div></div>
+      </div>
+    </div>
+
+    ${
+      _formAddEstruturaAberto
+        ? `
     <div class="card">
       <h3>Adicionar nível hierárquico</h3>
       <div class="grid3">
@@ -194,13 +241,19 @@ function pageEstrutura() {
       ${_tipoNovoEstrutura !== 'unidade' && paisDisponiveis.length === 0 ? `<div class="notice">Cadastre ao menos uma Unidade antes de criar um nível de "${NIVEL_LABEL[_tipoNovoEstrutura]}".</div>` : ''}
       <button class="btn btn-primary" onclick="addEstrutura()" ${_tipoNovoEstrutura !== 'unidade' && paisDisponiveis.length === 0 ? 'disabled' : ''}>Adicionar nível</button>
     </div>
+    `
+        : ''
+    }
 
     <div class="card">
-      <h3>Árvore organizacional</h3>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <h3 style="margin:0;">Estrutura da organização <small>Visualize e gerencie a hierarquia da sua organização.</small></h3>
+        ${roots.length ? `<button class="btn btn-ghost btn-sm" onclick="expandirTudoEstrutura()" style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>${_expandidosEstrutura.size > 0 ? 'Recolher tudo' : 'Expandir tudo'}</button>` : ''}
+      </div>
       ${
         roots.length
           ? `
-        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;font-size:11.5px;color:var(--ink-faint);">
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin:14px 0;font-size:11.5px;color:var(--ink-faint);">
           ${Object.entries(NIVEL_LABEL)
             .map(
               ([tipo, label]) =>

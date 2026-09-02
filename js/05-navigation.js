@@ -129,8 +129,8 @@ function atualizarLogoSidebarAoVivo() {
   const sub = document.getElementById('sidebar-brand-sub');
   const logo = logoEmpresaAtual();
   if (img) img.src = logo || `data:image/png;base64,${LOGO_INETRIS_B64}`;
-  if (nome) nome.textContent = logo && state.empresa?.nomeFantasia ? state.empresa.nomeFantasia : 'NORTE';
-  if (sub) sub.textContent = logo ? 'Metodologia NORTE' : 'Instituto INETRIS';
+  if (nome) nome.textContent = logo && state.empresa?.nomeFantasia ? state.empresa.nomeFantasia : 'INETRIS';
+  if (sub) sub.textContent = logo ? 'Metodologia NORTE' : 'Sistema de Avaliação e Desempenho';
 }
 function compassSVG() {
   const stageIdx = STEPS.findIndex((s) => s.id === state.route);
@@ -188,8 +188,8 @@ function renderSidebar() {
     <div class="brand">
       ${compassSVG()}
       <div>
-        <div class="brand-name" id="sidebar-brand-name">${logoEmpresaAtual() && state.empresa?.nomeFantasia ? escaparHtml(state.empresa.nomeFantasia) : 'NORTE'}</div>
-        <div class="brand-sub" id="sidebar-brand-sub">${logoEmpresaAtual() ? 'Metodologia NORTE' : 'Instituto INETRIS'}</div>
+        <div class="brand-name" id="sidebar-brand-name">${logoEmpresaAtual() && state.empresa?.nomeFantasia ? escaparHtml(state.empresa.nomeFantasia) : 'INETRIS'}</div>
+        <div class="brand-sub" id="sidebar-brand-sub">${logoEmpresaAtual() ? 'Metodologia NORTE' : 'Sistema de Avaliação e Desempenho'}</div>
       </div>
       ${renderSinoNotificacoes()}
       <button class="menu-hamburguer" onclick="_menuMobileAberto=!_menuMobileAberto; render();" aria-label="Abrir menu">

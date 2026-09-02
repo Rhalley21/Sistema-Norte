@@ -526,8 +526,8 @@ function emailWrapperHTML(tituloInterno, corpoTexto, botaoTexto, botaoUrl) {
   // Template simples e consistente pra todos os e-mails da plataforma.
   return `
     <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#ffffff;color:#0d1b33;border-radius:8px;border:1px solid #e5e7eb;">
-      <div style="font-size:20px;font-weight:700;margin-bottom:4px;color:#0d1b33;">NORTE</div>
-      <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#4b5563;margin-bottom:20px;">Metodologia NORTE · Instituto INETRIS</div>
+      <div style="font-size:20px;font-weight:700;margin-bottom:4px;color:#0d1b33;">INETRIS</div>
+      <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#4b5563;margin-bottom:20px;">Sistema de Avaliação e Desempenho · Metodologia NORTE</div>
       <h2 style="font-size:17px;margin:0 0 12px;color:#0d1b33;">${tituloInterno}</h2>
       <p style="font-size:14px;line-height:1.5;color:#0d1b33;">${corpoTexto}</p>
       ${botaoUrl ? `<a href="${botaoUrl}" style="display:inline-block;margin-top:16px;padding:10px 18px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:700;font-size:13px;">${botaoTexto || 'Acessar'}</a>` : ''}

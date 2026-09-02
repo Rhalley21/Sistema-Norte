@@ -452,7 +452,10 @@
     "PLANOS_NORTE": "writable",
     "corDoStatusPagamento": "writable",
     "formatarValorMensal": "writable",
-    "cobrarViaWhatsApp": "writable"
+    "cobrarViaWhatsApp": "writable",
+    "salvarLinkPagamentoEmpresa": "writable",
+    "expandirTudoEstrutura": "writable",
+    "_formAddEstruturaAberto": "writable"
   },
   "rules": {
     "no-unused-vars": "off",

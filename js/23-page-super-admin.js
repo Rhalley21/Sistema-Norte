@@ -337,7 +337,7 @@ function pageSuperAdmin() {
         });
         if (!linhas.length) return '<div class="empty">Nenhuma empresa cadastrada ainda.</div>';
         return `
-        <table><thead><tr><th>Empresa</th><th>WhatsApp</th><th>Status</th><th>Link</th><th></th></tr></thead><tbody>
+        <table><thead><tr><th>Empresa</th><th>WhatsApp <small>(dono edita)</small></th><th>Status</th><th>Link de pagamento <small>(você edita)</small></th><th></th></tr></thead><tbody>
           ${linhas
             .map((l) => {
               const podeCobrar = l.whatsapp && l.link;
@@ -345,7 +345,10 @@ function pageSuperAdmin() {
               <td><b>${escaparHtml(l.nome)}</b></td>
               <td class="small-muted">${l.whatsapp ? escaparHtml(l.whatsapp) : '<span style="color:var(--iniciar);">sem WhatsApp</span>'}</td>
               <td><span class="pill ${l.status === 'Em dia' ? 'pill-alavancar' : l.status === 'Atrasado' || l.status === 'Cancelado' ? 'pill-iniciar' : 'pill-neutral'}">${l.status}</span></td>
-              <td>${l.link ? '<span class="small-muted">configurado</span>' : '<span style="color:var(--iniciar);">sem link</span>'}</td>
+              <td>
+                <input id="link_pag_${l.id}" type="url" placeholder="https://invoice.infinitepay.io/..." value="${escaparHtml(l.link || '')}" style="min-width:220px;">
+                <button class="btn btn-sm btn-ghost" onclick="salvarLinkPagamentoEmpresa('${l.id}')">Salvar link</button>
+              </td>
               <td style="text-align:right;">
                 <button class="btn btn-sm btn-primary" ${podeCobrar ? '' : 'disabled'} onclick="cobrarViaWhatsApp('${l.id}')">Cobrar via WhatsApp</button>
               </td>
@@ -353,7 +356,7 @@ function pageSuperAdmin() {
             })
             .join('')}
         </tbody></table>
-        <div class="notice info" style="margin-top:12px;">O botão abre o WhatsApp com a mensagem e o link já prontos — você confere e aperta enviar. As empresas sem WhatsApp ou sem link de pagamento aparecem com o botão desabilitado (preencha esses dados no Cadastro da Empresa).</div>`;
+        <div class="notice info" style="margin-top:12px;">Você cola aqui o link de pagamento da InfinitePay de cada empresa (e clica "Salvar link"). O WhatsApp é o dono da empresa quem preenche, no cadastro dele. O botão "Cobrar" fica ativo quando a empresa tem os dois — WhatsApp e link.</div>`;
       })()}
     </div>
 
@@ -465,6 +468,34 @@ function pageSuperAdmin() {
    Monta a mensagem com o link de pagamento e abre o WhatsApp "clique para
    conversar" (wa.me). Não envia sozinho — abre a conversa com o texto pronto
    pra você conferir e enviar. Grátis, sem API, sem risco de banimento. */
+// Salva o link de pagamento de uma empresa direto pelo painel do Super Admin.
+// Usa a função SQL super_admin_definir_link_pagamento (ver
+// sql/23-super-admin-link-pagamento.sql), que só mexe nesse campo e só roda
+// pra Super Admin. Depois recarrega os dados pra refletir na tela.
+async function salvarLinkPagamentoEmpresa(empresaId) {
+  const input = document.getElementById(`link_pag_${empresaId}`);
+  if (!input) return;
+  const link = input.value.trim();
+  const { error } = await sb.rpc('super_admin_definir_link_pagamento', {
+    p_empresa_id: empresaId,
+    p_link: link,
+  });
+  if (error) {
+    console.error('Falha ao salvar link', error);
+    showToast('Não foi possível salvar o link. Verifique se a migration 23 foi aplicada.');
+    return;
+  }
+  // Atualiza o payload em memória pra não precisar recarregar tudo.
+  const d = _superAdminPayloads.find((p) => p.empresa_id === empresaId);
+  if (d && d.payload) {
+    d.payload.empresa = d.payload.empresa || {};
+    d.payload.empresa.faturamento = d.payload.empresa.faturamento || {};
+    d.payload.empresa.faturamento.linkPagamento = link || null;
+  }
+  showToast('Link de pagamento salvo.');
+  render();
+}
+
 function cobrarViaWhatsApp(empresaId) {
   const empresa = _superAdminEmpresas.find((e) => e.id === empresaId);
   const payload = (_superAdminPayloads.find((d) => d.empresa_id === empresaId) || {}).payload || {};

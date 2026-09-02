@@ -70,8 +70,8 @@ function renderLogin() {
       <div style="width:100%;max-width:380px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:36px 32px;">
         <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:22px;">
           ${compassSVGEstatico()}
-          <div class="brand-name" style="margin-top:10px;font-size:22px;">NORTE</div>
-          <div class="brand-sub">Instituto INETRIS</div>
+          <div class="brand-name" style="margin-top:10px;font-size:22px;">INETRIS</div>
+          <div class="brand-sub" style="text-align:center;">Sistema de Avaliação e Desempenho</div>
         </div>
 
         <div style="display:flex;gap:8px;margin-bottom:18px;">
