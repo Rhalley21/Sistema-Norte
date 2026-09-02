@@ -3,6 +3,17 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.57.0 — Conferência de Ponto (RH vê as fotos)
+Nova tela "Conferência de Ponto" (menu Pessoas, só RH/Admin): uma tabela
+com as batidas do período mostrando o nome da conta de login, data e hora,
+tipo (entrada/saída), se foi validada por QR, e a foto (selfie) de cada
+batida. Dá pra filtrar por período, agrupar por colaborador e clicar na
+foto pra ampliar. Antes as selfies só eram acessíveis baixando pastas no
+Storage do Supabase; agora o RH confere tudo dentro do sistema. As imagens
+vêm por URL assinada temporária (o bucket continua privado — a foto não
+fica exposta publicamente). A Edge Function ganhou a ação "conferencia" e
+precisa de redeploy.
+
 ## v0.56.1 — Estrutura: botão "Adicionar estrutura" no topo
 Acrescentado o botão azul "Adicionar estrutura" no canto superior direito da
 tela (como na referência), ao lado do título. Ele abre/fecha o formulário de

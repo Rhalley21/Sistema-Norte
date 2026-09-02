@@ -455,7 +455,16 @@
     "cobrarViaWhatsApp": "writable",
     "salvarLinkPagamentoEmpresa": "writable",
     "expandirTudoEstrutura": "writable",
-    "_formAddEstruturaAberto": "writable"
+    "_formAddEstruturaAberto": "writable",
+    "pageConferenciaPonto": "writable",
+    "carregarConferencia": "writable",
+    "_confRegistros": "writable",
+    "_confCarregando": "writable",
+    "_confJaCarregou": "writable",
+    "_confInicio": "writable",
+    "_confFim": "writable",
+    "_confAgruparPorPessoa": "writable",
+    "_confFotoAmpliada": "writable"
   },
   "rules": {
     "no-unused-vars": "off",

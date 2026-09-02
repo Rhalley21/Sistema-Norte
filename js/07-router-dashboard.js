@@ -22,6 +22,10 @@ function renderRoute() {
       return pontoHabilitado
         ? pageTotemPonto()
         : '<div class="notice info">O módulo de Ponto não está habilitado para esta empresa.</div>';
+    case 'conferencia_ponto':
+      return pontoHabilitado
+        ? pageConferenciaPonto()
+        : '<div class="notice info">O módulo de Ponto não está habilitado para esta empresa.</div>';
     case 'ciclos':
       return pageCiclos();
     case 'diagnostico':

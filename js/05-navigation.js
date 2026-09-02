@@ -14,6 +14,13 @@ const STEPS_BASE = [
     papeis: ['owner'],
     apenasSePontoHabilitado: true,
   }, // tela do QR pra deixar na entrada — só o Administrador (owner)
+  {
+    id: 'conferencia_ponto',
+    label: 'Conferência de Ponto',
+    group: 'Pessoas',
+    papeis: ['owner', 'rh'],
+    apenasSePontoHabilitado: true,
+  }, // RH/Admin conferem as batidas com as fotos
   { id: 'clima', label: 'Pesquisa de Clima / eNPS', group: 'Pessoas' },
   { id: 'sucessao', label: 'Mapa de Sucessão', group: 'Pessoas', papeis: ['owner', 'rh'] },
   { id: 'ciclos', label: 'Ciclos de Avaliação', group: 'Ciclo NORTE' },
@@ -64,6 +71,8 @@ function stepUnlocked(id) {
     case 'ponto':
       return true;
     case 'totem_ponto':
+      return true;
+    case 'conferencia_ponto':
       return true;
     case 'ciclos':
       return state.colaboradores.length > 0;

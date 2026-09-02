@@ -292,6 +292,54 @@ serve(async (req: Request) => {
       });
     }
 
+    // ---- Conferência: batidas do período com nome e a FOTO (só RH/owner) ----
+    if (action === 'conferencia') {
+      if (perfil.papel !== 'owner' && perfil.papel !== 'rh') {
+        return jsonResponse({ error: 'Só RH ou Administrador podem conferir as fotos do ponto.' }, 403);
+      }
+      const inicio = body.inicioISO;
+      const fim = body.fimISO;
+      if (!inicio || !fim) return jsonResponse({ error: 'inicioISO e fimISO são obrigatórios.' }, 400);
+
+      const { data: registros, error } = await ponto
+        .from('registros_ponto')
+        .select('id, perfil_id, tipo, registrado_em, validado_qr, selfie_path')
+        .eq('empresa_id', perfil.empresa_id)
+        .gte('registrado_em', inicio)
+        .lt('registrado_em', fim)
+        .order('registrado_em', { ascending: false });
+      if (error) return jsonResponse({ error: error.message }, 500);
+
+      const idsUnicos = [...new Set((registros || []).map((r) => r.perfil_id))];
+      const { data: perfis } = await principalAdmin.from('perfis').select('id, nome').in('id', idsUnicos);
+      const nomePorId = Object.fromEntries((perfis || []).map((p) => [p.id, p.nome]));
+
+      // O bucket é privado — geramos uma URL assinada (temporária, 1h) pra
+      // cada foto, pra o RH conseguir ver a imagem sem o bucket ser público.
+      const comFoto = await Promise.all(
+        (registros || []).map(async (r) => {
+          let selfieUrl = null;
+          if (r.selfie_path) {
+            const { data: assinada } = await ponto.storage
+              .from('selfies-ponto')
+              .createSignedUrl(r.selfie_path, 3600);
+            selfieUrl = assinada?.signedUrl || null;
+          }
+          return {
+            id: r.id,
+            perfil_id: r.perfil_id,
+            nome: nomePorId[r.perfil_id] || 'Conta removida',
+            tipo: r.tipo,
+            registrado_em: r.registrado_em,
+            validado_qr: r.validado_qr,
+            selfieUrl,
+          };
+        })
+      );
+
+      return jsonResponse({ registros: comFoto });
+    }
+
     return jsonResponse({ error: `Ação desconhecida: "${action}".` }, 400);
   } catch (e) {
     return jsonResponse({ error: String(e) }, 500);
