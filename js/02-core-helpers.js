@@ -115,6 +115,80 @@ function novoCarimbo() {
     atualizadoEm: agora,
   };
 }
+
+// =========================================================================
+// Geração automática dos indicadores de avaliação a partir do cargo.
+// A empresa não precisa mais cadastrar "perguntas" à mão: ao criar o cargo,
+// o sistema monta 5 indicadores por nível (N, O, R):
+//   N (Conhecimento)  <- conhecimentos técnicos / atividades técnicas da CBO
+//   O (Organização)   <- responsabilidades / atividades do cargo
+//   R (Relações)      <- competências comportamentais
+// Usa a CBO oficial vinculada quando existe; senão, o desenho do cargo.
+// =========================================================================
+
+// Quebra um texto de conhecimentos técnicos (que costuma vir como uma frase
+// com itens separados por ; , ou .) numa lista de itens curtos.
+function _fatiarConhecimentos(texto) {
+  if (!texto) return [];
+  return String(texto)
+    .split(/[;.\n]|,(?![^(]*\))/) // separa por ; . quebra de linha e vírgulas fora de parênteses
+    .map((s) => s.trim())
+    .filter((s) => s.length > 3);
+}
+
+// Deixa a primeira letra maiúscula e corta itens muito longos, pra virar
+// um rótulo de indicador limpo.
+function _rotuloIndicador(texto) {
+  let t = String(texto || '').trim();
+  if (t.length > 90) t = t.slice(0, 88).trim() + '…';
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+// Distingue, nas atividades da CBO, as "técnicas" das "comportamentais".
+// A CBO lista as competências pessoais como "Demonstrar ...", "Trabalhar em
+// equipe", "Agir com ...", etc. — usamos isso pra separar N/R.
+function _ehAtividadeComportamental(atv) {
+  return /^(demonstrar|trabalhar em equipe|agir com|manter sigilo|relacionar-se|ter consci|evidenciar|zelar|contornar|adaptar-se|comunicar-se|autocontrolar|sociabilizar|pró-agir|liderar|responsabilizar|desenvolver iniciativa|praticar sinergia|autodesenvolver)/i.test(
+    String(atv).trim()
+  );
+}
+
+function gerarIndicadoresDoCargo(cargo, POR_NIVEL = 5) {
+  const mk = (nome) => ({ id: uid(), nome: _rotuloIndicador(nome), marcado: true });
+  let N = [];
+  let O = [];
+  let R = [];
+
+  const cbo = cargo.cboOficial;
+  if (cbo && Array.isArray(cbo.atividades) && cbo.atividades.length) {
+    // Veio da CBO: separa atividades comportamentais (R) das demais (N/O).
+    const comportamentais = cbo.atividades.filter(_ehAtividadeComportamental);
+    const tecnicas = cbo.atividades.filter((a) => !_ehAtividadeComportamental(a));
+    // N = primeiras técnicas (conhecimento/execução técnica);
+    // O = técnicas seguintes (rotina/organização do trabalho);
+    N = tecnicas.slice(0, POR_NIVEL).map(mk);
+    O = tecnicas.slice(POR_NIVEL, POR_NIVEL * 2).map(mk);
+    R = comportamentais.slice(0, POR_NIVEL).map(mk);
+  }
+
+  const d = cargo.desenho || {};
+  // Completa (ou preenche, se não veio da CBO) com o desenho do cargo.
+  if (N.length < POR_NIVEL) {
+    const tecnicos = _fatiarConhecimentos(d.conhecimentosTecnicos);
+    N = N.concat(tecnicos.slice(0, POR_NIVEL - N.length).map(mk));
+  }
+  if (O.length < POR_NIVEL) {
+    const resp = (d.responsabilidades || []).slice(0, POR_NIVEL - O.length);
+    O = O.concat(resp.map(mk));
+  }
+  if (R.length < POR_NIVEL) {
+    const comp = (d.competenciasComportamentais || []).slice(0, POR_NIVEL - R.length);
+    R = R.concat(comp.map(mk));
+  }
+
+  return { indicadoresN: N, indicadoresO: O, indicadoresR: R };
+}
+
 function atualizarCarimbo(obj) {
   obj.atualizadoPor = meuPerfilId;
   obj.atualizadoEm = new Date().toISOString();

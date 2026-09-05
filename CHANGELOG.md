@@ -3,6 +3,64 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.60.0 — Avaliação gerada automaticamente a partir do cargo
+A empresa não precisa mais cadastrar perguntas/indicadores de avaliação à
+mão. Ao criar um cargo, o sistema monta a avaliação sozinho — 5 indicadores
+por nível (N, O, R): N (Conhecimento) a partir dos conhecimentos técnicos /
+atividades técnicas da CBO; O (Organização) a partir das responsabilidades /
+atividades; R (Relações) a partir das competências comportamentais. Usa a
+base oficial da CBO quando o cargo veio dela; senão, usa o desenho do cargo.
+
+A geração acontece ao criar o cargo pela CBO e ao publicar o desenho (quando
+ainda não há indicadores). Na tela de Desenho, a seção de indicadores passou
+a explicar que é automática e ganhou o botão "Gerar automaticamente do
+cargo" — os itens continuam totalmente editáveis (ajustar, remover,
+acrescentar). Nada muda nos ciclos já abertos, que seguem seu retrato
+congelado (RN024).
+
+## v0.59.0 — PDI de Mentalidade: opcional e com orientação completa
+O PDI de Mentalidade deixou de ser obrigatório (a antiga regra RN020): os
+avisos de "pendente/obrigatório" foram removidos do dashboard, do
+diagnóstico e do relatório, e nada mais é bloqueado por causa dele. O
+módulo continua disponível em todo ciclo, agora rotulado como opcional.
+
+Cada um dos três pilares ganhou o texto de significado e as orientações de
+preenchimento fornecidas pela metodologia (como texto de apoio e como
+placeholder de cada campo — "Onde estou hoje?", "Onde preciso chegar?", "O
+que vou fazer?"), o que resolve o conteúdo que estava raso. O terceiro
+pilar passou a ser exibido como "Relacionamento" (o campo interno segue
+sendo o mesmo, para não afetar dados já salvos).
+
+## v0.58.0 — Integração com a base oficial da CBO (2.725 ocupações)
+Incorporada a base oficial da Classificação Brasileira de Ocupações (CBO2002,
+arquivos do Ministério do Trabalho): 2.725 ocupações com código, título
+oficial, família ocupacional, sinônimos (outras denominações) e atividades.
+Na tela de Cargos, uma seção nova "Consultar a base oficial da CBO" permite
+pesquisar por nome, código ou denominação alternativa. Ao escolher uma
+ocupação, o sistema cria um cargo já vinculado: guarda código, título oficial
+e família em cargo.cboOficial (o nome interno começa igual ao oficial, mas é
+editável), e traz as atividades da CBO como responsabilidades iniciais do
+desenho — que a empresa personaliza normalmente.
+
+Por questão de peso (a base tem ~8 MB), o arquivo de dados NÃO é carregado
+junto com o sistema: ele é baixado sob demanda na primeira busca da tela de
+Cargos e fica em cache do navegador, mantendo a home leve. Os 42 cargos-modelo
+detalhados que já existiam continuam disponíveis como material rico para
+importar; a base oficial é um complemento para busca e vínculo.
+
+## v0.57.2 — Marca d'água calibrada para ultrawide
+Ajuste fino da marca d'água para o monitor ultrawide 2560x1080 (21:9): agora
+ela é dimensionada pela altura da tela, com um ajuste específico para telas
+muito largas, ficando na posição e proporção do print de referência tanto no
+ultrawide quanto em telas 16:9.
+
+## v0.57.1 — Marca d'água consistente entre telas
+A marca d'água (a rede de moléculas ao fundo) era posicionada com valores
+fixos em pixels, então só ficava bonita numa resolução específica — em
+telas maiores ou menores aparecia deslocada ou cortada. Agora ela é ancorada
+à direita e escala com a largura da tela, ficando igual ao layout de
+referência em qualquer monitor, e mais discreta no celular.
+
 ## v0.57.0 — Conferência de Ponto (RH vê as fotos)
 Nova tela "Conferência de Ponto" (menu Pessoas, só RH/Admin): uma tabela
 com as batidas do período mostrando o nome da conta de login, data e hora,

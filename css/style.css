@@ -67,11 +67,31 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  opacity: 0.28;
+  opacity: 0.5;
   background-repeat: no-repeat;
   background-image: var(--marca-dagua-1, none);
-  background-position: calc(100% + 650px) -280px;
-  background-size: 2000px auto;
+  /* Ancorada à direita e dimensionada pela ALTURA da tela (vmin/vh), o que
+     mantém a marca proporcional tanto em telas 16:9 quanto ultrawide 21:9
+     (como o monitor 2560x1080 de referência), sem ficar gigante no ultrawide
+     nem cortada no 16:9. */
+  background-position: right -40px top -30px;
+  background-size: auto 118vh;
+}
+/* Ultrawide (21:9): a tela é muito larga; a marca fica um pouco mais contida
+   e colada à direita, como no print de referência. */
+@media (min-aspect-ratio: 2/1) {
+  body::before {
+    background-size: auto 125vh;
+    background-position: right -30px top -40px;
+  }
+}
+@media (max-width: 900px) {
+  /* No celular a marca d'água fica menor e mais discreta. */
+  body::before {
+    opacity: 0.35;
+    background-size: 150% auto;
+    background-position: right -80px top 40px;
+  }
 }
 ::selection {
   background: var(--gold-soft);

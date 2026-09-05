@@ -787,9 +787,6 @@ function renderDashboardGestor() {
   const meusCiclos = state.ciclos.filter((c) => minhaEquipe.some((p) => p.id === c.colaboradorId));
   const abertosEquipe = meusCiclos.filter((c) => c.estado === 'Aberto' || c.estado === 'Em Consolidação').length;
   const pdisEquipe = meusCiclos.filter((c) => c.pdiDesenvolvimento?.length || c.pdiMentalidade);
-  const mentalidadePendentes = meusCiclos.filter(
-    (c) => c.diagnostico && pdiMentalidadeNaoIniciado(c) && c.estado !== 'Encerrado'
-  ).length;
 
   const comDiagEquipe = meusCiclos.filter((c) => c.diagnostico && c.diagnostico.geral);
   const contagemIdaEquipe = { I: 0, D: 0, A: 0 };
@@ -849,7 +846,6 @@ function renderDashboardGestor() {
         </div>
       </div>
     </div>
-    ${mentalidadePendentes ? `<div class="notice" style="border-left-color:var(--iniciar);">⚠ ${mentalidadePendentes} PDI(s) de Mentalidade pendente(s) — obrigatórios em todo ciclo (RN020).</div>` : ''}
 
     <div class="painel-visao-geral" style="grid-template-columns:1.2fr 0.8fr;">
       <div class="grafico-card">

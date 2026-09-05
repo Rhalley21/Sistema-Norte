@@ -88,6 +88,12 @@ function pageDesenho() {
     `
     }
 
+    <div class="card">
+      <h3>Indicadores de Avaliação <small>Gerados automaticamente a partir do cargo — você não precisa cadastrar perguntas</small></h3>
+      <p class="page-desc" style="margin-bottom:12px;">O sistema monta a avaliação sozinho (5 itens por nível), puxando da CBO vinculada, quando houver, ou das responsabilidades e competências do desenho. Os itens abaixo são editáveis — ajuste, remova ou acrescente livremente.</p>
+      <button class="btn" onclick="regenerarIndicadores('${cargo.id}')">Gerar automaticamente do cargo</button>
+    </div>
+
     <div class="grid3">
       ${indicadorCargoCard(cargo, 'N', 'indicadoresN', 'Nível Técnico (específico do cargo)')}
       ${indicadorCargoCard(cargo, 'O', 'indicadoresO', 'Operação (específico do cargo)')}
@@ -355,6 +361,18 @@ function publicarDesenho(cargoId) {
 
   cargo.desenho.versao = novaVersao;
   cargo.desenho.aprovado = true;
+
+  // Se o cargo ainda não tem indicadores de avaliação (ou está vazio),
+  // gera-os automaticamente a partir do próprio desenho recém-publicado
+  // (5 por nível). Se já existirem (ex: vieram da CBO), preserva.
+  const semIndicadores = !cargo.indicadoresN?.length && !cargo.indicadoresO?.length && !cargo.indicadoresR?.length;
+  if (semIndicadores) {
+    const ind = gerarIndicadoresDoCargo(cargo);
+    cargo.indicadoresN = ind.indicadoresN;
+    cargo.indicadoresO = ind.indicadoresO;
+    cargo.indicadoresR = ind.indicadoresR;
+  }
+
   atualizarCarimbo(cargo);
   cargo.desenho.dataAprovacao = dataPublicacao;
 
@@ -367,3 +385,26 @@ function publicarDesenho(cargoId) {
 }
 
 /* ===================== 6. COLABORADORES ===================== */
+
+// Regera os indicadores de avaliação do cargo automaticamente (5 por nível),
+// a partir da CBO vinculada ou do desenho. Substitui os indicadores atuais.
+function regenerarIndicadores(cargoId) {
+  const cargo = state.cargos.find((c) => c.id === cargoId);
+  if (!cargo) return;
+  const temAlgum =
+    (cargo.indicadoresN?.length || 0) + (cargo.indicadoresO?.length || 0) + (cargo.indicadoresR?.length || 0) > 0;
+  if (
+    temAlgum &&
+    !confirm('Isso vai substituir os indicadores atuais pelos gerados automaticamente do cargo. Continuar?')
+  ) {
+    return;
+  }
+  const ind = gerarIndicadoresDoCargo(cargo);
+  cargo.indicadoresN = ind.indicadoresN;
+  cargo.indicadoresO = ind.indicadoresO;
+  cargo.indicadoresR = ind.indicadoresR;
+  atualizarCarimbo(cargo);
+  registrarAuditoria('cargo.indicadores_gerados', { cargoId, nome: cargo.nome });
+  showToast('Indicadores de avaliação gerados a partir do cargo.');
+  render();
+}

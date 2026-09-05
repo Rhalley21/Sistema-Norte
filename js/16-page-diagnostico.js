@@ -65,12 +65,10 @@ function pageDiagnostico() {
             .map((c) => {
               const p = state.colaboradores.find((x) => x.id === c.colaboradorId);
               const cargo = state.cargos.find((x) => x.id === c.cargoId);
-              const mentalidadeAtrasada = pdiMentalidadeNaoIniciado(c) && c.estado !== 'Encerrado';
               return `
-      <div class="card" ${mentalidadeAtrasada ? 'style="border-left:3px solid var(--iniciar);"' : ''}>
+      <div class="card">
         <h3>${escaparHtml(p.nome)} <small>${escaparHtml(cargo.nome)} · ${c.estado}</small></h3>
         ${diagnosticoSummaryHTML(c)}
-        ${mentalidadeAtrasada ? `<div class="notice" style="border-left-color:var(--iniciar);margin-top:10px;">⚠ PDI de Mentalidade ainda não iniciado — é obrigatório em todo ciclo (RN020), independente da classificação.</div>` : ''}
         <button class="btn btn-sm" style="margin-top:12px;" onclick="abrirCiclo('${c.id}')">Ver PDI completo →</button>
       </div>`;
             })

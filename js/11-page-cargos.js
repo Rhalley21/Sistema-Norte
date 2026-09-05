@@ -17,6 +17,23 @@ function pageCargos() {
     </div>
 
     <div class="card">
+      <h3>Consultar a base oficial da CBO <small>2.725 ocupações — pesquise por nome, código ou outra denominação</small></h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input id="cbo_busca" value="${escaparHtml(_cboBusca)}" placeholder="Ex: pedreiro, auxiliar de loja, 5211-40..." style="flex:1;min-width:220px;" onkeydown="if(event.key==='Enter'){garantirCboEbuscar(this.value);}">
+        <button class="btn btn-primary" onclick="garantirCboEbuscar(document.getElementById('cbo_busca').value)">Buscar no CBO</button>
+      </div>
+      ${
+        _cboOficialCarregando
+          ? '<div class="empty">Carregando a base oficial da CBO (só na primeira vez)…</div>'
+          : _cboBusca && _cboResultados.length === 0
+            ? '<div class="empty">Nenhuma ocupação encontrada para essa busca.</div>'
+            : _cboResultados.length
+              ? `<div style="margin-top:12px;">${_cboResultados.map((oc) => renderResultadoCbo(oc)).join('')}</div>`
+              : '<div class="notice" style="margin-top:12px;">Digite o nome de um cargo, um código CBO ou uma denominação alternativa e clique em "Buscar no CBO". A base oficial completa é carregada na primeira busca.</div>'
+      }
+    </div>
+
+    <div class="card">
       <h3>Biblioteca CBO <small>${segmentoEmpresa && !_verTodosCargosCBO ? `Filtrado para o segmento "${segmentoEmpresa}"${segmentoEmpresa === 'Outro' && state.empresa?.segmentoDetalhe ? ` (${state.empresa.segmentoDetalhe})` : ''}` : 'Selecione um cargo para importar e adaptar'}</small></h3>
       ${
         segmentoEmpresa

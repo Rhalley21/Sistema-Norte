@@ -667,19 +667,10 @@ async function exportarRelatorioInstitucionalPDF() {
     y = 20;
   }
   y = tituloSecao('5. Alertas de Acompanhamento', y);
-  const mentalidadePendente = ciclosComDiag.filter(
-    (c) => pdiMentalidadeNaoIniciado(c) && c.estado !== 'Encerrado'
-  ).length;
   const semCicloAberto = colaboradoresAtivos.filter(
     (p) => !state.ciclos.some((c) => c.colaboradorId === p.id && c.estado !== 'Encerrado')
   ).length;
   doc.setFontSize(10);
-  doc.text(
-    `PDIs de Mentalidade ainda não iniciados: ${mentalidadePendente} (obrigatório em todo ciclo — RN020)`,
-    14,
-    y
-  );
-  y += 6;
   doc.text(`Colaboradores elegíveis sem ciclo aberto no momento: ${semCicloAberto}`, 14, y);
 
   doc.save(

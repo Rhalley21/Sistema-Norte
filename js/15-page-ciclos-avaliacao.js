@@ -1,3 +1,40 @@
+// Guia de conteúdo do PDI de Mentalidade — textos de significado e de
+// orientação (placeholder) de cada pilar, fornecidos pela metodologia.
+// Os campos internos seguem os mesmos nomes de sempre (Conhecimento,
+// Ambiente, Relacoes) pra não quebrar dados já salvos; só a exibição do
+// terceiro pilar passou a ser "Relacionamento".
+const PDI_MENTALIDADE_GUIA = {
+  Conhecimento: {
+    titulo: 'Conhecimento',
+    significado:
+      'Refere-se ao que você precisa aprender, compreender ou desenvolver para ampliar seus conhecimentos e contribuir para sua evolução pessoal e profissional.',
+    ondeEstou:
+      'Descreva como você se percebe atualmente em relação ao conhecimento que deseja desenvolver. O que já sabe e o que ainda precisa aprender ou melhorar?',
+    ondeQueroChegar: 'Descreva o que deseja aprender, compreender ou dominar e qual evolução espera alcançar.',
+    oQueVouFazer:
+      'Defina qual ação prática realizará para desenvolver esse conhecimento. Ex.: curso, leitura, treinamento, acompanhamento, prática, estudo etc.',
+  },
+  Ambiente: {
+    titulo: 'Ambiente',
+    significado:
+      'Refere-se à forma como você se organiza, se posiciona e contribui para o ambiente de trabalho, considerando rotina, organização, disciplina, produtividade e condições que influenciam seu desempenho.',
+    ondeEstou:
+      'Descreva como você se percebe atualmente no seu ambiente e na sua rotina de trabalho. O que está funcionando e o que precisa melhorar?',
+    ondeQueroChegar:
+      'Descreva qual mudança deseja alcançar para ter uma rotina e um ambiente mais organizados, produtivos e favoráveis ao seu desenvolvimento.',
+    oQueVouFazer: 'Defina qual ação prática realizará para promover essa mudança.',
+  },
+  Relacoes: {
+    titulo: 'Relacionamento',
+    significado:
+      'Refere-se à forma como você se comunica, se relaciona e constrói relações profissionais com colegas, líderes, equipe, clientes e demais pessoas com quem interage no trabalho.',
+    ondeEstou:
+      'Descreva como você percebe seus relacionamentos e sua comunicação atualmente. O que está bom e o que precisa melhorar?',
+    ondeQueroChegar: 'Descreva como deseja evoluir na sua comunicação e nos seus relacionamentos profissionais.',
+    oQueVouFazer: 'Defina qual ação prática realizará para melhorar sua comunicação ou seus relacionamentos.',
+  },
+};
+
 function pageCiclos() {
   const souAdminOuRh =
     meuPapelReal === 'owner' ||
@@ -1194,32 +1231,32 @@ function renderResultadoCiclo(ciclo, cargo, indicadores) {
     </div>
 
     <div class="card">
-      <h3>PDI de Mentalidade <small>Obrigatório para todo colaborador, todo ciclo, independentemente da nota (RN020)</small></h3>
-      <p class="small-muted" style="font-style:italic;margin:-4px 0 12px;">"Nível se constrói. Este PDI vale mesmo quando você está indo bem."</p>
+      <h3>PDI de Mentalidade <small>Opcional — pode ser preenchido em qualquer ciclo, independentemente da nota</small></h3>
+      <p class="small-muted" style="font-style:italic;margin:-4px 0 12px;">"Nível se constrói. Este PDI ajuda a olhar para dentro — o que posso desenvolver em mim."</p>
       ${ciclo.pdiMentalidadeCompartilhadoDe ? `<div class="notice">Esta pessoa também está vinculada a outro cargo. Este PDI de Mentalidade começou com os valores mais recentes registrados no outro cargo (mentalidade é única por pessoa, não por cargo) — ajustes feitos aqui não sincronizam automaticamente de volta.</div>` : ''}
-      ${
-        /* RN021: PDI de Mentalidade cobre obrigatoriamente os 3 pilares */ ['Conhecimento', 'Ambiente', 'Relacoes']
-          .map((eixo) => {
-            const v = ciclo.pdiMentalidade[eixo];
-            return `
+      ${['Conhecimento', 'Ambiente', 'Relacoes']
+        .map((eixo) => {
+          const v = ciclo.pdiMentalidade[eixo];
+          const info = PDI_MENTALIDADE_GUIA[eixo];
+          return `
         <div class="pdi-axis">
-          <h4>${eixo === 'Relacoes' ? 'Relações' : eixo}</h4>
-          <div class="hint">Reflexão conduzida entre colaborador e liderança — a leitura sobre "o que precisa mudar em mim" permanece humana.</div>
+          <h4>${info.titulo}</h4>
+          <div class="hint"><b>O que significa:</b> ${info.significado}</div>
+          <div class="hint" style="margin-top:2px;">Reflexão conduzida entre colaborador e liderança — a leitura sobre "o que precisa mudar em mim" permanece humana.</div>
           <div class="grid2">
-            <div class="field"><label>Onde estou hoje</label><textarea ${editavelPDI ? '' : 'disabled'} onchange="atualizarPDIMentalidade('${ciclo.id}','${eixo}','ondeEstou',this.value)">${escaparHtml(v.ondeEstou)}</textarea></div>
-            <div class="field"><label>Onde preciso chegar</label><textarea ${editavelPDI ? '' : 'disabled'} onchange="atualizarPDIMentalidade('${ciclo.id}','${eixo}','ondeQueroChegar',this.value)">${escaparHtml(v.ondeQueroChegar)}</textarea></div>
-            <div class="field"><label>O que vou fazer</label><textarea ${editavelPDI ? '' : 'disabled'} onchange="atualizarPDIMentalidade('${ciclo.id}','${eixo}','oQueVouFazer',this.value)">${escaparHtml(v.oQueVouFazer)}</textarea></div>
-            <div class="field"><label>Prazo</label><input type="date" ${editavelPDI ? '' : 'disabled'} onchange="atualizarPDIMentalidade('${ciclo.id}','${eixo}','prazo',this.value)" value="${v.prazo}"></div>
-            <div class="field"><label>Responsável</label>
+            <div class="field"><label>Onde estou hoje?</label><textarea ${editavelPDI ? '' : 'disabled'} placeholder="${escaparHtml(info.ondeEstou)}" onchange="atualizarPDIMentalidade('${ciclo.id}','${eixo}','ondeEstou',this.value)">${escaparHtml(v.ondeEstou)}</textarea></div>
+            <div class="field"><label>Onde preciso chegar?</label><textarea ${editavelPDI ? '' : 'disabled'} placeholder="${escaparHtml(info.ondeQueroChegar)}" onchange="atualizarPDIMentalidade('${ciclo.id}','${eixo}','ondeQueroChegar',this.value)">${escaparHtml(v.ondeQueroChegar)}</textarea></div>
+            <div class="field"><label>O que vou fazer?</label><textarea ${editavelPDI ? '' : 'disabled'} placeholder="${escaparHtml(info.oQueVouFazer)}" onchange="atualizarPDIMentalidade('${ciclo.id}','${eixo}','oQueVouFazer',this.value)">${escaparHtml(v.oQueVouFazer)}</textarea></div>
+            <div class="field"><label>Prazo <small>até quando a ação deve ser realizada</small></label><input type="date" ${editavelPDI ? '' : 'disabled'} onchange="atualizarPDIMentalidade('${ciclo.id}','${eixo}','prazo',this.value)" value="${v.prazo}"></div>
+            <div class="field"><label>Responsável <small>quem conduz a ação</small></label>
               <select ${editavelPDI ? '' : 'disabled'} onchange="atualizarPDIMentalidade('${ciclo.id}','${eixo}','responsavel',this.value)">
                 ${['Colaborador', 'Líder/RH', 'Colaborador e Líder/RH'].map((r) => `<option ${(v.responsavel || 'Colaborador') === r ? 'selected' : ''}>${r}</option>`).join('')}
               </select>
             </div>
           </div>
         </div>`;
-          })
-          .join('')
-      }
+        })
+        .join('')}
     </div>
 
     <div class="card">
