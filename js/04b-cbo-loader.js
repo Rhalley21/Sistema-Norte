@@ -21,29 +21,38 @@ function carregarCboOficial() {
       resolve();
       return;
     }
-    if (_cboOficialCarregando) {
-      // Já está carregando — espera terminar.
-      const iv = setInterval(() => {
-        if (typeof CBO_OFICIAL !== 'undefined') {
-          clearInterval(iv);
-          _cboOficialCarregado = true;
-          resolve();
-        }
-      }, 120);
-      return;
-    }
+    // Se já existe um <script> do CBO na página (de uma tentativa anterior),
+    // remove antes de tentar de novo, pra não acumular e pra permitir retry.
+    const antigo = document.getElementById('cbo-oficial-script');
+    if (antigo) antigo.remove();
+
     _cboOficialCarregando = true;
     const s = document.createElement('script');
-    // mesma versão de cache-busting do resto dos assets
-    s.src = 'js/04a-data-cbo-oficial.js?v=0.60.0';
-    s.onload = () => {
+    s.id = 'cbo-oficial-script';
+    s.src = 'js/04a-data-cbo-oficial.js?v=0.60.1';
+
+    // Timeout de segurança: se em 45s o arquivo não carregar (rede lenta ou
+    // falha silenciosa), desiste em vez de ficar "Carregando" pra sempre.
+    const timeout = setTimeout(() => {
       _cboOficialCarregando = false;
-      _cboOficialCarregado = true;
-      resolve();
+      reject(new Error('A base do CBO demorou demais para carregar. Verifique a conexão e tente de novo.'));
+    }, 45000);
+
+    s.onload = () => {
+      clearTimeout(timeout);
+      _cboOficialCarregando = false;
+      // O script carregou — confirma que a variável realmente ficou definida.
+      if (typeof CBO_OFICIAL !== 'undefined') {
+        _cboOficialCarregado = true;
+        resolve();
+      } else {
+        reject(new Error('O arquivo do CBO carregou, mas os dados não foram reconhecidos.'));
+      }
     };
     s.onerror = () => {
+      clearTimeout(timeout);
       _cboOficialCarregando = false;
-      reject(new Error('Falha ao carregar a base do CBO.'));
+      reject(new Error('Falha ao carregar a base do CBO (arquivo não encontrado ou bloqueado).'));
     };
     document.head.appendChild(s);
   });
@@ -91,7 +100,9 @@ async function garantirCboEbuscar(termo) {
       await carregarCboOficial();
     } catch (e) {
       console.error(e);
-      showToast('Não foi possível carregar a base do CBO. Recarregue a página.');
+      _cboOficialCarregando = false; // destrava a tela do "Carregando"
+      showToast(e.message || 'Não foi possível carregar a base do CBO. Recarregue a página.');
+      render();
       return;
     }
   }

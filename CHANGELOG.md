@@ -3,6 +3,14 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.60.1 — Correção: base do CBO travando em "Carregando"
+O carregador da base oficial do CBO podia ficar preso em "Carregando… (só na
+primeira vez)" para sempre quando o download falhava ou não era reconhecido,
+porque não havia timeout nem tratamento de falha no modo de espera. Agora o
+carregamento tem timeout de 45s, confirma que os dados foram realmente
+reconhecidos após o download, remove tentativas anteriores presas, e em caso
+de erro destrava a tela e mostra uma mensagem clara em vez de girar sem fim.
+
 ## v0.60.0 — Avaliação gerada automaticamente a partir do cargo
 A empresa não precisa mais cadastrar perguntas/indicadores de avaliação à
 mão. Ao criar um cargo, o sistema monta a avaliação sozinho — 5 indicadores
