@@ -8,30 +8,31 @@ const PDI_MENTALIDADE_GUIA = {
     titulo: 'Conhecimento',
     significado:
       'Refere-se ao que você precisa aprender, compreender ou desenvolver para ampliar seus conhecimentos e contribuir para sua evolução pessoal e profissional.',
-    ondeEstou:
-      'Descreva como você se percebe atualmente em relação ao conhecimento que deseja desenvolver. O que já sabe e o que ainda precisa aprender ou melhorar?',
-    ondeQueroChegar: 'Descreva o que deseja aprender, compreender ou dominar e qual evolução espera alcançar.',
-    oQueVouFazer:
-      'Defina qual ação prática realizará para desenvolver esse conhecimento. Ex.: curso, leitura, treinamento, acompanhamento, prática, estudo etc.',
+    ondeEstou: 'Como avalio meu conhecimento atual para o desempenho da minha função?',
+    ondeQueroChegar: 'Quais conhecimentos preciso desenvolver ou aprimorar?',
+    oQueVouFazer: 'Quais ações realizarei para alcançar esse desenvolvimento?',
+    prazo: 'Qual o prazo previsto para conclusão das ações?',
+    responsavel: 'Quem será responsável pelo desenvolvimento desta ação?',
   },
   Ambiente: {
     titulo: 'Ambiente',
     significado:
       'Refere-se à forma como você se organiza, se posiciona e contribui para o ambiente de trabalho, considerando rotina, organização, disciplina, produtividade e condições que influenciam seu desempenho.',
-    ondeEstou:
-      'Descreva como você se percebe atualmente no seu ambiente e na sua rotina de trabalho. O que está funcionando e o que precisa melhorar?',
-    ondeQueroChegar:
-      'Descreva qual mudança deseja alcançar para ter uma rotina e um ambiente mais organizados, produtivos e favoráveis ao seu desenvolvimento.',
-    oQueVouFazer: 'Defina qual ação prática realizará para promover essa mudança.',
+    ondeEstou: 'Como avalio minha organização, disciplina e rotina de trabalho?',
+    ondeQueroChegar: 'Quais aspectos do meu ambiente de trabalho precisam ser aprimorados?',
+    oQueVouFazer: 'Quais ações realizarei para promover essa melhoria?',
+    prazo: 'Qual o prazo previsto para implementação das ações?',
+    responsavel: 'Quem será responsável pela execução desta ação?',
   },
   Relacoes: {
     titulo: 'Relacionamento',
     significado:
       'Refere-se à forma como você se comunica, se relaciona e constrói relações profissionais com colegas, líderes, equipe, clientes e demais pessoas com quem interage no trabalho.',
-    ondeEstou:
-      'Descreva como você percebe seus relacionamentos e sua comunicação atualmente. O que está bom e o que precisa melhorar?',
-    ondeQueroChegar: 'Descreva como deseja evoluir na sua comunicação e nos seus relacionamentos profissionais.',
-    oQueVouFazer: 'Defina qual ação prática realizará para melhorar sua comunicação ou seus relacionamentos.',
+    ondeEstou: 'Como avalio minha comunicação e meus relacionamentos profissionais?',
+    ondeQueroChegar: 'Quais aspectos da minha comunicação e relacionamento preciso aprimorar?',
+    oQueVouFazer: 'Quais ações realizarei para aprimorar esses aspectos?',
+    prazo: 'Qual o prazo previsto para alcançar essa evolução?',
+    responsavel: 'Quem será responsável pela execução desta ação?',
   },
 };
 
@@ -1247,8 +1248,8 @@ function renderResultadoCiclo(ciclo, cargo, indicadores) {
             <div class="field"><label>Onde estou hoje?</label><textarea ${editavelPDI ? '' : 'disabled'} placeholder="${escaparHtml(info.ondeEstou)}" onchange="atualizarPDIMentalidade('${ciclo.id}','${eixo}','ondeEstou',this.value)">${escaparHtml(v.ondeEstou)}</textarea></div>
             <div class="field"><label>Onde preciso chegar?</label><textarea ${editavelPDI ? '' : 'disabled'} placeholder="${escaparHtml(info.ondeQueroChegar)}" onchange="atualizarPDIMentalidade('${ciclo.id}','${eixo}','ondeQueroChegar',this.value)">${escaparHtml(v.ondeQueroChegar)}</textarea></div>
             <div class="field"><label>O que vou fazer?</label><textarea ${editavelPDI ? '' : 'disabled'} placeholder="${escaparHtml(info.oQueVouFazer)}" onchange="atualizarPDIMentalidade('${ciclo.id}','${eixo}','oQueVouFazer',this.value)">${escaparHtml(v.oQueVouFazer)}</textarea></div>
-            <div class="field"><label>Prazo <small>até quando a ação deve ser realizada</small></label><input type="date" ${editavelPDI ? '' : 'disabled'} onchange="atualizarPDIMentalidade('${ciclo.id}','${eixo}','prazo',this.value)" value="${v.prazo}"></div>
-            <div class="field"><label>Responsável <small>quem conduz a ação</small></label>
+            <div class="field"><label>Prazo estimado <small>${escaparHtml(info.prazo || 'até quando a ação deve ser realizada')}</small></label><input type="date" ${editavelPDI ? '' : 'disabled'} onchange="atualizarPDIMentalidade('${ciclo.id}','${eixo}','prazo',this.value)" value="${v.prazo}"></div>
+            <div class="field"><label>Responsável <small>${escaparHtml(info.responsavel || 'quem conduz a ação')}</small></label>
               <select ${editavelPDI ? '' : 'disabled'} onchange="atualizarPDIMentalidade('${ciclo.id}','${eixo}','responsavel',this.value)">
                 ${['Colaborador', 'Líder/RH', 'Colaborador e Líder/RH'].map((r) => `<option ${(v.responsavel || 'Colaborador') === r ? 'selected' : ''}>${r}</option>`).join('')}
               </select>

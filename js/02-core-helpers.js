@@ -105,6 +105,46 @@ function explicacaoEscalaIDA() {
 /* ---------- Estado inicial em branco (dados reais vêm do Supabase) ---------- */
 /* ---------- RN026: campos de auditoria padrão em toda entidade principal ----------
    criado_por / criado_em / atualizado_por / atualizado_em + vínculo ao tenant. */
+// Transforma um item cru (atividade/competência do cargo) numa pergunta
+// avaliativa bem formulada, alinhada ao pilar NORTE. Em vez de copiar a
+// atividade "Interpretar ordens de serviço", gera "Com que domínio técnico
+// o colaborador interpreta ordens de serviço?". O avaliador responde na
+// escala IDA (Iniciar/Desenvolver/Alavancar).
+function _perguntaNorte(texto, pilar) {
+  let t = (typeof texto === 'object' && texto !== null ? texto.nome || '' : String(texto || '')).trim();
+  if (!t) return '';
+  // Remove marcadores de área (— TÍTULO —) que não são itens avaliáveis.
+  if (/^—.*—$/.test(t)) return '';
+  // As atividades da CBO vêm no infinitivo ("Interpretar", "Calcular"). Pra a
+  // frase ficar natural ("o colaborador interpreta"), conjugamos a 1ª palavra
+  // pra 3ª pessoa do singular do presente. Regra simples que cobre a maioria
+  // dos verbos regulares em -ar/-er/-ir.
+  t = t.charAt(0).toLowerCase() + t.slice(1);
+  const palavras = t.split(' ');
+  palavras[0] = _conjugar3aPessoa(palavras[0]);
+  const corpo = palavras.join(' ');
+  const molde = {
+    N: `Com que domínio técnico o colaborador ${corpo}?`, // Nível Técnico
+    O: `Com que consistência e organização o colaborador ${corpo}?`, // Operação
+    R: `Em que medida o colaborador demonstra a competência: ${corpo}?`, // Resultado/comportamental
+  };
+  let q = molde[pilar] || `Como o colaborador se sai em: ${corpo}?`;
+  if (q.length > 150) q = q.slice(0, 148).trim() + '…';
+  return q.charAt(0).toUpperCase() + q.slice(1);
+}
+
+// Conjuga um verbo no infinitivo (-ar/-er/-ir) para a 3ª pessoa do singular
+// do presente. Cobre os verbos regulares (a maioria das atividades da CBO).
+// Verbos irregulares podem sair imperfeitos — o texto é editável de todo jeito.
+function _conjugar3aPessoa(palavra) {
+  const p = palavra.toLowerCase();
+  if (p.endsWith('ar')) return p.slice(0, -2) + 'a'; // interpretar -> interpreta
+  if (p.endsWith('er')) return p.slice(0, -2) + 'e'; // resolver -> resolve
+  if (p.endsWith('ir')) return p.slice(0, -2) + 'e'; // cumprir -> cumpre
+  if (p.endsWith('or')) return p.slice(0, -2) + 'õe'; // compor -> compõe
+  return palavra; // não parece infinitivo — deixa como está
+}
+
 function novoCarimbo() {
   const agora = new Date().toISOString();
   return {
@@ -139,7 +179,9 @@ function _fatiarConhecimentos(texto) {
 // Deixa a primeira letra maiúscula e corta itens muito longos, pra virar
 // um rótulo de indicador limpo.
 function _rotuloIndicador(texto) {
-  let t = String(texto || '').trim();
+  // Aceita string ou objeto {nome}; nunca deixa virar "[object Object]".
+  let t = typeof texto === 'object' && texto !== null ? texto.nome || '' : String(texto || '');
+  t = t.trim();
   if (t.length > 90) t = t.slice(0, 88).trim() + '…';
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
@@ -154,7 +196,12 @@ function _ehAtividadeComportamental(atv) {
 }
 
 function gerarIndicadoresDoCargo(cargo, POR_NIVEL = 5) {
-  const mk = (nome) => ({ id: uid(), nome: _rotuloIndicador(nome), marcado: true });
+  // Cada nível gera perguntas avaliativas alinhadas ao seu pilar NORTE.
+  const mkPilar = (pilar) => (item) => {
+    const pergunta = _perguntaNorte(item, pilar);
+    return pergunta ? { id: uid(), nome: pergunta, marcado: true } : null;
+  };
+  const limpar = (arr) => arr.filter(Boolean).slice(0, POR_NIVEL);
   let N = [];
   let O = [];
   let R = [];
@@ -167,31 +214,30 @@ function gerarIndicadoresDoCargo(cargo, POR_NIVEL = 5) {
     const tecnicas = areasCbo.filter((ar) => ar !== areaComp);
     const ativTecnicas = [];
     tecnicas.forEach((ar) => (ar.i || []).forEach((a) => ativTecnicas.push(a)));
-    N = ativTecnicas.slice(0, POR_NIVEL).map(mk);
-    O = ativTecnicas.slice(POR_NIVEL, POR_NIVEL * 2).map(mk);
-    R = (areaComp ? areaComp.i || [] : []).slice(0, POR_NIVEL).map(mk);
+    N = limpar(ativTecnicas.slice(0, POR_NIVEL * 2).map(mkPilar('N')));
+    O = limpar(ativTecnicas.slice(POR_NIVEL, POR_NIVEL * 3).map(mkPilar('O')));
+    R = limpar((areaComp ? areaComp.i || [] : []).map(mkPilar('R')));
   } else if (cbo && Array.isArray(cbo.atividades) && cbo.atividades.length) {
-    // Compatibilidade com o formato antigo (lista plana de atividades).
     const comportamentais = cbo.atividades.filter(_ehAtividadeComportamental);
     const tecnicas = cbo.atividades.filter((a) => !_ehAtividadeComportamental(a));
-    N = tecnicas.slice(0, POR_NIVEL).map(mk);
-    O = tecnicas.slice(POR_NIVEL, POR_NIVEL * 2).map(mk);
-    R = comportamentais.slice(0, POR_NIVEL).map(mk);
+    N = limpar(tecnicas.slice(0, POR_NIVEL * 2).map(mkPilar('N')));
+    O = limpar(tecnicas.slice(POR_NIVEL, POR_NIVEL * 3).map(mkPilar('O')));
+    R = limpar(comportamentais.map(mkPilar('R')));
   }
 
   const d = cargo.desenho || {};
   // Completa (ou preenche, se não veio da CBO) com o desenho do cargo.
   if (N.length < POR_NIVEL) {
     const tecnicos = _fatiarConhecimentos(d.conhecimentosTecnicos);
-    N = N.concat(tecnicos.slice(0, POR_NIVEL - N.length).map(mk));
+    N = limpar(N.concat(tecnicos.map(mkPilar('N'))));
   }
   if (O.length < POR_NIVEL) {
-    const resp = (d.responsabilidades || []).slice(0, POR_NIVEL - O.length);
-    O = O.concat(resp.map(mk));
+    const resp = d.responsabilidades || [];
+    O = limpar(O.concat(resp.map(mkPilar('O'))));
   }
   if (R.length < POR_NIVEL) {
-    const comp = (d.competenciasComportamentais || []).slice(0, POR_NIVEL - R.length);
-    R = R.concat(comp.map(mk));
+    const comp = d.competenciasComportamentais || [];
+    R = limpar(R.concat(comp.map(mkPilar('R'))));
   }
 
   return { indicadoresN: N, indicadoresO: O, indicadoresR: R };

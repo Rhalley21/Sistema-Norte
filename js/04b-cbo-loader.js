@@ -29,7 +29,7 @@ function carregarCboOficial() {
     _cboOficialCarregando = true;
     const s = document.createElement('script');
     s.id = 'cbo-oficial-script';
-    s.src = 'js/04a-data-cbo-oficial.js?v=0.61.1';
+    s.src = 'js/04a-data-cbo-oficial.js?v=0.62.0';
 
     // Timeout de segurança: se em 45s o arquivo não carregar (rede lenta ou
     // falha silenciosa), desiste em vez de ficar "Carregando" pra sempre.
@@ -243,8 +243,9 @@ function criarCargoDeCbo(codigo) {
       experienciaProfissional: rasc.experiencia,
       conhecimentosTecnicos: rasc.conhecimentos,
       idiomas: '', // Grupo 3 — específico da empresa, fica em branco
-      // Competências pessoais da CBO viram as competências comportamentais.
-      competenciasComportamentais: competenciasCbo.map((nome) => ({ id: uid(), nome, marcado: true })),
+      // Competências pessoais da CBO viram as competências comportamentais
+      // (o campo é uma lista de textos — uma competência por linha).
+      competenciasComportamentais: competenciasCbo.slice(),
       ferramentasSistemas: [], // Grupo 3 — específico da empresa
       kpis: [], // Grupo 3 — metas são decisão da empresa
       condicoesTrabalho: rasc.condicoes,

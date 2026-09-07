@@ -3,6 +3,30 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.62.0 — PDI de Mentalidade (perguntas novas) e avaliação estruturada pelo NORTE
+Duas frentes:
+
+PDI de Mentalidade — os textos de orientação dos três pilares (Conhecimento,
+Ambiente, Relacionamento) foram atualizados com as perguntas reflexivas mais
+diretas ("Como avalio meu conhecimento atual para o desempenho da minha
+função?", etc.), incluindo Prazo estimado e Responsável. Continua opcional.
+
+Avaliação por cargo — os itens de avaliação deixaram de ser cópia crua das
+atividades e passam a ser perguntas avaliativas bem formuladas, alinhadas ao
+pilar NORTE de cada nível: N (Nível Técnico) "Com que domínio técnico o
+colaborador...?", O (Operação) "Com que consistência e organização...?", R
+(Resultado/comportamental) "Em que medida o colaborador demonstra a
+competência...?". Os verbos das atividades (que a CBO traz no infinitivo) são
+conjugados para a 3ª pessoa, deixando as perguntas naturais. Tudo continua
+editável e respeitando os ciclos já abertos (RN024).
+
+## v0.61.2 — Correção: competências apareciam como "[object Object]"
+As competências comportamentais geradas do CBO estavam sendo criadas como
+objetos, mas o campo do desenho espera uma competência por linha (texto).
+Por isso apareciam como "[object Object]". Corrigido: agora vêm como texto
+limpo. Também blindei o gerador de indicadores para nunca mais produzir
+"[object Object]", aceitando tanto texto quanto objeto.
+
 ## v0.61.1 — CBO: rascunho automático dos campos que faltavam
 Ao usar um cargo do CBO, o Desenho agora também vem com rascunho gerado nos
 campos que a CBO não fornece: Missão, Formação Acadêmica, Experiência
