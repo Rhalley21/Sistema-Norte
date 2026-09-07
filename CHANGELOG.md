@@ -3,6 +3,34 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.61.1 — CBO: rascunho automático dos campos que faltavam
+Ao usar um cargo do CBO, o Desenho agora também vem com rascunho gerado nos
+campos que a CBO não fornece: Missão, Formação Acadêmica, Experiência
+Profissional, Conhecimentos Técnicos, Condições de Trabalho e Perspectivas
+de Carreira — textos genéricos de ponto de partida, montados a partir do
+título, família e áreas de atividade, que a empresa revisa e ajusta.
+Idiomas, Ferramentas/Sistemas e KPIs continuam em branco de propósito
+(são específicos da empresa — gerar isso seria inventar). Somado ao que já
+vinha (responsabilidades por área e competências comportamentais reais),
+agora quase todo o desenho já vem preenchido ao escolher o cargo.
+
+## v0.61.0 — CBO: áreas de atividade e mais campos preenchidos
+A base do CBO passou a incluir as "áreas de atividade" (o agrupamento
+temático das atividades). Com isso, ao usar um cargo do CBO, o Desenho de
+Cargo vem com muito mais coisa preenchida automaticamente:
+- Responsabilidades organizadas por área (cada área vira um marcador em
+  maiúsculas, com suas atividades embaixo), em vez de uma lista solta.
+- Competências comportamentais preenchidas a partir da área "Competências
+  pessoais" da CBO.
+- Área/família ocupacional preenchida no campo de identificação.
+- Um bloco visível "Vínculo oficial da CBO" no topo do desenho, mostrando
+  código, título oficial, família, sinônimos e áreas — deixando claro o
+  vínculo oficial e a diferença para o nome interno do cargo.
+
+Continua valendo o aviso honesto: formação, experiência e condições de
+trabalho NÃO vêm nos arquivos de download da CBO (só no site/PDF), então
+esses campos seguem em branco para a empresa preencher.
+
 ## v0.60.1 — Correção: base do CBO travando em "Carregando"
 O carregador da base oficial do CBO podia ficar preso em "Carregando… (só na
 primeira vez)" para sempre quando o download falhava ou não era reconhecido,

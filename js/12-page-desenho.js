@@ -28,6 +28,20 @@ function pageDesenho() {
     <div class="card">
       <h3>${escaparHtml(cargo.nome)} <small>${escaparHtml(cargo.familia)} · ${escaparHtml(cargo.natureza)} ${cargo.cbo ? '· CBO ' + cargo.cbo : ''} ${d.aprovado ? '· versão publicada v' + d.versao : '· rascunho'}</small></h3>
 
+      ${
+        cargo.cboOficial
+          ? `
+      <div class="notice info" style="margin-bottom:8px;">
+        <b>Vínculo oficial da CBO</b><br>
+        Código: <b>${escaparHtml(cargo.cboOficial.codigo)}</b> &nbsp;·&nbsp; Título oficial: <b>${escaparHtml(cargo.cboOficial.tituloOficial)}</b><br>
+        Família ocupacional: ${escaparHtml(cargo.cboOficial.familia || '—')}
+        ${cargo.cboOficial.sinonimos?.length ? `<br>Outras denominações: <span class="small-muted">${escaparHtml(cargo.cboOficial.sinonimos.slice(0, 8).join(', '))}${cargo.cboOficial.sinonimos.length > 8 ? '…' : ''}</span>` : ''}
+        ${cargo.cboOficial.areas?.length ? `<br>Áreas de atuação (CBO): <span class="small-muted">${escaparHtml(cargo.cboOficial.areas.join(' · '))}</span>` : ''}
+        <br><span class="small-muted" style="font-size:11px;">O nome interno do cargo ("${escaparHtml(cargo.nome)}") pode ser diferente do título oficial — a CBO é referência, não substitui a descrição específica da empresa.</span>
+      </div>`
+          : ''
+      }
+
       <div class="small-muted" style="text-transform:uppercase;letter-spacing:.06em;font-size:11px;margin:16px 0 8px;">1. Identificação do Cargo</div>
       <div class="grid2">
         <div class="field"><label>Área / Departamento</label><input id="d_area" value="${escaparHtml(d.area)}" placeholder="Ex: Tecnologia da Informação"></div>

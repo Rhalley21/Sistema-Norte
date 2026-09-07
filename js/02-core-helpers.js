@@ -160,12 +160,20 @@ function gerarIndicadoresDoCargo(cargo, POR_NIVEL = 5) {
   let R = [];
 
   const cbo = cargo.cboOficial;
-  if (cbo && Array.isArray(cbo.atividades) && cbo.atividades.length) {
-    // Veio da CBO: separa atividades comportamentais (R) das demais (N/O).
+  const areasCbo = cargo._cboAreasParaIndicadores; // opcional: áreas cruas passadas na criação
+  if (areasCbo && areasCbo.length) {
+    // Gera a partir das áreas de atividade da CBO.
+    const areaComp = areasCbo.find((ar) => /compet[êe]ncias?\s+pessoa/i.test(ar.a));
+    const tecnicas = areasCbo.filter((ar) => ar !== areaComp);
+    const ativTecnicas = [];
+    tecnicas.forEach((ar) => (ar.i || []).forEach((a) => ativTecnicas.push(a)));
+    N = ativTecnicas.slice(0, POR_NIVEL).map(mk);
+    O = ativTecnicas.slice(POR_NIVEL, POR_NIVEL * 2).map(mk);
+    R = (areaComp ? areaComp.i || [] : []).slice(0, POR_NIVEL).map(mk);
+  } else if (cbo && Array.isArray(cbo.atividades) && cbo.atividades.length) {
+    // Compatibilidade com o formato antigo (lista plana de atividades).
     const comportamentais = cbo.atividades.filter(_ehAtividadeComportamental);
     const tecnicas = cbo.atividades.filter((a) => !_ehAtividadeComportamental(a));
-    // N = primeiras técnicas (conhecimento/execução técnica);
-    // O = técnicas seguintes (rotina/organização do trabalho);
     N = tecnicas.slice(0, POR_NIVEL).map(mk);
     O = tecnicas.slice(POR_NIVEL, POR_NIVEL * 2).map(mk);
     R = comportamentais.slice(0, POR_NIVEL).map(mk);

@@ -29,7 +29,7 @@ function carregarCboOficial() {
     _cboOficialCarregando = true;
     const s = document.createElement('script');
     s.id = 'cbo-oficial-script';
-    s.src = 'js/04a-data-cbo-oficial.js?v=0.60.1';
+    s.src = 'js/04a-data-cbo-oficial.js?v=0.61.1';
 
     // Timeout de segurança: se em 45s o arquivo não carregar (rede lenta ou
     // falha silenciosa), desiste em vez de ficar "Carregando" pra sempre.
@@ -56,6 +56,59 @@ function carregarCboOficial() {
     };
     document.head.appendChild(s);
   });
+}
+
+// Gera RASCUNHOS de texto para os campos que a CBO não traz (missão,
+// formação, experiência, etc.), a partir do que existe (título, família,
+// áreas/atividades). São textos genéricos de ponto de partida — a empresa
+// revisa e ajusta. Nunca inventa dados específicos (idiomas, ferramentas,
+// KPIs ficam com a empresa).
+function gerarRascunhosCbo(oc, areasTecnicas, competenciasCbo) {
+  const titulo = (oc.titulo || 'profissional').toLowerCase();
+  const familia = (oc.familia || '').toLowerCase();
+  const nomesAreas = (areasTecnicas || []).map((ar) => ar.a.toLowerCase());
+  const listaAreas = nomesAreas.length
+    ? nomesAreas.slice(0, 4).join(', ') + (nomesAreas.length > 4 ? ' entre outras' : '')
+    : 'suas atribuições';
+
+  const missao =
+    `Executar as atividades de ${titulo}${familia ? `, no âmbito de ${familia}` : ''}, ` +
+    `com foco em ${listaAreas}, seguindo os procedimentos, prazos e padrões de qualidade da empresa.`;
+
+  const formacao =
+    'Escolaridade compatível com a natureza do cargo (a empresa define o mínimo exigido). ' +
+    (familia ? `Formação, curso técnico ou qualificação em ${familia} é desejável.` : '');
+
+  const experiencia =
+    'Experiência prévia na função ou em atividades correlatas é desejável. ' +
+    'A empresa define o tempo mínimo de experiência conforme o nível do cargo.';
+
+  const conhecimentos = (competenciasCbo && competenciasCbo.length ? [] : nomesAreas)
+    .concat(nomesAreas)
+    .filter((v, i, a) => a.indexOf(v) === i)
+    .slice(0, 6)
+    .map((a) => `Conhecimento em ${a}`)
+    .join('; ');
+
+  const condicoes =
+    'Condições e jornada conforme a rotina da empresa e a legislação vigente. ' +
+    'Detalhar ambiente (interno/externo), turnos e eventuais riscos específicos da função.';
+
+  const perspectivas = [
+    `Evolução dentro da própria área (${familia || 'área de atuação'})`,
+    'Assumir atividades de maior complexidade ou coordenação',
+  ];
+
+  return { missao, formacao, experiencia, conhecimentos, condicoes, perspectivas };
+}
+
+// Deriva a lista plana de atividades a partir das áreas de uma ocupação.
+// (a base guarda as atividades dentro de cada área {a: nome, i: [ativ]}).
+function cboAtividadesPlanas(oc) {
+  if (!oc || !Array.isArray(oc.areas)) return [];
+  const todas = [];
+  oc.areas.forEach((ar) => (ar.i || []).forEach((atv) => todas.push(atv)));
+  return todas;
 }
 
 // Normaliza texto pra busca: minúsculas, sem acentos.
@@ -113,14 +166,15 @@ async function garantirCboEbuscar(termo) {
 // Cartão de um resultado da busca no CBO oficial.
 function renderResultadoCbo(oc) {
   const sinonimos = oc.sinonimos && oc.sinonimos.length ? oc.sinonimos.slice(0, 6).join(', ') : null;
-  const nAtiv = oc.atividades ? oc.atividades.length : 0;
+  const nAtiv = cboAtividadesPlanas(oc).length;
+  const nAreas = (oc.areas || []).length;
   return `
     <div class="cbo-item" style="align-items:flex-start;">
       <div style="flex:1;">
         <b>${escaparHtml(oc.titulo)}</b><br>
         <span>CBO ${escaparHtml(oc.codigo)} · ${escaparHtml(oc.familia)}</span>
         ${sinonimos ? `<br><span class="small-muted" style="font-size:11.5px;">Também chamado de: ${escaparHtml(sinonimos)}${oc.sinonimos.length > 6 ? '…' : ''}</span>` : ''}
-        ${nAtiv ? `<br><span class="small-muted" style="font-size:11.5px;">${nAtiv} atividade${nAtiv === 1 ? '' : 's'} descrita${nAtiv === 1 ? '' : 's'} na CBO</span>` : ''}
+        ${nAtiv ? `<br><span class="small-muted" style="font-size:11.5px;">${nAtiv} atividade${nAtiv === 1 ? '' : 's'} em ${nAreas} área${nAreas === 1 ? '' : 's'} de atuação (CBO)</span>` : ''}
       </div>
       <button class="btn btn-sm" onclick="criarCargoDeCbo('${oc.codigo}')">Usar este cargo →</button>
     </div>`;
@@ -136,6 +190,23 @@ function criarCargoDeCbo(codigo) {
     showToast('Ocupação não encontrada.');
     return;
   }
+  // Separa a área "Competências pessoais" (comportamental) das demais (técnicas).
+  const areas = oc.areas || [];
+  const areaComp = areas.find((ar) => /compet[êe]ncias?\s+pessoa/i.test(ar.a));
+  const areasTecnicas = areas.filter((ar) => ar !== areaComp);
+  const competenciasCbo = areaComp ? areaComp.i || [] : [];
+
+  // Responsabilidades: as atividades técnicas, organizadas por área (a área
+  // vira um marcador em MAIÚSCULAS pra dar contexto, seguida das atividades).
+  const responsabilidades = [];
+  areasTecnicas.forEach((ar) => {
+    responsabilidades.push(`— ${ar.a.toUpperCase()} —`);
+    (ar.i || []).forEach((atv) => responsabilidades.push(atv));
+  });
+
+  // Rascunhos gerados para os campos que a CBO não traz (a empresa ajusta).
+  const rasc = gerarRascunhosCbo(oc, areasTecnicas, competenciasCbo);
+
   const novo = {
     id: uid(),
     nome: oc.titulo, // nome interno (editável) — começa igual ao oficial
@@ -149,6 +220,7 @@ function criarCargoDeCbo(codigo) {
       tituloOficial: oc.titulo,
       familia: oc.familia,
       sinonimos: oc.sinonimos || [],
+      areas: areas.map((ar) => ar.a),
       vinculadoEm: new Date().toISOString(),
     },
     indicadoresN: [],
@@ -157,25 +229,26 @@ function criarCargoDeCbo(codigo) {
     desenho: {
       versao: 1,
       aprovado: false,
-      area: '',
+      area: oc.familia || '', // área/família ocupacional da CBO
       nivelHierarquico: '',
       regimeTrabalho: '',
       subordinacao: '',
       subordinadosDiretos: '',
       localTrabalho: '',
-      missao: '',
-      // Atividades oficiais da CBO viram responsabilidades iniciais (a empresa edita).
-      responsabilidades: (oc.atividades || []).slice(0, 20),
+      missao: rasc.missao,
+      // Atividades técnicas da CBO, agrupadas por área, viram responsabilidades.
+      responsabilidades,
       culturaPostura: '',
-      formacaoAcademica: '',
-      experienciaProfissional: '',
-      conhecimentosTecnicos: '',
-      idiomas: '',
-      competenciasComportamentais: [],
-      ferramentasSistemas: [],
-      kpis: [],
-      condicoesTrabalho: '',
-      perspectivasCarreira: [],
+      formacaoAcademica: rasc.formacao,
+      experienciaProfissional: rasc.experiencia,
+      conhecimentosTecnicos: rasc.conhecimentos,
+      idiomas: '', // Grupo 3 — específico da empresa, fica em branco
+      // Competências pessoais da CBO viram as competências comportamentais.
+      competenciasComportamentais: competenciasCbo.map((nome) => ({ id: uid(), nome, marcado: true })),
+      ferramentasSistemas: [], // Grupo 3 — específico da empresa
+      kpis: [], // Grupo 3 — metas são decisão da empresa
+      condicoesTrabalho: rasc.condicoes,
+      perspectivasCarreira: rasc.perspectivas,
     },
     versoes: [],
     descontinuado: false,
@@ -183,8 +256,10 @@ function criarCargoDeCbo(codigo) {
   };
   state.cargos.push(novo);
   // Gera automaticamente os indicadores de avaliação (5 por nível) a partir
-  // da CBO vinculada — a empresa não precisa cadastrar perguntas à mão.
+  // das áreas da CBO — a empresa não precisa cadastrar perguntas à mão.
+  novo._cboAreasParaIndicadores = areas;
   const ind = gerarIndicadoresDoCargo(novo);
+  delete novo._cboAreasParaIndicadores; // não persiste esse campo auxiliar
   novo.indicadoresN = ind.indicadoresN;
   novo.indicadoresO = ind.indicadoresO;
   novo.indicadoresR = ind.indicadoresR;
