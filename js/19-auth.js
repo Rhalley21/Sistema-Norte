@@ -290,13 +290,36 @@ async function iniciarComSessao(sessao) {
     return;
   }
 
-  // Acesso da Empresa como um todo pode ter sido suspenso pelo Super Admin
-  // da plataforma (dono do NORTE) — ver sql/12-suspensao-empresas.sql.
-  const { data: empresaCheck } = await sb
-    .from('empresas')
-    .select('acesso_suspenso, ponto_habilitado')
-    .eq('id', perfil.empresa_id)
-    .maybeSingle();
+  meuPerfilId = perfil.id;
+  empresaIdAtual = perfil.empresa_id;
+  meuPapelReal = perfil.papel;
+  meuEscopoEstendido = !!perfil.escopo_estendido;
+
+  // OTIMIZAÇÃO DE ABERTURA (v0.63.0): antes, cada consulta abaixo esperava a
+  // anterior terminar (6 idas ao servidor em fila = 5-10s). Como estas quatro
+  // não dependem uma da outra (só dependem do perfil, que já temos), disparamos
+  // todas de uma vez com Promise.all — o tempo passa a ser o da mais lenta, não
+  // a soma de todas. seed() roda antes pois carregarEstado preenche o state.
+  seed(); // estado em branco antes de carregar
+  const [empresaCheck] = await Promise.all([
+    sb
+      .from('empresas')
+      .select('acesso_suspenso, ponto_habilitado')
+      .eq('id', perfil.empresa_id)
+      .maybeSingle()
+      .then((r) => r.data),
+    sb
+      .from('super_admins')
+      .select('id')
+      .eq('id', sessao.user.id)
+      .maybeSingle()
+      .then((r) => {
+        souSuperAdmin = !!r.data;
+      }),
+    carregarEstado(),
+    carregarUsuarios(), // popula _perfisEmpresa/_convitesEmpresa, usados também fora da aba Usuários
+  ]);
+
   if (empresaCheck?.acesso_suspenso) {
     await sb.auth.signOut();
     erroLogin =
@@ -304,34 +327,18 @@ async function iniciarComSessao(sessao) {
     renderLogin();
     return;
   }
-  // Módulo de Ponto é liga/desliga por Empresa — a escolha é feita pelo Super
-  // Admin ao gerar o código de licença (ver sql/21-ponto-por-empresa.sql).
+  // Módulo de Ponto é liga/desliga por Empresa (ver sql/21-ponto-por-empresa.sql).
   pontoHabilitado = !!empresaCheck?.ponto_habilitado;
-
-  meuPerfilId = perfil.id;
-  empresaIdAtual = perfil.empresa_id;
-  meuPapelReal = perfil.papel;
-  meuEscopoEstendido = !!perfil.escopo_estendido;
-
-  // Super Admin da plataforma (dono do NORTE — Instituto INETRIS) é um nível
-  // ACIMA do papel dentro da Empresa (owner/rh/lider/colaborador). Uma mesma
-  // pessoa pode ser "owner" da própria Empresa E também Super Admin da
-  // plataforma inteira — são coisas independentes. Ver sql/11-licenciamento-empresas.sql.
-  const { data: superAdminRow } = await sb.from('super_admins').select('id').eq('id', sessao.user.id).maybeSingle();
-  souSuperAdmin = !!superAdminRow;
 
   registrarAuditoria('usuario.login', { papel: meuPapelReal });
 
-  seed(); // estado em branco antes de carregar
-  await carregarEstado();
   aplicarTemaCoresInterface(state.configuracoes?.identidadeVisual?.corPrimaria);
-  await carregarUsuarios(); // popula _perfisEmpresa/_convitesEmpresa, usados também fora da aba Usuários
   state.role = PAPEL_PARA_ROLE[meuPapelReal] || 'colaborador';
   state.route = 'dashboard_role';
   assinarAtualizacoesAoVivo();
-  await carregarNotificacoes();
+  render(); // já mostra a tela; notificações entram logo em seguida
   assinarNotificacoesAoVivo();
-  render();
+  carregarNotificacoes().then(render); // não bloqueia a abertura
 }
 
 // BUG CORRIGIDO (de vez, sem disputa de tempo): antes, duas rotinas

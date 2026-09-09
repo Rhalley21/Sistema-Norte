@@ -3,6 +3,17 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.63.0 — Abertura mais rápida (consultas em paralelo no login)
+O sistema demorava 5-10s para abrir porque, ao entrar, fazia seis consultas
+ao servidor em fila — cada uma esperando a anterior. Agora, depois de buscar
+o perfil (que as demais precisam), as consultas independentes (checagem da
+empresa, super admin, dados do sistema e usuários) rodam todas em paralelo
+com Promise.all, e as notificações carregam em segundo plano sem travar a
+tela. O tempo de abertura passa a ser o da consulta mais lenta, não a soma de
+todas. A verificação de empresa suspensa continua acontecendo antes de exibir
+qualquer tela, então a segurança não muda. Observação: o plano Pro do Supabase
+não afetaria isso — o gargalo era a sequência de consultas, não o banco.
+
 ## v0.62.0 — PDI de Mentalidade (perguntas novas) e avaliação estruturada pelo NORTE
 Duas frentes:
 
