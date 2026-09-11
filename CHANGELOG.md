@@ -3,6 +3,26 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.64.0 — Desenho de cargo: imprimir/PDF e importar por planilha
+Duas novidades na Base de Cargos e no Desenho:
+- Botão "Imprimir / PDF" na tela do Desenho de Cargo: gera um PDF completo
+  só daquele cargo (identificação, missão, responsabilidades, cultura e
+  postura, requisitos, competências, ferramentas, KPIs, condições e
+  carreira) — pronto pra salvar ou imprimir.
+- Importação de cargos por planilha (Excel/CSV): um card novo na Base de
+  Cargos com "Baixar modelo" e seleção de arquivo. Preenche-se um cargo por
+  linha (campos de lista separados por ";"), o sistema mostra um preview
+  validado e importa os cargos como rascunho para revisão/publicação do
+  Desenho. Mesmo padrão da importação de colaboradores. Word não é importado
+  direto (formato livre, frágil) — o caminho é converter o Word em planilha
+  antes e usar o modelo.
+
+## v0.63.1 — Novo subtítulo do sistema
+O subtítulo passou de "Sistema de Avaliação e Desempenho" para "Sistema de
+Gestão de Pessoas", mantendo o título "INETRIS". Atualizado no menu lateral,
+tela de login, cabeçalho dos e-mails e título da aba do navegador. As
+expressões "Metodologia NORTE" e "Ciclo NORTE" seguem inalteradas.
+
 ## v0.63.0 — Abertura mais rápida (consultas em paralelo no login)
 O sistema demorava 5-10s para abrir porque, ao entrar, fazia seis consultas
 ao servidor em fila — cada uma esperando a anterior. Agora, depois de buscar

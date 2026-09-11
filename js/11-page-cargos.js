@@ -1,4 +1,5 @@
 let _verTodosCargosCBO = false;
+let _previewImportacaoCargos = null; // linhas validadas da planilha de cargos, aguardando confirmação
 function pageCargos() {
   const segmentoEmpresa = state.empresa?.segmento || '';
   // Filtro estrito: só mostra cargos marcados pro segmento escolhido pela
@@ -14,6 +15,33 @@ function pageCargos() {
       <div class="eyebrow">Etapa 04 · Cargos</div>
       <h1>Base de Cargos (CBO)</h1>
       <p class="page-desc">Importe da Classificação Brasileira de Ocupações e adapte — o cargo-modelo original nunca é editado, apenas copiado para a empresa.</p>
+    </div>
+
+    <div class="card">
+      <h3>Importar cargos por planilha <small>Excel/CSV — cadastre vários cargos de uma vez</small></h3>
+      <p class="page-desc">Baixe o modelo, preencha um cargo por linha e importe. Os cargos entram como rascunho para você revisar e publicar o Desenho depois.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-ghost btn-sm" onclick="baixarModeloCargos()">Baixar modelo de planilha</button>
+        <input type="file" id="arquivo_importacao_cargos" accept=".xlsx,.xls,.csv" onchange="processarArquivoCargos(this)">
+      </div>
+      ${
+        _previewImportacaoCargos
+          ? `
+        <div style="margin-top:14px;">
+          <div class="small-muted" style="margin-bottom:8px;">${_previewImportacaoCargos.filter((l) => !l.erros.length).length} cargo(s) válido(s) de ${_previewImportacaoCargos.length} — os com erro são ignorados.</div>
+          ${_previewImportacaoCargos
+            .map(
+              (l) =>
+                `<div class="import-preview-row" style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);">
+              <span>${escaparHtml(l.nome || '(sem nome)')}</span>
+              ${l.erros.length ? `<span class="import-preview-erro">${l.erros.join('; ')}</span>` : '<span style="color:var(--alavancar);font-size:12.5px;">ok</span>'}
+            </div>`
+            )
+            .join('')}
+          <button class="btn btn-primary" style="margin-top:12px;" onclick="confirmarImportacaoCargos()" ${_previewImportacaoCargos.some((l) => !l.erros.length) ? '' : 'disabled'}>Importar ${_previewImportacaoCargos.filter((l) => !l.erros.length).length} cargo(s)</button>
+        </div>`
+          : ''
+      }
     </div>
 
     <div class="card">
@@ -289,3 +317,187 @@ function criarCargoDoZero() {
 }
 
 /* ===================== 5. DESENHO DE CARGO ===================== */
+
+/* ===================== IMPORTAÇÃO DE CARGOS POR PLANILHA =====================
+   Mesmo padrão da importação de colaboradores (js/13): baixar modelo, ler o
+   arquivo, mostrar preview validado, confirmar. Campos de lista (responsabi-
+   lidades, competências, ferramentas, KPIs, carreira) são separados por ";".
+   Os cargos entram como rascunho (desenho não publicado) pra revisão. */
+
+const _CARGOS_COLUNAS = [
+  'Nome do cargo',
+  'Natureza',
+  'Área',
+  'Nível hierárquico',
+  'Regime de trabalho',
+  'Local de trabalho',
+  'Reporta-se a',
+  'Subordinados diretos',
+  'Missão',
+  'Responsabilidades (separadas por ;)',
+  'Cultura e Postura Institucional',
+  'Formação acadêmica',
+  'Experiência profissional',
+  'Conhecimentos técnicos',
+  'Idiomas',
+  'Competências comportamentais (separadas por ;)',
+  'Ferramentas e sistemas (separados por ;)',
+  'KPIs (separados por ;)',
+  'Condições de trabalho',
+  'Perspectivas de carreira (separadas por ;)',
+];
+
+async function baixarModeloCargos() {
+  await garantirXLSX();
+  const exemplo = [
+    'Analista de RH',
+    'Apoio',
+    'Recursos Humanos',
+    'Analista',
+    'CLT — 40h semanais',
+    'Sede / Híbrido',
+    'Coordenador(a) de RH',
+    'Nenhum',
+    'Apoiar os processos de gestão de pessoas da empresa.',
+    'Conduzir recrutamento; Acompanhar avaliações; Organizar treinamentos',
+    'Atua com ética, sigilo e respeito no trato com colaboradores.',
+    'Ensino superior em Administração, Psicologia ou áreas afins',
+    'Mínimo de 1 ano em rotinas de RH',
+    'Legislação trabalhista; folha de pagamento',
+    'Português',
+    'Comunicação; Organização; Empatia',
+    'Excel; Sistema de folha; Plataforma NORTE',
+    'Tempo médio de fechamento de vagas; Índice de satisfação interna',
+    'Ambiente de escritório, com uso de computador.',
+    'Analista Sênior; Coordenador de RH',
+  ];
+  const linhas = [_CARGOS_COLUNAS, exemplo];
+  const ws = XLSX.utils.aoa_to_sheet(linhas);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Cargos');
+  XLSX.writeFile(wb, 'modelo-importacao-cargos.xlsx');
+}
+
+async function processarArquivoCargos(inputEl) {
+  const arquivo = inputEl.files[0];
+  if (!arquivo) return;
+  await garantirXLSX();
+  const leitor = new FileReader();
+  leitor.onload = (e) => {
+    const dados = new Uint8Array(e.target.result);
+    const workbook = XLSX.read(dados, { type: 'array' });
+    const primeiraAba = workbook.Sheets[workbook.SheetNames[0]];
+    const linhas = XLSX.utils.sheet_to_json(primeiraAba, { defval: '' });
+    _previewImportacaoCargos = linhas.map((linha) => validarLinhaCargo(linha));
+    render();
+  };
+  leitor.readAsArrayBuffer(arquivo);
+}
+
+// Aceita tanto o cabeçalho do modelo quanto variações simples (sem acento).
+function _campoCargo(linha, ...nomes) {
+  for (const n of nomes) {
+    if (linha[n] !== undefined && String(linha[n]).trim() !== '') return String(linha[n]).trim();
+  }
+  return '';
+}
+function _listaCargo(texto) {
+  return String(texto || '')
+    .split(/[;\n]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function validarLinhaCargo(linha) {
+  const nome = _campoCargo(linha, 'Nome do cargo', 'Nome', 'Cargo');
+  let natureza = _campoCargo(linha, 'Natureza');
+  // Normaliza a natureza pros valores aceitos; padrão "Operacional".
+  const natOk = ['Operacional', 'Apoio', 'Estratégica'];
+  const natEncontrada = natOk.find((n) => n.toLowerCase() === natureza.toLowerCase());
+  natureza = natEncontrada || 'Operacional';
+
+  const erros = [];
+  if (!nome) erros.push('nome do cargo vazio');
+  if (state.cargos.some((c) => c.nome.toLowerCase() === nome.toLowerCase() && !c.descontinuado))
+    erros.push(`já existe um cargo "${nome}"`);
+
+  return {
+    nome,
+    natureza,
+    erros,
+    dados: {
+      area: _campoCargo(linha, 'Área', 'Area'),
+      nivelHierarquico: _campoCargo(linha, 'Nível hierárquico', 'Nivel hierarquico', 'Nível'),
+      regimeTrabalho: _campoCargo(linha, 'Regime de trabalho', 'Regime'),
+      localTrabalho: _campoCargo(linha, 'Local de trabalho', 'Local'),
+      subordinacao: _campoCargo(linha, 'Reporta-se a', 'Subordinação', 'Subordinacao'),
+      subordinadosDiretos: _campoCargo(linha, 'Subordinados diretos'),
+      missao: _campoCargo(linha, 'Missão', 'Missao'),
+      responsabilidades: _listaCargo(_campoCargo(linha, 'Responsabilidades (separadas por ;)', 'Responsabilidades')),
+      culturaPostura: _campoCargo(linha, 'Cultura e Postura Institucional', 'Cultura e Postura'),
+      formacaoAcademica: _campoCargo(linha, 'Formação acadêmica', 'Formacao academica', 'Formação'),
+      experienciaProfissional: _campoCargo(linha, 'Experiência profissional', 'Experiencia profissional'),
+      conhecimentosTecnicos: _campoCargo(linha, 'Conhecimentos técnicos', 'Conhecimentos tecnicos'),
+      idiomas: _campoCargo(linha, 'Idiomas'),
+      competenciasComportamentais: _listaCargo(
+        _campoCargo(linha, 'Competências comportamentais (separadas por ;)', 'Competências comportamentais')
+      ),
+      ferramentasSistemas: _listaCargo(
+        _campoCargo(linha, 'Ferramentas e sistemas (separados por ;)', 'Ferramentas e sistemas')
+      ),
+      kpis: _listaCargo(_campoCargo(linha, 'KPIs (separados por ;)', 'KPIs')),
+      condicoesTrabalho: _campoCargo(linha, 'Condições de trabalho', 'Condicoes de trabalho'),
+      perspectivasCarreira: _listaCargo(
+        _campoCargo(linha, 'Perspectivas de carreira (separadas por ;)', 'Perspectivas de carreira')
+      ),
+    },
+  };
+}
+
+function confirmarImportacaoCargos() {
+  const validos = (_previewImportacaoCargos || []).filter((l) => !l.erros.length);
+  if (!validos.length) return;
+  let criados = 0;
+  validos.forEach((l) => {
+    const d = l.dados;
+    state.cargos.push({
+      id: uid(),
+      nome: l.nome,
+      natureza: l.natureza,
+      familia: null,
+      cbo: null,
+      origemImportacao: 'planilha',
+      bancoInteligencia: null,
+      desenho: {
+        versao: 1,
+        aprovado: false, // entra como rascunho pra revisão
+        area: d.area,
+        nivelHierarquico: d.nivelHierarquico,
+        regimeTrabalho: d.regimeTrabalho,
+        subordinacao: d.subordinacao,
+        subordinadosDiretos: d.subordinadosDiretos,
+        localTrabalho: d.localTrabalho,
+        missao: d.missao,
+        responsabilidades: d.responsabilidades,
+        culturaPostura: d.culturaPostura,
+        formacaoAcademica: d.formacaoAcademica,
+        experienciaProfissional: d.experienciaProfissional,
+        conhecimentosTecnicos: d.conhecimentosTecnicos,
+        idiomas: d.idiomas,
+        competenciasComportamentais: d.competenciasComportamentais,
+        ferramentasSistemas: d.ferramentasSistemas,
+        kpis: d.kpis,
+        condicoesTrabalho: d.condicoesTrabalho,
+        perspectivasCarreira: d.perspectivasCarreira,
+      },
+      versoes: [],
+      descontinuado: false,
+      ...novoCarimbo(),
+    });
+    criados++;
+  });
+  registrarAuditoria('cargos.importados_planilha', { quantidade: criados });
+  _previewImportacaoCargos = null;
+  showToast(`${criados} cargo(s) importado(s) como rascunho. Revise e publique o Desenho de cada um.`);
+  render();
+}

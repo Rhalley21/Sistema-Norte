@@ -88,6 +88,7 @@ function pageDesenho() {
       ${jaPublicadoAntes ? `<div class="field"><label>Motivo da alteração <small>(obrigatório — toda nova versão precisa registrar por que mudou, RN024)</small></label><textarea id="d_motivo" placeholder="Ex: Ajuste de indicadores após revisão do RH em conjunto com a liderança da área."></textarea></div>` : ''}
       <button class="btn" onclick="salvarRascunhoDesenho('${cargo.id}')">Salvar rascunho</button>
       <button class="btn btn-primary" onclick="publicarDesenho('${cargo.id}')" ${indicadoresOk(cargo) ? '' : 'disabled'}>Publicar versão ${jaPublicadoAntes ? d.versao + 1 : d.versao}</button>
+      <button class="btn btn-ghost" onclick="exportarDesenhoCargoPDF('${cargo.id}')" style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Imprimir / PDF</button>
       ${!indicadoresOk(cargo) ? '<div class="small-muted" style="margin-top:8px;">É preciso ao menos um indicador em cada pilar (N, O, R) para publicar.</div>' : ''}
     </div>
 
