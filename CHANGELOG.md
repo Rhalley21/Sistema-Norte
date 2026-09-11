@@ -3,6 +3,16 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.65.0 — Card de Ponto no dashboard do Admin
+O dashboard do Administrador (e do RH) ganhou um card de Ponto com os
+últimos 30 dias: atraso médio e hora extra média por colaborador, mais
+quantos colaboradores tiveram atraso e quantos fizeram hora extra. Considera
+só quem tem jornada cadastrada. O card carrega em segundo plano — aparece
+com "carregando…" e se atualiza sozinho quando os dados chegam, sem deixar a
+abertura do dashboard mais lenta. Só aparece se o módulo de Ponto estiver
+habilitado para a empresa. Reaproveita a Edge Function existente (sem
+redeploy) e as funções de cálculo da tela de Ponto.
+
 ## v0.64.0 — Desenho de cargo: imprimir/PDF e importar por planilha
 Duas novidades na Base de Cargos e no Desenho:
 - Botão "Imprimir / PDF" na tela do Desenho de Cargo: gera um PDF completo
