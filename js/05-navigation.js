@@ -5,7 +5,15 @@ const STEPS_BASE = [
   { id: 'usuarios', label: 'Usuários & Acesso', group: 'Fundação', papeis: ['owner', 'rh'] },
   { id: 'cargos', label: 'Base de Cargos (CBO)', group: 'Cargos', papeis: ['owner', 'rh'] },
   { id: 'desenho', label: 'Desenho de Cargo', group: 'Cargos', papeis: ['owner', 'rh'] },
+  { id: 'meu_cargo', label: 'Meu Cargo', group: 'Cargos', papeis: ['owner', 'rh', 'lider', 'colaborador'] }, // todos os papéis veem o descritivo do próprio cargo (se tiverem cargo vinculado)
+  {
+    id: 'meu_desenvolvimento',
+    label: 'Meu Desenvolvimento',
+    group: 'Cargos',
+    papeis: ['owner', 'rh', 'lider', 'colaborador'],
+  }, // PDI + autoavaliação + resultado (após feedback)
   { id: 'colaboradores', label: 'Colaboradores', group: 'Pessoas', papeis: ['owner', 'rh', 'lider'] },
+  { id: 'acompanhamento', label: 'Acompanhamento', group: 'Pessoas', papeis: ['owner', 'rh', 'lider'], oculto: true }, // acessada pelos botões do dashboard, não aparece no menu
   { id: 'ponto', label: 'Ponto', group: 'Pessoas', apenasSePontoHabilitado: true }, // liga/desliga por Empresa (Super Admin decide ao gerar a licença). Sem `papeis`: quando ligado, todo mundo bate o próprio ponto.
   {
     id: 'totem_ponto',
@@ -66,8 +74,14 @@ function stepUnlocked(id) {
       return !!state.cultura.missao;
     case 'desenho':
       return state.cargos.length > 0;
+    case 'meu_cargo':
+      return true;
+    case 'meu_desenvolvimento':
+      return true;
     case 'colaboradores':
       return state.cargos.some((c) => c.desenho.aprovado && !c.descontinuado);
+    case 'acompanhamento':
+      return true;
     case 'ponto':
       return true;
     case 'totem_ponto':
@@ -102,9 +116,18 @@ let _ultimaRotaRenderizada = null;
 let _ultimoCicloAtivoRenderizado = undefined;
 function render() {
   const app = document.getElementById('app');
+  // Botão de voltar automático: aparece em todas as telas menos o painel
+  // (que é a tela inicial). Volta pra tela anterior, como o do navegador.
+  const mostrarVoltar = state.route && state.route !== 'dashboard_role';
+  const botaoVoltar = mostrarVoltar
+    ? `<button class="btn-voltar-global" onclick="voltarTela()" title="Voltar para a tela anterior">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Voltar
+      </button>`
+    : '';
   app.innerHTML = `
     ${renderSidebar()}
-    <main>${renderRoute()}</main>
+    <main>${botaoVoltar}${renderRoute()}</main>
   `;
   // BUG CORRIGIDO: antes, TODA chamada de render() forçava a rolagem pro
   // topo da página — inclusive ações simples dentro da mesma tela (ex.:
@@ -221,7 +244,7 @@ function renderSidebar() {
       <nav class="steps">
         ${groups
           .map((g) => {
-            const itensDoGrupo = STEPS.filter((s) => s.group === g);
+            const itensDoGrupo = STEPS.filter((s) => s.group === g && !s.oculto);
             const grupoTemRotaAtiva = itensDoGrupo.some((s) => s.id === state.route);
             const expandido = (_gruposExpandidos.has(g) || grupoTemRotaAtiva) && !_gruposFechadosManualmente.has(g);
             return `
@@ -290,6 +313,12 @@ function goto(id) {
     showToast('Você não tem acesso a essa área.');
     return;
   }
+  // Histórico de navegação: guarda a rota atual antes de sair, pra o botão
+  // "voltar" poder retornar pra ela. Ignora se for a mesma rota.
+  if (state.route && state.route !== id) {
+    _historicoNavegacao.push(state.route);
+    if (_historicoNavegacao.length > 50) _historicoNavegacao.shift(); // não cresce infinito
+  }
   state.route = id;
   _menuMobileAberto = false;
   // Se a pessoa navegou pra um item, o grupo dele deve aparecer aberto —
@@ -300,6 +329,20 @@ function goto(id) {
   if (id === 'colaboradores') carregarUsuarios(); // usado pra detectar inconsistências (ver banner de "desligado mas com login ativo")
   if (id === 'auditoria') carregarUsuarios(); // usado pra resolver nome de quem fez cada evento
   if (id === 'ciclos') atualizarDadosAoVivo(true); // busca o estado mais recente sempre que entra na tela de Ciclos
+  render();
+}
+
+// Pilha de rotas visitadas, pro botão "voltar" (como o do navegador).
+let _historicoNavegacao = [];
+function voltarTela() {
+  const anterior = _historicoNavegacao.pop();
+  if (!anterior) {
+    // Sem histórico (ex: entrou direto numa tela): volta pro painel.
+    state.route = 'dashboard_role';
+  } else {
+    state.route = anterior;
+  }
+  _menuMobileAberto = false;
   render();
 }
 

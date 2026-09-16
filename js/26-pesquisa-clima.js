@@ -59,9 +59,17 @@ function responderPesquisaClima(id, nota) {
   const p = state.pesquisasClima.find((x) => x.id === id);
   if (!p) return;
   const comentario = document.getElementById(`clima_comentario_${id}`)?.value.trim() || '';
-  p.respostas.push({ perfilId: meuPerfilId, nota, comentario, respondidoEm: new Date().toISOString() });
+  // ANONIMATO: a resposta em si NÃO guarda quem respondeu — só nota e
+  // comentário. Quem já respondeu fica numa lista separada (jaResponderam),
+  // usada apenas para impedir resposta dupla e ver quem falta. Não há como
+  // ligar uma resposta a uma pessoa.
+  p.respostas = p.respostas || [];
+  p.respostas.push({ nota, comentario, respondidoEm: new Date().toISOString() });
+  p.jaResponderam = p.jaResponderam || [];
+  if (!p.jaResponderam.includes(meuPerfilId)) p.jaResponderam.push(meuPerfilId);
+  // Auditoria sem identificar a resposta (registra só o ato, não a nota/comentário).
   registrarAuditoria('pesquisa_clima.respondida', { pesquisaId: id });
-  showToast('Resposta registrada. Obrigado!');
+  showToast('Resposta registrada de forma anônima. Obrigado!');
   render();
 }
 
@@ -101,7 +109,7 @@ function pageClima() {
       pesquisasAtivas.length
         ? pesquisasAtivas
             .map((p) => {
-              const jaRespondi = (p.respostas || []).some((r) => r.perfilId === meuPerfilId);
+              const jaRespondi = (p.jaResponderam || []).includes(meuPerfilId);
               const enps = calcularENPS(p);
               return `
       <div class="card">
@@ -110,6 +118,7 @@ function pageClima() {
         ${
           !souRHOuAdmin && !jaRespondi
             ? `
+          <div class="notice info">🔒 Esta pesquisa é <b>anônima</b>. Sua nota e comentário não ficam ligados ao seu nome — pode responder com sinceridade.</div>
           <div class="field"><label>Nota (0 = nunca recomendaria, 10 = recomendaria com certeza)</label>
             <div style="display:flex;gap:4px;flex-wrap:wrap;">
               ${Array.from({ length: 11 }, (_, i) => i)
@@ -134,6 +143,7 @@ function pageClima() {
             <div class="kpi"><div class="n">${enps ? enps.promotores : 0}</div><div class="l">Promotores (9-10)</div></div>
             <div class="kpi"><div class="n">${enps ? enps.detratores : 0}</div><div class="l">Detratores (0-6)</div></div>
           </div>
+          <div class="notice info" style="margin-top:10px;">🔒 Respostas anônimas — o sistema controla quem já respondeu para evitar duplicidade, mas <b>não há como saber quem escreveu cada resposta</b>. Participação: ${(p.jaResponderam || []).length} de ${state.colaboradores.filter((c) => !c.inativo).length} colaboradores.</div>
           ${
             (p.respostas || []).filter((r) => r.comentario).length
               ? `

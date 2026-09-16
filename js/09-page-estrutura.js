@@ -50,6 +50,7 @@ let _tipoNovoEstrutura = 'unidade';
 let _paiNovoEstrutura = '';
 let _moverEstruturaId = null;
 let _formAddEstruturaAberto = false; // formulário "Adicionar estrutura" começa fechado; abre pelo botão do topo
+let _cardEstruturaAberto = null; // 'unidade' | 'departamento' | 'setor' | 'colaboradores' | null — qual card foi clicado
 let _expandidosEstrutura = new Set();
 
 function toggleExpandirEstrutura(nodeId) {
@@ -66,6 +67,56 @@ function expandirTudoEstrutura() {
     state.estrutura.forEach((n) => _expandidosEstrutura.add(n.id));
   }
   render();
+}
+
+// Painel de detalhe mostrado ao clicar num card de resumo da Estrutura.
+// Lista o tipo escolhido (unidade/departamento/setor) com código e
+// responsável, ou os colaboradores com onde trabalham.
+function renderDetalheCardEstrutura(tipo) {
+  const nomeResp = (id) => _perfisEmpresa.find((p) => p.id === id)?.nome || '—';
+  const nomeNo = (id) => state.estrutura.find((n) => n.id === id)?.nome || '—';
+
+  if (tipo === 'colaboradores') {
+    const lista = state.colaboradores
+      .filter((p) => !p.inativo)
+      .slice()
+      .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+    return `
+      <div class="card">
+        <h3>Colaboradores <small>onde cada um trabalha</small></h3>
+        ${
+          lista.length
+            ? `<table><thead><tr><th>Colaborador</th><th>Unidade</th><th>Setor</th></tr></thead><tbody>
+              ${lista
+                .map(
+                  (p) =>
+                    `<tr><td><b>${escaparHtml(p.nome)}</b></td><td class="small-muted">${escaparHtml(nomeNo(p.unidadeId))}</td><td class="small-muted">${escaparHtml(nomeNo(p.setorId))}</td></tr>`
+                )
+                .join('')}
+            </tbody></table>`
+            : '<div class="empty">Nenhum colaborador cadastrado ainda.</div>'
+        }
+      </div>`;
+  }
+
+  const rotulo = { unidade: 'Unidades', departamento: 'Departamentos', setor: 'Setores' }[tipo];
+  const itens = state.estrutura.filter((n) => n.tipo === tipo);
+  return `
+    <div class="card">
+      <h3>${rotulo} <small>nome, código e responsável</small></h3>
+      ${
+        itens.length
+          ? `<table><thead><tr><th>Nome</th><th>Código</th><th>Responsável</th><th>Colaboradores</th></tr></thead><tbody>
+            ${itens
+              .map((n) => {
+                const qtd = colaboradoresDoNo(n).length;
+                return `<tr><td><b>${escaparHtml(n.nome)}</b></td><td class="small-muted" style="font-family:var(--mono);">${escaparHtml(n.codigo || '—')}</td><td class="small-muted">${escaparHtml(n.responsavelId ? nomeResp(n.responsavelId) : '—')}</td><td class="small-muted">${qtd}</td></tr>`;
+              })
+              .join('')}
+          </tbody></table>`
+          : `<div class="empty">Nenhum(a) ${rotulo.toLowerCase().replace(/s$/, '')} cadastrado(a) ainda.</div>`
+      }
+    </div>`;
 }
 
 function pageEstrutura() {
@@ -181,24 +232,26 @@ function pageEstrutura() {
       </button>
     </div>
 
-    <div class="kpi-grid" style="margin-bottom:18px;">
-      <div class="kpi-card-inetris">
+    <div class="kpi-grid" style="margin-bottom:${_cardEstruturaAberto ? '0' : '18px'};">
+      <div class="kpi-card-inetris kpi-clicavel ${_cardEstruturaAberto === 'unidade' ? 'kpi-ativo' : ''}" style="cursor:pointer;" onclick="_cardEstruturaAberto = _cardEstruturaAberto==='unidade'?null:'unidade'; render();">
         <div class="kpi-card-icone">${icoEstrutura('<rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="8" width="7" height="13" rx="1"/><path d="M6 7h1M6 11h1M6 15h1M17 12h1M17 16h1"/>')}</div>
         <div><div class="kpi-card-valor">${totUnidades}</div><div class="kpi-card-label">Unidades</div></div>
       </div>
-      <div class="kpi-card-inetris">
+      <div class="kpi-card-inetris kpi-clicavel ${_cardEstruturaAberto === 'departamento' ? 'kpi-ativo' : ''}" style="cursor:pointer;" onclick="_cardEstruturaAberto = _cardEstruturaAberto==='departamento'?null:'departamento'; render();">
         <div class="kpi-card-icone">${icoEstrutura('<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>')}</div>
         <div><div class="kpi-card-valor">${totDepartamentos}</div><div class="kpi-card-label">Departamentos</div></div>
       </div>
-      <div class="kpi-card-inetris">
+      <div class="kpi-card-inetris kpi-clicavel ${_cardEstruturaAberto === 'setor' ? 'kpi-ativo' : ''}" style="cursor:pointer;" onclick="_cardEstruturaAberto = _cardEstruturaAberto==='setor'?null:'setor'; render();">
         <div class="kpi-card-icone">${icoEstrutura('<rect x="9" y="3" width="6" height="6" rx="1"/><rect x="3" y="15" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/><path d="M12 9v3M12 12H6v3M12 12h6v3"/>')}</div>
         <div><div class="kpi-card-valor">${totSetores}</div><div class="kpi-card-label">Setores</div></div>
       </div>
-      <div class="kpi-card-inetris">
+      <div class="kpi-card-inetris kpi-clicavel ${_cardEstruturaAberto === 'colaboradores' ? 'kpi-ativo' : ''}" style="cursor:pointer;" onclick="_cardEstruturaAberto = _cardEstruturaAberto==='colaboradores'?null:'colaboradores'; render();">
         <div class="kpi-card-icone">${icoEstrutura('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11"/>')}</div>
         <div><div class="kpi-card-valor">${totColaboradores}</div><div class="kpi-card-label">Colaboradores</div></div>
       </div>
     </div>
+
+    ${_cardEstruturaAberto ? renderDetalheCardEstrutura(_cardEstruturaAberto) : ''}
 
     ${
       _formAddEstruturaAberto

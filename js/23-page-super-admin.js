@@ -13,6 +13,7 @@ let _superAdminEmpresas = [];
 let _superAdminCodigos = [];
 let _superAdminMetricas = null;
 let _superAdminPayloads = [];
+let _superAdminSolicitacoes = [];
 let _superAdminNovoRotulo = '';
 let _superAdminNovoPonto = false; // escolha sim/não do módulo Ponto pra empresa que usar este código
 
@@ -23,21 +24,27 @@ async function carregarDadosSuperAdmin() {
     { data: empresas, error: erroEmpresas },
     { data: codigos, error: erroCodigos },
     { data: payloads, error: erroPayloads },
+    { data: solicitacoes },
   ] = await Promise.all([
     sb
       .from('empresas')
-      .select('id, nome_fantasia, cnpj, acesso_suspenso, suspensa_em, created_at')
+      .select('id, nome_fantasia, cnpj, acesso_suspenso, suspensa_em, created_at, trial_ate, is_pagante')
       .order('created_at', { ascending: false }),
     sb
       .from('codigos_licenca_empresa')
-      .select('id, codigo, nome_empresa_sugerido, usado, empresa_id, criado_em, usado_em, ponto_habilitado')
+      .select('id, codigo, nome_empresa_sugerido, usado, empresa_id, criado_em, usado_em, ponto_habilitado, trial_dias')
       .order('criado_em', { ascending: false }),
     // Métricas agregadas: os dados operacionais de cada Empresa vivem dentro
     // do "payload" (blob JSON), não em tabelas separadas — por isso a
     // consulta é direto em dados_sistema. Precisa da política de leitura
     // nova (ver sql/13-metricas-super-admin.sql).
     sb.from('dados_sistema').select('empresa_id, payload, atualizado_em'),
+    sb
+      .from('solicitacoes_teste')
+      .select('id, nome_solicitante, email, nome_empresa, telefone, status, codigo_gerado, criado_em')
+      .order('criado_em', { ascending: false }),
   ]);
+  _superAdminSolicitacoes = solicitacoes || [];
   if (erroEmpresas || erroCodigos || erroPayloads)
     showToast(
       'Não foi possível carregar os dados: ' + (erroEmpresas?.message || erroCodigos?.message || erroPayloads?.message)
@@ -161,6 +168,85 @@ function gerarCodigoLicencaLetras() {
     c += chars[bytes[i] % chars.length];
   }
   return c;
+}
+
+async function apagarDadosEmpresa(empresaId, nomeEmpresa) {
+  // Dupla confirmação: exclusão é irreversível. Pede pra digitar o nome.
+  const digitado = prompt(
+    `ATENÇÃO: isto vai APAGAR PERMANENTEMENTE todos os dados de "${nomeEmpresa}" (colaboradores, cargos, ciclos, tudo). Não dá pra desfazer.\n\nPara confirmar, digite o nome da empresa exatamente:`
+  );
+  if (digitado === null) return;
+  if (digitado.trim() !== (nomeEmpresa || '').trim()) {
+    showToast('Nome não confere. Exclusão cancelada.');
+    return;
+  }
+  const { error } = await sb.rpc('super_admin_apagar_empresa', { p_empresa_id: empresaId });
+  if (error) {
+    showToast('Falha ao apagar: ' + error.message);
+    return;
+  }
+  showToast(`Dados de "${nomeEmpresa}" apagados.`);
+  await carregarDadosSuperAdmin();
+}
+
+async function aprovarSolicitacaoTeste(solicitacaoId) {
+  const s = _superAdminSolicitacoes.find((x) => x.id === solicitacaoId);
+  if (!s) return;
+  const codigo = gerarCodigoLicencaLetras();
+  // Gera um código de licença marcado como teste (7 dias). Quando a pessoa
+  // se cadastrar com ele, a empresa nasce com trial_ate = agora + 7 dias
+  // (ver a trigger em sql/24-teste-gratis.sql).
+  const { error: erroCodigo } = await sb.from('codigos_licenca_empresa').insert({
+    codigo,
+    nome_empresa_sugerido: s.nome_empresa,
+    criado_por: meuPerfilId,
+    trial_dias: 7,
+  });
+  if (erroCodigo) {
+    showToast('Não foi possível gerar o código: ' + erroCodigo.message);
+    return;
+  }
+  const { error: erroUpd } = await sb
+    .from('solicitacoes_teste')
+    .update({
+      status: 'aprovada',
+      codigo_gerado: codigo,
+      decidido_em: new Date().toISOString(),
+      decidido_por: meuPerfilId,
+    })
+    .eq('id', solicitacaoId);
+  if (erroUpd) {
+    showToast('Código gerado, mas falha ao atualizar a solicitação: ' + erroUpd.message);
+  }
+
+  // E-mail pra pessoa com o código e o passo a passo pra entrar no teste.
+  sb.functions
+    .invoke('enviar-email', {
+      body: {
+        para: s.email,
+        assunto: 'Seu teste grátis do INETRIS foi liberado 🎉',
+        html: `<p>Olá, ${s.nome_solicitante}!</p>
+          <p>Seu teste grátis de 7 dias da plataforma INETRIS (Sistema de Gestão de Pessoas) foi liberado para a empresa <b>${s.nome_empresa}</b>.</p>
+          <p>Para começar, acesse o sistema, clique em <b>Cadastrar</b> e use este código de licença:</p>
+          <p style="font-size:20px;font-weight:bold;letter-spacing:1px;">${codigo}</p>
+          <p>O teste vale por 7 dias a partir do seu cadastro. Qualquer dúvida, é só responder este e-mail.</p>
+          <p>Instituto INETRIS</p>`,
+      },
+    })
+    .catch(() => {});
+
+  showToast(`Solicitação aprovada. Código ${codigo} gerado e e-mail enviado para ${s.email}.`);
+  await carregarDadosSuperAdmin();
+}
+
+async function recusarSolicitacaoTeste(solicitacaoId) {
+  if (!confirm('Recusar esta solicitação de teste?')) return;
+  await sb
+    .from('solicitacoes_teste')
+    .update({ status: 'recusada', decidido_em: new Date().toISOString(), decidido_por: meuPerfilId })
+    .eq('id', solicitacaoId);
+  showToast('Solicitação recusada.');
+  await carregarDadosSuperAdmin();
 }
 
 async function gerarNovoCodigoLicenca() {
@@ -361,6 +447,33 @@ function pageSuperAdmin() {
     </div>
 
     <div class="card">
+      <h3>Solicitações de teste grátis <small>${_superAdminSolicitacoes.filter((s) => s.status === 'pendente').length} pendente(s)</small></h3>
+      ${
+        _superAdminSolicitacoes.length
+          ? `<table><thead><tr><th>Empresa</th><th>Solicitante</th><th>Contato</th><th>Quando</th><th>Status</th><th></th></tr></thead><tbody>
+          ${_superAdminSolicitacoes
+            .map(
+              (s) => `<tr>
+              <td><b>${escaparHtml(s.nome_empresa)}</b></td>
+              <td class="small-muted">${escaparHtml(s.nome_solicitante)}</td>
+              <td class="small-muted">${escaparHtml(s.email)}${s.telefone ? '<br>' + escaparHtml(s.telefone) : ''}</td>
+              <td class="small-muted">${new Date(s.criado_em).toLocaleDateString('pt-BR')}</td>
+              <td>${s.status === 'pendente' ? '<span class="pill pill-neutral">Pendente</span>' : s.status === 'aprovada' ? `<span class="pill pill-alavancar">Aprovada</span>${s.codigo_gerado ? `<br><span class="small-muted" style="font-family:var(--mono);">${s.codigo_gerado}</span>` : ''}` : '<span class="pill pill-iniciar">Recusada</span>'}</td>
+              <td style="text-align:right;">${
+                s.status === 'pendente'
+                  ? `<button class="btn btn-sm btn-primary" onclick="aprovarSolicitacaoTeste('${s.id}')">Aprovar</button>
+                     <button class="btn btn-sm btn-ghost" onclick="recusarSolicitacaoTeste('${s.id}')">Recusar</button>`
+                  : '—'
+              }</td>
+            </tr>`
+            )
+            .join('')}
+        </tbody></table>`
+          : '<div class="empty">Nenhuma solicitação de teste ainda. Elas aparecem aqui quando alguém pede pelo site.</div>'
+      }
+    </div>
+
+    <div class="card">
       <h3>Gerar novo código de licença</h3>
       <p class="page-desc">Cria um código de uso único. Envie por WhatsApp/e-mail pra empresa-cliente — ela usa esse código na tela de cadastro, no lugar de "Nome da empresa" sozinho.</p>
       <div class="field"><label>Rótulo (opcional, só pra você identificar depois — ex.: "Lacle")</label>
@@ -404,7 +517,7 @@ function pageSuperAdmin() {
       ${
         _superAdminEmpresas.length
           ? `
-        <table><thead><tr><th>Empresa</th><th>CNPJ</th><th>Status</th><th>Pagamento</th><th>Cadastrada em</th><th></th></tr></thead><tbody>
+        <table><thead><tr><th>Empresa</th><th>CNPJ</th><th>Status</th><th>Teste</th><th>Pagamento</th><th>Cadastrada em</th><th></th></tr></thead><tbody>
           ${_superAdminEmpresas
             .map((e) => {
               const statusPagamento = _superAdminPayloads.find((p) => p.empresa_id === e.id)?.payload?.empresa
@@ -415,18 +528,39 @@ function pageSuperAdmin() {
                 Atrasado: 'pill-iniciar',
                 Cancelado: 'pill-neutral',
               };
+              // Situação do teste grátis desta empresa.
+              let seloTeste = '<span class="small-muted">—</span>';
+              let trialExpirado = false;
+              if (e.is_pagante) {
+                seloTeste = '<span class="pill pill-alavancar">Pagante</span>';
+              } else if (e.trial_ate) {
+                const dias = Math.ceil((new Date(e.trial_ate) - new Date()) / (1000 * 60 * 60 * 24));
+                if (dias >= 0) {
+                  seloTeste = `<span class="pill pill-desenvolver">Teste · ${dias}d</span>`;
+                } else {
+                  seloTeste = '<span class="pill pill-iniciar">Teste expirado</span>';
+                  trialExpirado = true;
+                }
+              }
               return `<tr>
             <td><b>${escaparHtml(e.nome_fantasia) || '(sem nome ainda)'}</b>${e.id === empresaIdAtual ? ' <span class="pill pill-neutral">sua empresa</span>' : ''}</td>
             <td class="small-muted">${e.cnpj || '—'}</td>
             <td>${e.acesso_suspenso ? '<span class="pill pill-iniciar">Suspensa</span>' : '<span class="pill pill-alavancar">Ativa</span>'}</td>
+            <td>${seloTeste}</td>
             <td>${statusPagamento ? `<span class="pill ${corPagamento[statusPagamento] || 'pill-neutral'}">${statusPagamento}</span>` : '<span class="small-muted">—</span>'}</td>
             <td class="small-muted">${e.created_at ? new Date(e.created_at).toLocaleDateString('pt-BR') : '—'}</td>
-            <td>${
+            <td style="display:flex;gap:6px;justify-content:flex-end;">${
               e.id === empresaIdAtual
                 ? '<span class="small-muted">Não é possível suspender aqui</span>'
-                : e.acesso_suspenso
-                  ? `<button class="btn btn-sm btn-ghost" onclick="reativarEmpresa('${e.id}','${escaparParaOnclick(e.nome_fantasia)}')">Reativar</button>`
-                  : `<button class="btn btn-sm btn-ghost" style="color:var(--iniciar);" onclick="suspenderEmpresa('${e.id}','${escaparParaOnclick(e.nome_fantasia)}')">Suspender</button>`
+                : `${
+                    e.acesso_suspenso
+                      ? `<button class="btn btn-sm btn-ghost" onclick="reativarEmpresa('${e.id}','${escaparParaOnclick(e.nome_fantasia)}')">Reativar</button>`
+                      : `<button class="btn btn-sm btn-ghost" style="color:var(--iniciar);" onclick="suspenderEmpresa('${e.id}','${escaparParaOnclick(e.nome_fantasia)}')">Suspender</button>`
+                  }${
+                    trialExpirado
+                      ? `<button class="btn btn-sm btn-ghost" style="color:var(--iniciar);" onclick="apagarDadosEmpresa('${e.id}','${escaparParaOnclick(e.nome_fantasia)}')">Apagar dados</button>`
+                      : ''
+                  }`
             }</td>
           </tr>`;
             })

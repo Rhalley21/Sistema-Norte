@@ -3,6 +3,197 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.77.1 — Correção: mensagem "atualizando" escondida atrás do botão
+As mensagens (toasts), incluindo a de "atualizando dados", apareciam no mesmo
+canto do botão fixo de atualizar e ficavam escondidas atrás dele. Agora o
+toast aparece acima do botão e por cima dele, ficando sempre visível.
+
+## v0.77.0 — Pesquisa de clima anônima
+A pesquisa de clima (eNPS) passou a ser anônima. A nota e o comentário são
+salvos SEM ligação com quem respondeu — o admin/RH vê só as respostas e os
+comentários, nunca o nome de quem escreveu. Para não perder o controle, quem
+já respondeu fica numa lista separada (só IDs, sem nota nem comentário),
+usada apenas para impedir resposta dupla e mostrar a participação (X de Y
+colaboradores). O colaborador vê um aviso de que a resposta é anônima, para
+responder com sinceridade. Sem mudança de banco (a estrutura vive no state).
+
+## v0.76.1 — Dashboard: card de ranking de colaboradores
+Novo card "Ranking de colaboradores" no dashboard, no mesmo estilo do card de
+Ponto: dois mini-cards lado a lado — "Melhores" (top 3, verde) e "Precisam de
+atenção" (os 3 de menor nota, vermelho) — cada um listando nome e nota do
+último diagnóstico. Aparece quando há pelo menos 2 colaboradores avaliados.
+
+## v0.76.0 — Estrutura: cards de resumo clicáveis
+Os quatro cards do topo da Estrutura Organizacional (Unidades, Departamentos,
+Setores, Colaboradores) ficaram clicáveis, como no dashboard. Ao clicar, abre
+logo abaixo uma lista com os detalhes: para Unidades/Departamentos/Setores, o
+nome, código, responsável e quantos colaboradores; para Colaboradores, cada
+pessoa e onde trabalha (unidade e setor). Clicar de novo fecha; o card ativo
+fica destacado.
+
+## v0.75.1 — Planilhas de importação com colunas na largura certa
+Os modelos de importação (colaboradores e cargos) agora têm cada coluna
+ajustada automaticamente à largura do maior nome que ela contém — nomes
+longos (ex: "Coordenador Administrativo") deixam de ficar cortados ou
+espremidos. Colunas curtas respeitam uma largura mínima, e há um teto para
+não ficarem exageradas. A planilha fica limpa e legível.
+
+## v0.75.0 — Meu Cargo e Meu Desenvolvimento para todos os papéis
+As telas "Meu Cargo" e "Meu Desenvolvimento" passaram a ser acessíveis a
+todos os papéis (Administrador, RH, Líder e Colaborador), não só colaborador
+e líder. Quem tiver um cargo próprio vinculado vê o descritivo/o
+desenvolvimento; quem não tiver (comum em contas de RH/Admin que só
+gerenciam) vê o aviso pedindo a vinculação. Nenhuma mudança de banco.
+
+## v0.74.1 — Correção: Meu Cargo não mostrava o conteúdo (cargos antigos)
+Na tela "Meu Cargo", o descritivo (responsabilidades, KPIs, competências)
+aparecia vazio para cargos criados antes das mudanças recentes, embora o PDF
+mostrasse tudo. Causa: cargos antigos guardam os itens das listas como
+objetos ({nome}, {texto}...) e a tela só lia strings. Agora a tela aceita os
+dois formatos (string e objeto), então o cargo aparece completo dentro do
+sistema, para cargos antigos e novos. O botão de PDF continua igual.
+
+## v0.74.0 — Botão "Voltar" automático em todas as telas
+Todas as telas (menos o painel) agora têm um botão "Voltar" no topo, que
+retorna à tela anterior — como o botão voltar do navegador. É automático: o
+sistema guarda o histórico de navegação e o botão volta na ordem certa; se
+não houver para onde voltar, vai ao painel. O botão manual que havia sido
+adicionado à tela de Acompanhamento foi substituído por esse global.
+
+## v0.73.3 — Botão "Voltar ao painel" na tela de Acompanhamento
+A tela de Acompanhamento (PDIs e Avaliações) ganhou um botão "Voltar ao
+painel" no topo, para retornar ao dashboard sem precisar usar o menu.
+
+## v0.73.2 — Cards de Equipe e Ponto com a mesma altura
+Ajuste visual: os cards "Equipe" e "Ponto — últimos 30 dias", que ficam lado
+a lado no dashboard, agora têm a mesma altura (antes o de Ponto ficava mais
+alto, com espaço vazio embaixo).
+
+## v0.73.1 — Fim do banner "alguém atualizou"; botão discreto de atualizar
+O aviso "Alguém mais atualizou os dados da empresa" deixou de aparecer como
+banner que interrompe. No lugar, um botão discreto e fixo "Atualizar" no
+canto inferior direito, sempre disponível — a pessoa atualiza quando quiser.
+Quando outra pessoa salva algo, o botão ganha só um pontinho pulsante de
+aviso, sem atrapalhar. No celular vira apenas o ícone.
+
+## v0.73.0 — Dashboard: card de Equipe e resumo de ponto menor
+Novo card "Equipe" no dashboard: total de colaboradores cadastrados e
+quantos são Líderes/Gestores (por papel de login), com o percentual da
+equipe em liderança. O card de "Ponto — últimos 30 dias" ficou menor: agora
+divide a linha lado a lado com o card de Equipe (ocupa metade da largura em
+vez da tela toda), sem reduzir a fonte. Quando o módulo de Ponto está
+desligado, o card de Equipe ocupa a linha inteira.
+
+## v0.72.1 — Dashboard mais limpo: KPIs clicáveis
+Removidos do dashboard os dois cards de lista grandes ("PDIs — quem está
+fazendo" e "Avaliações — quem fez") e os rankings de colaboradores, que
+estavam poluindo a tela. Em vez disso, os KPIs "Colaboradores avaliados" e
+"PDIs em andamento" ficaram clicáveis: clicar abre a tela de Acompanhamento
+já na aba certa (Avaliações ou PDIs), com a lista completa. O gráfico de
+Desempenho por setor foi mantido e agora ocupa a largura toda.
+
+## v0.72.0 — Tela de Acompanhamento (PDIs e Avaliações completos)
+Os cards "PDIs em andamento" e "Avaliações" no dashboard agora mostram só um
+resumo (top 6) e ganharam um botão "Ver todos os colaboradores →" que abre a
+tela nova de Acompanhamento. Nela, duas abas: uma lista TODOS os
+colaboradores com o status do PDI (Concluído / Em andamento / Não iniciado /
+Sem PDI) e outra com o status da avaliação (Avaliado / Pendente / Não
+iniciada) — com quem falta no topo, pra facilitar a cobrança. A tela é
+acessada pelos botões, não ocupa espaço no menu.
+
+## v0.71.1 — Tela de entrada comercial desativada (temporário)
+A landing comercial (planos + teste grátis) foi desativada por ora — o
+sistema volta a abrir direto no login, como antes. O código da landing
+continua no projeto (js/35-tela-entrada.js); para religar, basta trocar
+renderLogin() por renderTelaAuth() na inicialização (js/19-auth.js). Nada
+foi apagado.
+
+## v0.71.0 — Dashboard do Admin reorganizado
+Substituições no dashboard do Administrador conforme pedido:
+- "Desempenho por dimensão" (tabela) → **gráfico de desempenho por setor**
+  (nota média de cada setor, barras coloridas por nível).
+- "Oportunidades de desenvolvimento" → **ranking dos melhores colaboradores**
+  (tabela com posição, nome, cargo e nota).
+- Novo card **"PDIs — quem está fazendo"**: lista de colaboradores com o
+  progresso (X/Y ações) e status (Concluído / Em andamento / Não iniciado).
+- Novo card **"Avaliações — quem fez e quem falta"**: lista de colaboradores
+  com o status da avaliação (Feita / Pendente / Não iniciada), com os
+  pendentes no topo para facilitar a cobrança.
+
+## v0.70.0 — "Meu Desenvolvimento": colaborador acompanha o próprio PDI
+Nova tela "Meu Desenvolvimento" no menu do colaborador (e do gestor),
+reunindo: o PDI (plano de desenvolvimento com as ações, prazos e status), a
+situação da autoavaliação, e o resultado da avaliação. Regra importante de
+RH: o resultado/nota só é liberado ao colaborador DEPOIS que o gestor realiza
+a reunião de feedback — antes disso, mostra um aviso de que os números virão
+acompanhados da conversa. Junto com a tela "Meu Cargo" (já existente), o
+colaborador passa a ter transparência total sobre função e desenvolvimento.
+Sem mudança de banco.
+
+## v0.69.0 — Dashboard: ranking de colaboradores e cores corrigidas
+- Novo card "Melhores e piores colaboradores" no dashboard do Administrador:
+  ranking por nota do último diagnóstico de cada pessoa, com os 3 melhores
+  desempenhos (verde) e os 3 que precisam de atenção (vermelho), lado a lado.
+- Correção das cores em "Desempenho por dimensão": a coluna agora mostra o
+  Nível (Baixo/Médio/Alto) seguindo o desempenho — baixo em vermelho, médio
+  em laranja, alto em verde. Antes a coluna "Impacto" invertia os rótulos e
+  causava a impressão de "baixo aparecendo verde".
+
+## v0.68.1 — Importação por planilha mais fácil (nomes reais + tolerância)
+O "não encontrado" na importação de colaboradores acontecia porque os nomes
+de Unidade, Setor e Gestor na planilha precisavam bater exatamente com o
+cadastro. Duas melhorias:
+- O modelo de colaboradores agora vem com os dados REAIS da empresa: a linha
+  de exemplo usa nomes que existem, e uma aba "Nomes válidos" lista todos os
+  cargos publicados, unidades, setores e gestores para copiar sem errar.
+- A validação passou a ignorar acentos, maiúsculas/minúsculas e espaços
+  extras — "unidade central " agora bate com "Unidade Central". A natureza do
+  cargo na importação de cargos também ficou tolerante a acento.
+
+## v0.68.0 — Teste grátis de 7 dias (entrada comercial + aprovação + bloqueio)
+Funcionalidade completa de teste grátis:
+- **Tela de entrada comercial** antes do login: hero, os três planos com
+  destaque nos preços (Gestão em evidência) e um formulário "Solicitar teste
+  grátis de 7 dias". Quem já é cliente clica em "Entrar" e vai ao login normal.
+- **Solicitação**: grava em `solicitacoes_teste` e envia e-mail de aviso ao
+  INETRIS (via Resend).
+- **Aprovação no painel do Super Admin**: nova seção lista as solicitações;
+  ao aprovar, o sistema gera um código de licença de teste (7 dias) e envia
+  e-mail com o código para o solicitante. A empresa nasce com a data de
+  expiração calculada (trigger).
+- **Durante o teste**: banner no dashboard mostrando os dias restantes e
+  atalho para os planos.
+- **No dia 8**: o login é bloqueado automaticamente (dados preservados), com
+  mensagem para assinar.
+- **Exclusão manual e segura**: empresas com teste expirado ganham um botão
+  "Apagar dados" no painel do Super Admin, com dupla confirmação (digitar o
+  nome). Nada é apagado automaticamente. Usa uma função SQL restrita a Super
+  Admin. Coluna "Teste" mostra a situação de cada empresa (Teste · Xd,
+  Expirado, Pagante).
+
+Requer rodar sql/24-teste-gratis.sql no projeto principal.
+
+## v0.67.0 — Planos reais e limite de colaboradores
+Os planos foram atualizados para os valores reais: Essencial (até 10 · R$
+297,00/mês), Gestão (11 a 30 · R$ 597,00/mês) e Estratégico (31 a 60 · R$
+997,00/mês) — exibindo o preço de cliente novo. O limite de colaboradores de
+cada plano passou a valer de verdade: o cadastro de colaborador é bloqueado
+ao atingir o teto do plano, com mensagem clara pedindo upgrade (fale com o
+INETRIS). A importação em lote respeita o mesmo teto (importa só até
+preencher as vagas). A tela de Colaboradores mostra um indicador "Plano X: N
+de LIMITE colaboradores (restam Y)". Empresa sem plano definido usa Essencial
+(até 10) como padrão. Os nomes de plano no cadastro da empresa foram
+atualizados (Essencial/Gestão/Estratégico).
+
+## v0.66.0 — "Meu Cargo": colaborador vê o descritivo da própria função
+Nova tela "Meu Cargo" no menu do colaborador (e do gestor), mostrando o
+desenho completo do próprio cargo em modo leitura: missão, responsabilidades,
+cultura e postura, requisitos, competências, ferramentas, KPIs, condições e
+carreira — com botão para baixar o PDF. Dá transparência sobre o que se
+espera da função, reduzindo o "isso não é minha obrigação". Só exibe o
+conteúdo se o desenho estiver publicado; se ainda for rascunho ou não houver
+cargo atribuído, mostra um aviso claro. Sem mudança de banco.
+
 ## v0.65.0 — Card de Ponto no dashboard do Admin
 O dashboard do Administrador (e do RH) ganhou um card de Ponto com os
 últimos 30 dias: atraso médio e hora extra média por colaborador, mais

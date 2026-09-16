@@ -304,7 +304,7 @@ async function iniciarComSessao(sessao) {
   const [empresaCheck] = await Promise.all([
     sb
       .from('empresas')
-      .select('acesso_suspenso, ponto_habilitado')
+      .select('acesso_suspenso, ponto_habilitado, trial_ate, is_pagante')
       .eq('id', perfil.empresa_id)
       .maybeSingle()
       .then((r) => r.data),
@@ -327,6 +327,18 @@ async function iniciarComSessao(sessao) {
     renderLogin();
     return;
   }
+  // Teste grátis expirado: se a empresa está em trial (trial_ate preenchido),
+  // já passou da data, e ainda não virou pagante, bloqueia o acesso (dia 8).
+  // Os dados NÃO são apagados aqui — só o acesso é bloqueado (ver sql/24).
+  if (empresaCheck?.trial_ate && !empresaCheck.is_pagante && new Date(empresaCheck.trial_ate) < new Date()) {
+    await sb.auth.signOut();
+    erroLogin =
+      'Seu teste grátis de 7 dias expirou. Para continuar usando o sistema, assine um plano — fale com o Instituto INETRIS.';
+    renderLogin();
+    return;
+  }
+  // Guarda quando o trial expira, pra mostrar o aviso "faltam X dias" no topo.
+  trialAte = empresaCheck?.trial_ate || null;
   // Módulo de Ponto é liga/desliga por Empresa (ver sql/21-ponto-por-empresa.sql).
   pontoHabilitado = !!empresaCheck?.ponto_habilitado;
 
@@ -336,6 +348,7 @@ async function iniciarComSessao(sessao) {
   state.role = PAPEL_PARA_ROLE[meuPapelReal] || 'colaborador';
   state.route = 'dashboard_role';
   assinarAtualizacoesAoVivo();
+  renderBotaoAtualizar(); // botão discreto de atualizar, sempre disponível
   render(); // já mostra a tela; notificações entram logo em seguida
   assinarNotificacoesAoVivo();
   carregarNotificacoes().then(render); // não bloqueia a abertura
@@ -433,6 +446,9 @@ sb.auth.onAuthStateChange((evento, sessao) => {
   if (data.session) {
     iniciarComSessao(data.session);
   } else {
+    // Abre direto no login (a landing comercial com planos/teste grátis está
+    // pronta em js/35-tela-entrada.js, mas desativada por ora — pra religar,
+    // troque renderLogin() por renderTelaAuth() aqui).
     renderLogin();
   }
 })();

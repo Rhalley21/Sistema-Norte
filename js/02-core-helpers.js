@@ -692,33 +692,37 @@ function assinarAtualizacoesAoVivo() {
         filter: `empresa_id=eq.${empresaIdAtual}`,
       },
       () => {
-        // BUG CORRIGIDO (segunda tentativa): comparar o carimbo exato do
-        // salvamento não bastava — se a pessoa clica em várias coisas
-        // seguidas, cada clique dispara seu próprio salvamento, e o aviso de
-        // um mais antigo podia chegar depois do carimbo já ter mudado pra
-        // um mais novo, dando falso positivo. Agora usa uma janela de tempo:
-        // se eu mesmo fiz qualquer ação nos últimos 4 segundos, assume que a
-        // mudança é minha e não mostra o aviso.
+        // Não interrompe mais com banner: só marca que há dados novos, e o
+        // botão discreto de atualizar (canto) ganha um ponto de destaque.
         const segundosDesdeMinhaUltimaAtividade = (Date.now() - _minhaUltimaAtividadeEm) / 1000;
         if (segundosDesdeMinhaUltimaAtividade < 4) return;
-        mostrarAvisoAtualizacao();
+        _haDadosNovos = true;
+        renderBotaoAtualizar();
       }
     )
     .subscribe();
 }
-function mostrarAvisoAtualizacao() {
+let _haDadosNovos = false;
+// Botão discreto e fixo pra atualizar quando a pessoa quiser. Fica sempre
+// disponível; quando alguém mais salva algo, ganha um pontinho de aviso.
+function renderBotaoAtualizar() {
   const el = document.getElementById('aviso-atualizacao');
   if (!el) return;
   el.innerHTML = `
-    <div class="aviso-atualizacao-banner">
-      <span>Alguém mais atualizou os dados da empresa.</span>
-      <button class="btn btn-primary btn-sm" onclick="atualizarDadosAoVivo(); esconderAvisoAtualizacao();">Atualizar agora</button>
-      <button class="btn btn-ghost btn-sm" onclick="esconderAvisoAtualizacao();">Depois</button>
-    </div>`;
+    <button class="botao-atualizar-fixo ${_haDadosNovos ? 'tem-novidade' : ''}"
+      title="${_haDadosNovos ? 'Há dados novos — clique para atualizar' : 'Atualizar dados'}"
+      onclick="atualizarDadosAoVivo(); _haDadosNovos=false; renderBotaoAtualizar();">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      <span class="botao-atualizar-texto">Atualizar</span>
+    </button>`;
+}
+function mostrarAvisoAtualizacao() {
+  // Mantido por compatibilidade — agora apenas garante que o botão exista.
+  renderBotaoAtualizar();
 }
 function esconderAvisoAtualizacao() {
-  const el = document.getElementById('aviso-atualizacao');
-  if (el) el.innerHTML = '';
+  _haDadosNovos = false;
+  renderBotaoAtualizar();
 }
 
 /* =========================================================
@@ -1029,6 +1033,20 @@ async function garantirXLSX() {
   if (window.XLSX) return;
   await carregarScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
 }
+
+// Calcula a largura de cada coluna de uma planilha (matriz de linhas) com base
+// no maior texto daquela coluna, pra nada ficar cortado nem espremido. Devolve
+// o array no formato que o SheetJS espera em ws['!cols'].
+function larguraColunas(linhas, minimo = 12, maximo = 50) {
+  const larguras = [];
+  linhas.forEach((linha) => {
+    (linha || []).forEach((celula, i) => {
+      const tamanho = String(celula == null ? '' : celula).length;
+      if (larguras[i] === undefined || tamanho > larguras[i]) larguras[i] = tamanho;
+    });
+  });
+  return larguras.map((w) => ({ wch: Math.min(maximo, Math.max(minimo, (w || 0) + 2)) }));
+}
 async function garantirJsPDF() {
   if (window.jspdf) return;
   await carregarScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
@@ -1153,6 +1171,46 @@ function inicializarGraficosDashboard() {
             maintainAspectRatio: false,
             plugins: { legend: { display: false }, tooltip: { enabled: false } },
             scales: { x: { display: false }, y: { display: false } },
+          },
+        })
+      );
+    }
+    if (document.getElementById('barSetores') && d.setores && d.setores.length) {
+      // Cor de cada barra segue o desempenho do setor: <0.34 vermelho,
+      // <0.67 laranja, senão verde.
+      const corSetor = (m) => (m < 0.34 ? '#ef4444' : m < 0.67 ? '#f59e0b' : '#16a34a');
+      _chartsAtivos.push(
+        new Chart(document.getElementById('barSetores'), {
+          type: 'bar',
+          data: {
+            labels: d.setores.map((s) => s.nome),
+            datasets: [
+              {
+                data: d.setores.map((s) => Number(s.media.toFixed(2))),
+                backgroundColor: d.setores.map((s) => corSetor(s.media)),
+                borderRadius: 4,
+                maxBarThickness: 20,
+              },
+            ],
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { min: 0, max: 1, ticks: { color: corEixo, font: { size: 10 } }, grid: { color: corGrade } },
+              y: {
+                ticks: {
+                  color: corTexto,
+                  font: { size: 10 },
+                  callback: function (valor, indice) {
+                    return truncarRotuloEixo(this.getLabelForValue(indice));
+                  },
+                },
+                grid: { display: false },
+              },
+            },
           },
         })
       );

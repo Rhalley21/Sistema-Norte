@@ -25,3 +25,4 @@ let meuPapelReal = null; // owner | rh | lider | colaborador (papel de verdade, 
 let meuEscopoEstendido = false; // Escopo estendido: exceção concedida pelo Administrador para um Gestor ver a empresa toda (extensão de RBAC — PRD Cap. 3, sem RN própria)
 let souSuperAdmin = false; // Super Admin da plataforma (dono do NORTE) — nível acima do papel dentro da Empresa. Ver sql/11-licenciamento-empresas.sql
 let pontoHabilitado = false; // Módulo de Ponto ligado pra esta Empresa? Definido no login a partir de empresas.ponto_habilitado. Ver sql/21-ponto-por-empresa.sql
+let trialAte = null; // Se a empresa está em teste grátis, quando expira (ISO). Ver sql/24-teste-gratis.sql

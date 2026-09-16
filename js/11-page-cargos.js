@@ -373,6 +373,7 @@ async function baixarModeloCargos() {
   ];
   const linhas = [_CARGOS_COLUNAS, exemplo];
   const ws = XLSX.utils.aoa_to_sheet(linhas);
+  ws['!cols'] = larguraColunas(linhas);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Cargos');
   XLSX.writeFile(wb, 'modelo-importacao-cargos.xlsx');
@@ -412,8 +413,15 @@ function validarLinhaCargo(linha) {
   const nome = _campoCargo(linha, 'Nome do cargo', 'Nome', 'Cargo');
   let natureza = _campoCargo(linha, 'Natureza');
   // Normaliza a natureza pros valores aceitos; padrão "Operacional".
+  // Ignora acento/caixa: "estrategica" bate com "Estratégica".
+  const normNat = (s) =>
+    String(s || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toLowerCase();
   const natOk = ['Operacional', 'Apoio', 'Estratégica'];
-  const natEncontrada = natOk.find((n) => n.toLowerCase() === natureza.toLowerCase());
+  const natEncontrada = natOk.find((n) => normNat(n) === normNat(natureza));
   natureza = natEncontrada || 'Operacional';
 
   const erros = [];
