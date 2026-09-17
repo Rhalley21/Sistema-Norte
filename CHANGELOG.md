@@ -3,6 +3,14 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.78.1 — Correção: foto do atestado não abria a câmera
+O botão "Tirar foto do atestado" não fazia nada: a câmera era acionada antes
+do elemento de vídeo existir na tela (a ordem estava trocada). Corrigido — a
+câmera abre em vez de travar, com botão Cancelar e o mesmo plano B de câmera
+do ponto (tenta traseira, depois qualquer câmera). Também foi adicionada a
+opção "Escolher da galeria" (o seletor de arquivo, que no celular abre a
+câmera nativa ou a galeria) como alternativa mais confiável.
+
 ## v0.78.0 — Justificativas e abonos de ponto
 Funcionalidade completa de justificativas/abonos:
 - Na tela de **Ponto**, o colaborador tem um card "Justificativas e abonos"

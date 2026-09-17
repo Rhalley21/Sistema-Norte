@@ -21,6 +21,7 @@ let _justifJaCarregou = false;
 let _justifForm = { tipo: 'falta', dataRef: '', motivo: '', horaAjuste: '' };
 let _justifFotoBase64 = null; // foto do atestado capturada
 let _justifStreamFoto = null;
+let _justifCameraAberta = false; // intenção de abrir a câmera do atestado (quebra o ciclo render/câmera)
 let _justifEnviando = false;
 
 async function carregarMinhasJustificativas() {
@@ -41,9 +42,41 @@ function _justifStatusLabel(s) {
 }
 
 // ---- Foto do atestado (câmera) ----
+// Fluxo correto: marca a intenção → render() cria o <video> → aí liga a
+// câmera (senão tenta abrir num elemento que ainda não existe).
+// Alternativa à câmera ao vivo: no celular, o seletor de arquivo com
+// accept=image/* já abre a câmera nativa ou a galeria — mais confiável.
+function fotoAtestadoDeArquivo(input) {
+  const arquivo = input.files && input.files[0];
+  if (!arquivo) return;
+  const leitor = new FileReader();
+  leitor.onload = (e) => {
+    _justifFotoBase64 = e.target.result;
+    _justifCameraAberta = false;
+    render();
+  };
+  leitor.readAsDataURL(arquivo);
+}
+
+function abrirCameraAtestado() {
+  _justifCameraAberta = true;
+  render();
+  setTimeout(iniciarCameraAtestado, 80);
+}
+function cancelarCameraAtestado() {
+  pararCameraAtestado();
+  _justifCameraAberta = false;
+  render();
+}
 function iniciarCameraAtestado() {
   const video = document.getElementById('atestado-video');
-  if (!video || !navigator.mediaDevices?.getUserMedia) return;
+  if (!video || !navigator.mediaDevices?.getUserMedia) {
+    showToast('A câmera não está disponível neste navegador.');
+    _justifCameraAberta = false;
+    render();
+    return;
+  }
+  // Câmera traseira de preferência; se falhar, tenta qualquer câmera.
   navigator.mediaDevices
     .getUserMedia({ video: { facingMode: 'environment' } })
     .then((stream) => {
@@ -51,7 +84,27 @@ function iniciarCameraAtestado() {
       video.srcObject = stream;
       video.play();
     })
-    .catch(() => showToast('Não foi possível abrir a câmera. Você pode continuar sem a foto.'));
+    .catch(() => {
+      navigator.mediaDevices
+        .getUserMedia({ video: true })
+        .then((stream) => {
+          _justifStreamFoto = stream;
+          video.srcObject = stream;
+          video.play();
+        })
+        .catch((e) => {
+          const nome = e && (e.name || e.toString());
+          if (String(nome).includes('NotAllowed') || String(nome).includes('Permission')) {
+            showToast('Permissão de câmera negada. Autorize no cadeado ao lado do endereço e tente de novo.');
+          } else if (String(nome).includes('NotReadable') || String(nome).includes('Track')) {
+            showToast('Câmera ocupada por outro app. Feche-os e tente de novo.');
+          } else {
+            showToast('Não foi possível abrir a câmera. Você pode enviar sem a foto.');
+          }
+          _justifCameraAberta = false;
+          render();
+        });
+    });
 }
 function pararCameraAtestado() {
   if (_justifStreamFoto) {
@@ -68,10 +121,12 @@ function capturarFotoAtestado() {
   canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
   _justifFotoBase64 = canvas.toDataURL('image/jpeg', 0.7);
   pararCameraAtestado();
+  _justifCameraAberta = false;
   render();
 }
 function removerFotoAtestado() {
   _justifFotoBase64 = null;
+  _justifCameraAberta = false;
   render();
 }
 
@@ -148,10 +203,13 @@ function renderCardJustificativas() {
                    <img src="${_justifFotoBase64}" alt="atestado" style="width:90px;height:70px;object-fit:cover;border-radius:8px;border:1px solid var(--line);">
                    <button class="btn btn-ghost btn-sm" onclick="removerFotoAtestado()">Trocar foto</button>
                  </div>`
-              : _justifStreamFoto
-                ? `<video id="atestado-video" style="width:100%;max-width:320px;border-radius:10px;background:#000;" playsinline muted></video>
-                   <button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="capturarFotoAtestado()">Tirar foto</button>`
-                : `<button class="btn btn-ghost btn-sm" onclick="iniciarCameraAtestado();setTimeout(()=>{},0);render();">Tirar foto do atestado</button>`
+              : _justifCameraAberta
+                ? `<video id="atestado-video" style="width:100%;max-width:320px;border-radius:10px;background:#000;" playsinline muted autoplay></video>
+                   <div style="margin-top:8px;display:flex;gap:8px;"><button class="btn btn-primary btn-sm" onclick="capturarFotoAtestado()">Tirar foto</button><button class="btn btn-ghost btn-sm" onclick="cancelarCameraAtestado()">Cancelar</button></div>`
+                : `<div style="display:flex;gap:8px;flex-wrap:wrap;">
+                     <button class="btn btn-ghost btn-sm" onclick="abrirCameraAtestado()">Tirar foto do atestado</button>
+                     <label class="btn btn-ghost btn-sm" style="cursor:pointer;margin:0;">Escolher da galeria<input type="file" accept="image/*" style="display:none;" onchange="fotoAtestadoDeArquivo(this)"></label>
+                   </div>`
           }
         </div>`
           : ''
