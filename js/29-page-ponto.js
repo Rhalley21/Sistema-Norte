@@ -15,6 +15,7 @@ const PONTO_DIAS_HISTORICO = 7;
 
 let _meusRegistrosPontoHoje = [];
 let _meuHistoricoPonto = []; // últimos PONTO_DIAS_HISTORICO dias, incluindo hoje
+let _meusDiasAbonados = new Set(); // datas (AAAA-MM-DD) com justificativa aprovada — abonam atraso/falta
 let _pontoCarregando = false;
 let _pontoBatendoAgora = false;
 let _pontoJaCarregouUmaVez = false;
@@ -57,15 +58,23 @@ async function carregarDadosPonto() {
   const desde = new Date(hoje);
   desde.setDate(desde.getDate() - (PONTO_DIAS_HISTORICO - 1));
 
-  const [respHoje, respHistorico, respSeg] = await Promise.all([
+  const [respHoje, respHistorico, respSeg, respAbonos] = await Promise.all([
     sb.functions.invoke('ponto', { body: { action: 'hoje', inicioDoDiaISO: inicioDoDiaISO(hoje) } }),
     sb.functions.invoke('ponto', {
       body: { action: 'periodo', desdeISO: inicioDoDiaISO(desde), ateISO: new Date().toISOString() },
     }),
     sb.functions.invoke('ponto', { body: { action: 'seguranca_ler' } }),
+    sb.functions.invoke('ponto', {
+      body: { action: 'justificativa_abonos', inicioISO: inicioDoDiaISO(desde), fimISO: new Date().toISOString() },
+    }),
   ]);
   if (!respSeg.error && respSeg.data && !respSeg.data.error) {
     _pontoSeguranca = { exigeQr: !!respSeg.data.exigeQr, exigeSelfie: !!respSeg.data.exigeSelfie };
+  }
+  // Dias abonados (justificativas aprovadas): guarda um conjunto de datas
+  // (AAAA-MM-DD) que o cálculo deve ignorar pra atraso/falta.
+  if (!respAbonos.error && respAbonos.data && !respAbonos.data.error) {
+    _meusDiasAbonados = new Set((respAbonos.data.abonos || []).map((a) => a.data_ref));
   }
   _pontoCarregando = false;
 
@@ -160,8 +169,10 @@ function minutosDoDia(iso) {
 // Compara as batidas de UM dia com a jornada prevista. Retorna atraso na
 // entrada e hora extra / saída antecipada na saída, já descontada a
 // tolerância. Se não houver jornada definida, devolve null (a tela/relatório
-// simplesmente não mostram a coluna de saldo).
-function analisarDiaVsJornada(registrosDoDia, jornada) {
+// simplesmente não mostram a coluna de saldo). Se o dia estiver ABONADO
+// (justificativa aprovada), zera atraso e saída antecipada — mas mantém a
+// hora extra (se a pessoa trabalhou além, conta a favor dela).
+function analisarDiaVsJornada(registrosDoDia, jornada, diaAbonado) {
   if (!jornada) return null;
   const tol = jornada.toleranciaMin || 0;
   const entradas = registrosDoDia.filter((r) => r.tipo === 'entrada');
@@ -170,7 +181,7 @@ function analisarDiaVsJornada(registrosDoDia, jornada) {
   const ultimaSaida = saidas[saidas.length - 1];
 
   let atrasoMin = 0;
-  if (primeiraEntrada) {
+  if (primeiraEntrada && !diaAbonado) {
     const previsto = horarioParaMinutos(jornada.entrada);
     const real = minutosDoDia(primeiraEntrada.registrado_em);
     atrasoMin = Math.max(0, real - previsto - tol);
@@ -182,7 +193,7 @@ function analisarDiaVsJornada(registrosDoDia, jornada) {
     const previsto = horarioParaMinutos(jornada.saida);
     const real = minutosDoDia(ultimaSaida.registrado_em);
     extraMin = Math.max(0, real - previsto - tol);
-    saidaAntecipadaMin = Math.max(0, previsto - real - tol);
+    saidaAntecipadaMin = diaAbonado ? 0 : Math.max(0, previsto - real - tol);
   }
   return { atrasoMin, extraMin, saidaAntecipadaMin, primeiraEntrada, ultimaSaida };
 }
@@ -474,7 +485,8 @@ function pagePonto() {
   const maxMinutosGrafico = Math.max(480, ...dias.map((d) => d.minutos)); // piso de 8h pra escala não ficar exagerada em dias curtos
 
   const jornada = minhaJornada();
-  const analiseHoje = analisarDiaVsJornada(_meusRegistrosPontoHoje, jornada);
+  const hojeChave = new Date().toISOString().slice(0, 10);
+  const analiseHoje = analisarDiaVsJornada(_meusRegistrosPontoHoje, jornada, _meusDiasAbonados.has(hojeChave));
 
   return `
     <div class="page-head">
@@ -622,5 +634,7 @@ function pagePonto() {
       `
       }
     </div>
+
+    ${renderCardJustificativas()}
   `;
 }

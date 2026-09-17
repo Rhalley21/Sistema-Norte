@@ -3,6 +3,24 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.78.0 — Justificativas e abonos de ponto
+Funcionalidade completa de justificativas/abonos:
+- Na tela de **Ponto**, o colaborador tem um card "Justificativas e abonos"
+  onde cria pedidos: falta (dia inteiro), atraso/saída antecipada,
+  esquecimento de bater ponto (com o horário correto), ou atestado médico
+  (com foto do documento pela câmera). Ele acompanha o status de cada pedido.
+- Na **Conferência de Ponto** (RH/gestor), uma seção lista os pedidos, mostra
+  o atestado (clicável para ampliar) e permite aprovar ou rejeitar, com
+  filtro por status.
+- Quando **aprovada**, a justificativa **abona o dia**: o cálculo de atraso na
+  tela de Ponto passa a ignorar aquele dia (a hora extra, se houver, continua
+  contando a favor). Aprovar/rejeitar é permitido a owner, RH e gestor.
+
+Requer: rodar sql-ponto-db/03-justificativas.sql no banco de PONTO, criar o
+bucket privado "atestados-ponto" nesse projeto, e reimplantar a Edge Function
+"ponto". Observação: o abono já vale na tela de Ponto do colaborador; refletir
+o abono também no relatório semanal (por empresa) fica para um ajuste seguinte.
+
 ## v0.77.3 — Câmera do ponto mais robusta (plano B de câmera)
 O scanner de QR exigia estritamente a câmera traseira, o que fazia alguns
 celulares/navegadores falharem por completo (dando "câmera ocupada" mesmo sem
