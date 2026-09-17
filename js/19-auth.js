@@ -71,7 +71,7 @@ function renderLogin() {
         <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:22px;">
           ${compassSVGEstatico()}
           <div class="brand-name" style="margin-top:10px;font-size:22px;">INETRIS</div>
-          <div class="brand-sub" style="text-align:center;">Sistema de Avaliação e Desempenho</div>
+          <div class="brand-sub" style="text-align:center;">Sistema de Gestão de Pessoas</div>
         </div>
 
         <div style="display:flex;gap:8px;margin-bottom:18px;">
@@ -290,13 +290,36 @@ async function iniciarComSessao(sessao) {
     return;
   }
 
-  // Acesso da Empresa como um todo pode ter sido suspenso pelo Super Admin
-  // da plataforma (dono do NORTE) — ver sql/12-suspensao-empresas.sql.
-  const { data: empresaCheck } = await sb
-    .from('empresas')
-    .select('acesso_suspenso, ponto_habilitado')
-    .eq('id', perfil.empresa_id)
-    .maybeSingle();
+  meuPerfilId = perfil.id;
+  empresaIdAtual = perfil.empresa_id;
+  meuPapelReal = perfil.papel;
+  meuEscopoEstendido = !!perfil.escopo_estendido;
+
+  // OTIMIZAÇÃO DE ABERTURA (v0.63.0): antes, cada consulta abaixo esperava a
+  // anterior terminar (6 idas ao servidor em fila = 5-10s). Como estas quatro
+  // não dependem uma da outra (só dependem do perfil, que já temos), disparamos
+  // todas de uma vez com Promise.all — o tempo passa a ser o da mais lenta, não
+  // a soma de todas. seed() roda antes pois carregarEstado preenche o state.
+  seed(); // estado em branco antes de carregar
+  const [empresaCheck] = await Promise.all([
+    sb
+      .from('empresas')
+      .select('acesso_suspenso, ponto_habilitado, trial_ate, is_pagante')
+      .eq('id', perfil.empresa_id)
+      .maybeSingle()
+      .then((r) => r.data),
+    sb
+      .from('super_admins')
+      .select('id')
+      .eq('id', sessao.user.id)
+      .maybeSingle()
+      .then((r) => {
+        souSuperAdmin = !!r.data;
+      }),
+    carregarEstado(),
+    carregarUsuarios(), // popula _perfisEmpresa/_convitesEmpresa, usados também fora da aba Usuários
+  ]);
+
   if (empresaCheck?.acesso_suspenso) {
     await sb.auth.signOut();
     erroLogin =
@@ -304,34 +327,31 @@ async function iniciarComSessao(sessao) {
     renderLogin();
     return;
   }
-  // Módulo de Ponto é liga/desliga por Empresa — a escolha é feita pelo Super
-  // Admin ao gerar o código de licença (ver sql/21-ponto-por-empresa.sql).
+  // Teste grátis expirado: se a empresa está em trial (trial_ate preenchido),
+  // já passou da data, e ainda não virou pagante, bloqueia o acesso (dia 8).
+  // Os dados NÃO são apagados aqui — só o acesso é bloqueado (ver sql/24).
+  if (empresaCheck?.trial_ate && !empresaCheck.is_pagante && new Date(empresaCheck.trial_ate) < new Date()) {
+    await sb.auth.signOut();
+    erroLogin =
+      'Seu teste grátis de 7 dias expirou. Para continuar usando o sistema, assine um plano — fale com o Instituto INETRIS.';
+    renderLogin();
+    return;
+  }
+  // Guarda quando o trial expira, pra mostrar o aviso "faltam X dias" no topo.
+  trialAte = empresaCheck?.trial_ate || null;
+  // Módulo de Ponto é liga/desliga por Empresa (ver sql/21-ponto-por-empresa.sql).
   pontoHabilitado = !!empresaCheck?.ponto_habilitado;
-
-  meuPerfilId = perfil.id;
-  empresaIdAtual = perfil.empresa_id;
-  meuPapelReal = perfil.papel;
-  meuEscopoEstendido = !!perfil.escopo_estendido;
-
-  // Super Admin da plataforma (dono do NORTE — Instituto INETRIS) é um nível
-  // ACIMA do papel dentro da Empresa (owner/rh/lider/colaborador). Uma mesma
-  // pessoa pode ser "owner" da própria Empresa E também Super Admin da
-  // plataforma inteira — são coisas independentes. Ver sql/11-licenciamento-empresas.sql.
-  const { data: superAdminRow } = await sb.from('super_admins').select('id').eq('id', sessao.user.id).maybeSingle();
-  souSuperAdmin = !!superAdminRow;
 
   registrarAuditoria('usuario.login', { papel: meuPapelReal });
 
-  seed(); // estado em branco antes de carregar
-  await carregarEstado();
   aplicarTemaCoresInterface(state.configuracoes?.identidadeVisual?.corPrimaria);
-  await carregarUsuarios(); // popula _perfisEmpresa/_convitesEmpresa, usados também fora da aba Usuários
   state.role = PAPEL_PARA_ROLE[meuPapelReal] || 'colaborador';
   state.route = 'dashboard_role';
   assinarAtualizacoesAoVivo();
-  await carregarNotificacoes();
+  renderBotaoAtualizar(); // botão discreto de atualizar, sempre disponível
+  render(); // já mostra a tela; notificações entram logo em seguida
   assinarNotificacoesAoVivo();
-  render();
+  carregarNotificacoes().then(render); // não bloqueia a abertura
 }
 
 // BUG CORRIGIDO (de vez, sem disputa de tempo): antes, duas rotinas
@@ -426,6 +446,9 @@ sb.auth.onAuthStateChange((evento, sessao) => {
   if (data.session) {
     iniciarComSessao(data.session);
   } else {
+    // Abre direto no login (a landing comercial com planos/teste grátis está
+    // pronta em js/35-tela-entrada.js, mas desativada por ora — pra religar,
+    // troque renderLogin() por renderTelaAuth() aqui).
     renderLogin();
   }
 })();

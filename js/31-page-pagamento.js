@@ -11,11 +11,27 @@
 // Planos de referência exibidos como cartões. O plano contratado de cada
 // empresa vem de state.empresa.faturamento.plano; estes valores são só a
 // tabela de preços mostrada — o valor cobrado real é o valorMensal do contrato.
+// Definição central dos planos — usada na tela de Pagamento, no cadastro da
+// empresa e no bloqueio de cadastro de colaboradores por limite.
+// precoNovo = cliente novo; precoAtual = cliente com 12 meses (fidelidade).
+// limiteColaboradores define o teto de cadastro daquele plano.
 const PLANOS_NORTE = [
-  { nome: 'Essencial', preco: 'R$ 149', detalhe: 'Até 20 colaboradores' },
-  { nome: 'Profissional', preco: 'R$ 349', detalhe: 'Até 100 colaboradores' },
-  { nome: 'Enterprise', preco: 'R$ 799', detalhe: 'Colaboradores ilimitados' },
+  { nome: 'Essencial', limiteColaboradores: 10, precoNovo: 297, precoAtual: 197, detalhe: 'Até 10 colaboradores' },
+  { nome: 'Gestão', limiteColaboradores: 30, precoNovo: 597, precoAtual: 397, detalhe: '11 a 30 colaboradores' },
+  { nome: 'Estratégico', limiteColaboradores: 60, precoNovo: 997, precoAtual: 697, detalhe: '31 a 60 colaboradores' },
 ];
+
+// Limite de colaboradores do plano de uma empresa. Sem plano definido, usa o
+// menor (Essencial, até 10) como padrão. Usado pra bloquear novos cadastros.
+function limiteColaboradoresDaEmpresa() {
+  const nomePlano = state.empresa?.faturamento?.plano;
+  const plano = PLANOS_NORTE.find((p) => p.nome === nomePlano) || PLANOS_NORTE[0];
+  return { plano: plano.nome, limite: plano.limiteColaboradores };
+}
+
+function formatarPrecoPlano(valor) {
+  return `R$ ${Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+}
 
 function corDoStatusPagamento(status) {
   if (status === 'Em dia') return 'pill-alavancar';
@@ -54,7 +70,7 @@ function pagePagamento() {
           <div class="card" style="margin:0;${p.nome === planoAtual ? 'border:2px solid var(--gold);position:relative;' : ''}">
             ${p.nome === planoAtual ? '<span class="pill pill-alavancar" style="position:absolute;top:-12px;left:12px;">Seu plano</span>' : ''}
             <div class="small-muted">${p.nome}</div>
-            <div style="font-size:24px;font-weight:600;margin:4px 0;">${p.preco}<span class="small-muted" style="font-size:13px;font-weight:400;">/mês</span></div>
+            <div style="font-size:24px;font-weight:600;margin:4px 0;">${formatarPrecoPlano(p.precoNovo)}<span class="small-muted" style="font-size:13px;font-weight:400;">/mês</span></div>
             <div class="small-muted" style="font-size:12px;">${p.detalhe}</div>
           </div>
         `

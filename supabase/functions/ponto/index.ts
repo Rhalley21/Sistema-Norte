@@ -340,6 +340,134 @@ serve(async (req: Request) => {
       return jsonResponse({ registros: comFoto });
     }
 
+    // ---- Justificativas / abonos ----
+    if (action === 'justificativa_criar') {
+      // Colaborador cria um pedido. Se veio foto de atestado, sobe pro bucket.
+      let atestadoPath: string | null = null;
+      if (body.atestadoBase64) {
+        try {
+          const base64 = String(body.atestadoBase64).split(',').pop() || '';
+          const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+          const nome = `${perfil.empresa_id}/${perfil.id}/${Date.now()}.jpg`;
+          const up = await ponto.storage.from('atestados-ponto').upload(nome, bytes, {
+            contentType: 'image/jpeg',
+            upsert: false,
+          });
+          if (!up.error) atestadoPath = nome;
+          else console.error('Falha ao subir atestado', up.error);
+        } catch (e) {
+          console.error('Erro processando atestado', e);
+        }
+      }
+      const colaborador = body.colaboradorId || null;
+      const { data, error } = await ponto
+        .from('justificativas_ponto')
+        .insert({
+          empresa_id: perfil.empresa_id,
+          perfil_id: perfil.id,
+          colaborador_id: colaborador,
+          tipo: body.tipo,
+          data_ref: body.dataRef,
+          motivo: body.motivo || '',
+          hora_ajuste: body.horaAjuste || null,
+          atestado_path: atestadoPath,
+        })
+        .select('id')
+        .single();
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ id: data.id });
+    }
+
+    if (action === 'justificativa_minhas') {
+      // O colaborador vê as próprias justificativas.
+      const { data, error } = await ponto
+        .from('justificativas_ponto')
+        .select('id, tipo, data_ref, motivo, hora_ajuste, status, motivo_decisao, atestado_path, criado_em')
+        .eq('perfil_id', perfil.id)
+        .order('criado_em', { ascending: false });
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ justificativas: data || [] });
+    }
+
+    if (action === 'justificativa_pendentes') {
+      // Gestor/RH vê as pendentes da empresa pra aprovar. (owner/rh/lider)
+      if (!['owner', 'rh', 'lider'].includes(perfil.papel)) {
+        return jsonResponse({ error: 'Sem permissão para ver justificativas da equipe.' }, 403);
+      }
+      const filtro = body.status || 'pendente';
+      let q = ponto
+        .from('justificativas_ponto')
+        .select('id, perfil_id, tipo, data_ref, motivo, hora_ajuste, status, atestado_path, criado_em')
+        .eq('empresa_id', perfil.empresa_id)
+        .order('criado_em', { ascending: false });
+      if (filtro !== 'todas') q = q.eq('status', filtro);
+      const { data: js, error } = await q;
+      if (error) return jsonResponse({ error: error.message }, 500);
+
+      // Resolve nomes e, se houver atestado, uma URL assinada temporária.
+      const ids = [...new Set((js || []).map((j) => j.perfil_id))];
+      const { data: perfis } = await principalAdmin.from('perfis').select('id, nome').in('id', ids);
+      const nomePorId = Object.fromEntries((perfis || []).map((p) => [p.id, p.nome]));
+      const comExtras = await Promise.all(
+        (js || []).map(async (j) => {
+          let atestadoUrl = null;
+          if (j.atestado_path) {
+            const { data: assinada } = await ponto.storage.from('atestados-ponto').createSignedUrl(j.atestado_path, 3600);
+            atestadoUrl = assinada?.signedUrl || null;
+          }
+          return { ...j, nome: nomePorId[j.perfil_id] || 'Colaborador', atestadoUrl };
+        })
+      );
+      return jsonResponse({ justificativas: comExtras });
+    }
+
+    if (action === 'justificativa_decidir') {
+      // Gestor/RH aprova ou rejeita.
+      if (!['owner', 'rh', 'lider'].includes(perfil.papel)) {
+        return jsonResponse({ error: 'Sem permissão para decidir justificativas.' }, 403);
+      }
+      const novoStatus = body.aprovar ? 'aprovada' : 'rejeitada';
+      const { error } = await ponto
+        .from('justificativas_ponto')
+        .update({
+          status: novoStatus,
+          motivo_decisao: body.motivoDecisao || null,
+          decidido_por: perfil.id,
+          decidido_em: new Date().toISOString(),
+        })
+        .eq('id', body.justificativaId)
+        .eq('empresa_id', perfil.empresa_id);
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ status: novoStatus });
+    }
+
+    // ---- Dias abonados (justificativas aprovadas) de uma pessoa num período,
+    //      pra o cálculo de horas/atrasos ignorar esses dias. ----
+    if (action === 'justificativa_abonos') {
+      const inicio = body.inicioISO;
+      const fim = body.fimISO;
+      if (!inicio || !fim) return jsonResponse({ error: 'inicioISO e fimISO são obrigatórios.' }, 400);
+      // Se pediu de um perfil específico (relatório), precisa ser owner/rh;
+      // senão, retorna os do próprio.
+      let alvoPerfil = perfil.id;
+      if (body.perfilId && body.perfilId !== perfil.id) {
+        if (!['owner', 'rh'].includes(perfil.papel)) {
+          return jsonResponse({ error: 'Sem permissão.' }, 403);
+        }
+        alvoPerfil = body.perfilId;
+      }
+      const { data, error } = await ponto
+        .from('justificativas_ponto')
+        .select('data_ref, tipo')
+        .eq('empresa_id', perfil.empresa_id)
+        .eq('status', 'aprovada')
+        .gte('data_ref', inicio.slice(0, 10))
+        .lte('data_ref', fim.slice(0, 10))
+        .eq('perfil_id', alvoPerfil);
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ abonos: data || [] });
+    }
+
     return jsonResponse({ error: `Ação desconhecida: "${action}".` }, 400);
   } catch (e) {
     return jsonResponse({ error: String(e) }, 500);

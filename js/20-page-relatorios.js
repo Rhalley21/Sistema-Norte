@@ -680,6 +680,93 @@ async function exportarRelatorioInstitucionalPDF() {
   showToast('Relatório Institucional Consolidado exportado.');
 }
 
+// PDF só do Desenho de Cargo (um cargo específico) — para imprimir ou salvar
+// direto da tela do desenho. Reaproveita a mesma montagem do dossiê, mas sem
+// avaliação/PDI. Usado pelo botão "Imprimir / PDF" em js/12-page-desenho.js.
+async function exportarDesenhoCargoPDF(cargoId) {
+  await garantirJsPDF();
+  const cargo = state.cargos.find((c) => c.id === cargoId);
+  if (!cargo) {
+    showToast('Cargo não encontrado.');
+    return;
+  }
+  const d = cargo.desenho || {};
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const corPrimaria = hexParaRgb(state.configuracoes?.identidadeVisual?.corPrimaria);
+
+  doc.setFontSize(16);
+  doc.text('Desenho de Cargo', 14, 18);
+  doc.setFontSize(10);
+  doc.setTextColor(120);
+  doc.text(state.empresa?.nomeFantasia || '', 14, 24);
+  doc.setTextColor(0);
+  desenharLogoNoPDF(doc, 165, 8, 32, 18);
+
+  doc.setFontSize(13);
+  doc.text(`${cargo.nome} (${cargo.natureza})`, 14, 34);
+  doc.setFontSize(9);
+  doc.setTextColor(120);
+  doc.text(
+    `Versão ${d.versao || 1}${d.aprovado ? ' — publicado' : ' — rascunho'}${cargo.cbo ? '    CBO: ' + cargo.cbo : ''}`,
+    14,
+    40
+  );
+  doc.setTextColor(0);
+
+  let y = 50;
+  function bloco(titulo, texto) {
+    if (y > 265) {
+      doc.addPage();
+      y = 20;
+    }
+    doc.setFontSize(11);
+    doc.setTextColor(...corPrimaria);
+    doc.text(titulo, 14, y);
+    doc.setTextColor(0);
+    y += 6;
+    doc.setFontSize(9.5);
+    const linhas = doc.splitTextToSize(texto || '—', 182);
+    doc.text(linhas, 14, y);
+    y += linhas.length * 5 + 6;
+  }
+  function tabela(titulo, itens) {
+    if (!itens || !itens.length) return;
+    if (y > 245) {
+      doc.addPage();
+      y = 20;
+    }
+    doc.autoTable({
+      startY: y,
+      head: [[titulo]],
+      body: itens.map((i) => [i]),
+      styles: { fontSize: 8.5 },
+      headStyles: { fillColor: corPrimaria },
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  }
+
+  bloco(
+    '1. Identificação',
+    `Área: ${d.area || '—'}\nNível hierárquico: ${d.nivelHierarquico || '—'}\nRegime: ${d.regimeTrabalho || '—'}\nLocal: ${d.localTrabalho || '—'}\nReporta-se a: ${d.subordinacao || '—'}\nSubordinados diretos: ${d.subordinadosDiretos || '—'}`
+  );
+  bloco('2. Missão do Cargo', d.missao);
+  tabela('3. Responsabilidades e Atribuições', d.responsabilidades);
+  bloco('Cultura e Postura Institucional (RN030)', d.culturaPostura);
+  bloco(
+    '4. Requisitos',
+    `Formação acadêmica: ${d.formacaoAcademica || '—'}\nExperiência: ${d.experienciaProfissional || '—'}\nConhecimentos técnicos: ${d.conhecimentosTecnicos || '—'}\nIdiomas: ${d.idiomas || '—'}`
+  );
+  tabela('5. Competências Comportamentais', d.competenciasComportamentais);
+  tabela('6. Ferramentas e Sistemas', d.ferramentasSistemas);
+  tabela('7. Indicadores de Desempenho (KPIs do Cargo)', d.kpis);
+  bloco('8. Condições de Trabalho', d.condicoesTrabalho);
+  tabela('9. Perspectivas de Carreira', d.perspectivasCarreira);
+
+  doc.save(`desenho-cargo-${cargo.nome.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}.pdf`);
+  registrarAuditoria('desenho.exportado_pdf', { cargoId, cargo: cargo.nome });
+}
+
 async function exportarDossiePDF(cicloId) {
   await garantirJsPDF();
   const ciclo = state.ciclos.find((c) => c.id === cicloId);

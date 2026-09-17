@@ -101,7 +101,7 @@ function pageEmpresa() {
       <div class="grid2">
         <div class="field"><label>Plano contratado</label>
           <select id="f_plano">
-            ${['Essencial', 'Profissional', 'Enterprise'].map((v) => `<option value="${v}" ${e.faturamento?.plano === v ? 'selected' : ''}>${v}</option>`).join('')}
+            ${['Essencial', 'Gestão', 'Estratégico'].map((v) => `<option value="${v}" ${e.faturamento?.plano === v ? 'selected' : ''}>${v}</option>`).join('')}
           </select>
         </div>
         <div class="field"><label>Periodicidade do plano</label>

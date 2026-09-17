@@ -12,6 +12,12 @@ function renderRoute() {
       return pageCargos();
     case 'desenho':
       return pageDesenho();
+    case 'meu_cargo':
+      return pageMeuCargo();
+    case 'meu_desenvolvimento':
+      return pageMeuDesenvolvimento();
+    case 'acompanhamento':
+      return pageAcompanhamento();
     case 'colaboradores':
       return pageColaboradores();
     case 'ponto':
@@ -286,7 +292,20 @@ function pageDashboard() {
           .toUpperCase()
       : '—';
 
+  // Aviso de teste grátis: mostra os dias restantes quando a empresa está em trial.
+  let bannerTrial = '';
+  if (trialAte) {
+    const diasRestantes = Math.ceil((new Date(trialAte) - new Date()) / (1000 * 60 * 60 * 24));
+    if (diasRestantes >= 0) {
+      bannerTrial = `<div class="notice info" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span>🎁 Você está no <b>teste grátis</b> — ${diasRestantes === 0 ? 'último dia hoje' : `faltam ${diasRestantes} dia(s)`}. Para continuar após o teste, assine um plano.</span>
+        ${meuPapelReal === 'owner' ? `<button class="btn btn-sm btn-primary" onclick="goto('pagamento')">Ver planos</button>` : ''}
+      </div>`;
+    }
+  }
+
   return `
+    ${bannerTrial}
     <div class="topo-pagina-inetris">
       <div>
         <h1>${roleTitle}</h1>
@@ -416,11 +435,32 @@ function renderDashboardAdmin(abertos, pdisAtivos, encerrados) {
     .slice(-12)
     .map((m) => porMesAdmin[m].reduce((a, b) => a + b, 0) / porMesAdmin[m].length);
 
+  // Desempenho médio por setor: junta a última nota de cada colaborador e
+  // agrupa pelo setor dele (setorId na estrutura).
+  const notaPorColab = {};
+  state.ciclos
+    .filter((c) => c.diagnostico && c.diagnostico.geralMedia !== null && c.diagnostico.geralMedia !== undefined)
+    .forEach((c) => {
+      const at = notaPorColab[c.colaboradorId];
+      if (!at || (c.dataAbertura || '').localeCompare(at.dataAbertura || '') > 0) notaPorColab[c.colaboradorId] = c;
+    });
+  const setoresMap = {};
+  Object.values(notaPorColab).forEach((c) => {
+    const p = state.colaboradores.find((x) => x.id === c.colaboradorId);
+    if (!p) return;
+    const setorNome = state.estrutura.find((n) => n.id === p.setorId)?.nome || 'Sem setor';
+    (setoresMap[setorNome] = setoresMap[setorNome] || []).push(c.diagnostico.geralMedia);
+  });
+  const desempenhoSetores = Object.entries(setoresMap)
+    .map(([nome, notas]) => ({ nome, media: notas.reduce((a, b) => a + b, 0) / notas.length, qtd: notas.length }))
+    .sort((a, b) => b.media - a.media);
+
   _dadosGraficosDashboardAdmin = {
     ida: [contagemIda.I, contagemIda.D, contagemIda.A],
     pilares: mediaPorPilar,
     cargosRisco: porCargo.slice(0, 4),
     sparkline: mesesOrdenados,
+    setores: desempenhoSetores,
   };
 
   return `
@@ -434,6 +474,15 @@ function renderDashboardAdmin(abertos, pdisAtivos, encerrados) {
     `
         : ''
     }
+    ${
+      pontoHabilitado
+        ? `<div class="painel-visao-geral dash-equipe-ponto" style="grid-template-columns:1fr 1fr;align-items:stretch;">
+      ${renderCardColaboradores()}
+      ${renderCardPontoDashboard()}
+    </div>`
+        : renderCardColaboradores()
+    }
+    ${renderCardRankingDashboard()}
     <div class="painel-kpi-inetris">
       <div class="kpi-card-inetris" style="flex-direction:column;align-items:stretch;">
         <div style="display:flex;gap:12px;">
@@ -446,7 +495,7 @@ function renderDashboardAdmin(abertos, pdisAtivos, encerrados) {
         </div>
         ${mesesOrdenados.length > 1 ? '<div class="kpi-sparkline-wrap"><canvas id="sparklineAdmin"></canvas></div><div class="kpi-card-rodape">Últimos ' + mesesOrdenados.length + ' meses</div>' : ''}
       </div>
-      <div class="kpi-card-inetris" style="flex-direction:column;align-items:stretch;">
+      <div class="kpi-card-inetris kpi-clicavel" style="flex-direction:column;align-items:stretch;cursor:pointer;" onclick="_acompAba='avaliacao';goto('acompanhamento')" title="Ver todos os colaboradores e o status da avaliação">
         <div style="display:flex;gap:12px;">
           <div class="kpi-card-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1M9 12l2 2 4-4"/></svg></div>
           <div>
@@ -456,15 +505,15 @@ function renderDashboardAdmin(abertos, pdisAtivos, encerrados) {
           </div>
         </div>
         <div class="kpi-progresso-trilha"><div class="kpi-progresso-fill" style="width:${totalIda ? Math.min(100, Math.round((totalIda / state.colaboradores.length) * 100)) : 0}%;"></div></div>
-        <div class="kpi-card-rodape">Meta: 90%</div>
+        <div class="kpi-card-rodape">Meta: 90% · <span style="color:var(--gold-on-light);">ver detalhes →</span></div>
       </div>
-      <div class="kpi-card-inetris">
+      <div class="kpi-card-inetris kpi-clicavel" style="cursor:pointer;" onclick="_acompAba='pdi';goto('acompanhamento')" title="Ver todos os colaboradores e o status do PDI">
         <div class="kpi-card-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg></div>
         <div>
           <div class="kpi-card-label">PDIs em andamento</div>
           <div class="kpi-card-valor">${pdisAtivos}</div>
           <div class="kpi-card-nota">Em progresso</div>
-          <div class="kpi-card-nota">Total de ativos: ${ciclosComPdi.length}</div>
+          <div class="kpi-card-nota">Total de ativos: ${ciclosComPdi.length} · <span style="color:var(--gold-on-light);">ver →</span></div>
         </div>
       </div>
     </div>
@@ -493,48 +542,15 @@ function renderDashboardAdmin(abertos, pdisAtivos, encerrados) {
       </div>
     </div>
 
-    <div class="painel-visao-geral" style="grid-template-columns:1fr 1fr;">
-      <div class="card" style="margin-bottom:0;">
-        <h3>Desempenho por dimensão</h3>
-        <table><thead><tr><th>Dimensão</th><th>Resultado</th><th>Impacto</th></tr></thead><tbody>
-          ${['N', 'O', 'R', 'T', 'E']
-            .map((p) => {
-              const v = mediaPorPilar[p];
-              if (v === null)
-                return `<tr><td>${PILAR_LABEL[p]}</td><td class="small-muted">Sem dado</td><td class="small-muted">—</td></tr>`;
-              const sig = classificar(v);
-              const resultado =
-                sig === 'A' ? 'Domínio consolidado' : sig === 'D' ? 'Em desenvolvimento' : 'Abaixo do esperado';
-              const impacto = sig === 'I' ? 'Alto' : sig === 'D' ? 'Médio' : 'Baixo';
-              return `<tr><td>${PILAR_LABEL[p]}</td><td class="small-muted">${resultado}</td><td><span class="pill ${sig === 'I' ? 'pill-iniciar' : sig === 'D' ? 'pill-desenvolver' : 'pill-alavancar'}">${impacto}</span></td></tr>`;
-            })
-            .join('')}
-        </tbody></table>
-        <button class="btn btn-ghost btn-sm ver-todas-link" onclick="goto('diagnostico')">Ver todas as dimensões →</button>
-      </div>
-      <div class="card" style="margin-bottom:0;">
-        <h3>Oportunidades de desenvolvimento</h3>
-        <table><thead><tr><th>Dimensão</th><th>Oportunidade</th><th>Prioridade</th></tr></thead><tbody>
-          ${['N', 'O', 'R', 'T', 'E']
-            .map((p) => {
-              const v = mediaPorPilar[p];
-              if (v === null)
-                return `<tr><td>${PILAR_LABEL[p]}</td><td class="small-muted">Sem dado ainda</td><td class="small-muted">—</td></tr>`;
-              const sig = classificar(v);
-              const oportunidade =
-                sig === 'A'
-                  ? 'Manter reconhecimento e continuidade'
-                  : sig === 'D'
-                    ? 'Reforçar ações do Banco de Ações'
-                    : 'Priorizar PDI de Desenvolvimento';
-              const prioridade = sig === 'I' ? 'Alta' : sig === 'D' ? 'Média' : 'Baixa';
-              return `<tr><td>${PILAR_LABEL[p]}</td><td class="small-muted">${oportunidade}</td><td><span class="pill ${sig === 'I' ? 'pill-iniciar' : sig === 'D' ? 'pill-desenvolver' : 'pill-alavancar'}">${prioridade}</span></td></tr>`;
-            })
-            .join('')}
-        </tbody></table>
-        <button class="btn btn-ghost btn-sm ver-todas-link" onclick="goto('diagnostico')">Ver todas as oportunidades →</button>
-      </div>
+    <div class="card">
+      <h3>Desempenho por setor <small>Nota média de cada setor (escala 0 a 1)</small></h3>
+      ${
+        desempenhoSetores.length
+          ? `<div class="grafico-canvas-lg" style="height:${Math.max(120, desempenhoSetores.length * 36)}px;"><canvas id="barSetores" role="img" aria-label="Desempenho médio por setor"></canvas></div>`
+          : '<div class="empty">Ainda não há setores com colaboradores avaliados.</div>'
+      }
     </div>
+
 
     <div class="card">
       <h3>Avaliações recentes</h3>

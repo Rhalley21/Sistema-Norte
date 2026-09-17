@@ -3,3 +3,4 @@ sql/
 supabase/
 icons/
 *.min.js
+js/04a-data-cbo-oficial.js

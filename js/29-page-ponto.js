@@ -275,11 +275,17 @@ function iniciarLeitorQr() {
       let msg = 'Não foi possível abrir a câmera.';
       if (String(nome).includes('NotAllowed') || String(nome).includes('Permission')) {
         msg =
-          'Permissão de câmera negada. Autorize a câmera para este site nas configurações do navegador e tente de novo.';
+          'Permissão de câmera negada. Toque no cadeado ao lado do endereço do site → Câmera → Permitir, e tente de novo.';
       } else if (String(nome).includes('NotFound') || String(nome).includes('Devices')) {
         msg = 'Nenhuma câmera encontrada neste aparelho.';
-      } else if (String(nome).includes('NotReadable') || String(nome).includes('Track')) {
-        msg = 'A câmera está sendo usada por outro app. Feche os outros apps de câmera e tente de novo.';
+      } else if (
+        String(nome).includes('NotReadable') ||
+        String(nome).includes('Track') ||
+        String(nome).includes('AbortError') ||
+        String(nome).includes('in use')
+      ) {
+        msg =
+          'A câmera está ocupada por outro app (WhatsApp, Zoom, Meet, ou outra aba). Feche esses apps/abas — ou reinicie o aparelho — e tente de novo.';
       }
       mostrarErroLeitor(msg);
     });
@@ -308,7 +314,18 @@ function iniciarCameraSelfie() {
     })
     .catch((e) => {
       console.error('Falha na câmera frontal', e);
-      showToast('Não foi possível abrir a câmera frontal.');
+      const nome = e && (e.name || e.toString());
+      if (
+        String(nome).includes('NotReadable') ||
+        String(nome).includes('AbortError') ||
+        String(nome).includes('Track')
+      ) {
+        showToast('Câmera ocupada por outro app (WhatsApp, Zoom...). Feche-os e tente de novo.');
+      } else if (String(nome).includes('NotAllowed') || String(nome).includes('Permission')) {
+        showToast('Permissão de câmera negada. Autorize no cadeado ao lado do endereço e tente de novo.');
+      } else {
+        showToast('Não foi possível abrir a câmera frontal.');
+      }
     });
 }
 function pararCameraSelfie() {

@@ -18,13 +18,47 @@ function renderImportacaoLote() {
 
 async function baixarModeloImportacao() {
   await garantirXLSX();
-  const linhas = [
-    ['Nome', 'Cargo', 'Unidade', 'Setor', 'Gestor', 'Admissão'],
-    ['Maria Silva', 'Analista de Recursos Humanos', 'Unidade Central', 'Setor Financeiro', 'João Souza', '2026-01-15'],
+
+  // Nomes REAIS da empresa, pra o modelo já vir com o que existe — evita o
+  // erro de "não encontrado" por grafia diferente.
+  const unidades = state.estrutura.filter((n) => n.tipo === 'unidade');
+  const setores = state.estrutura.filter((n) => ['setor', 'equipe', 'departamento'].includes(n.tipo));
+  const cargos = state.cargos.filter((c) => c.desenho?.aprovado && !c.descontinuado);
+  const gestores = _perfisEmpresa.filter((pf) => ['lider', 'owner', 'rh'].includes(pf.papel));
+
+  // Linha de exemplo usando os primeiros valores reais que existirem (ou um
+  // placeholder claro, caso a empresa ainda não tenha cadastrado aquele item).
+  const exemplo = [
+    'Ex: Maria Silva',
+    cargos[0]?.nome || '(cadastre um cargo publicado primeiro)',
+    unidades[0]?.nome || '(cadastre uma unidade primeiro)',
+    setores[0]?.nome || '(cadastre um setor primeiro)',
+    gestores[0]?.nome || '(cadastre um gestor primeiro)',
+    '2026-01-15',
   ];
-  const ws = XLSX.utils.aoa_to_sheet(linhas);
+
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Colaboradores');
+
+  // Aba principal: onde você preenche.
+  const cabecalho = ['Nome', 'Cargo', 'Unidade', 'Setor', 'Gestor', 'Admissão'];
+  const wsPrincipal = XLSX.utils.aoa_to_sheet([cabecalho, exemplo]);
+  wsPrincipal['!cols'] = larguraColunas([cabecalho, exemplo]);
+  XLSX.utils.book_append_sheet(wb, wsPrincipal, 'Colaboradores');
+
+  // Abas de consulta: os nomes VÁLIDOS que existem na empresa. Copie daqui
+  // pra aba principal, exatamente como está, pra não dar "não encontrado".
+  const linhasRef = [
+    ['COPIE OS NOMES EXATAMENTE COMO ESTÃO AQUI'],
+    [],
+    ['CARGOS (publicados)', 'UNIDADES', 'SETORES', 'GESTORES'],
+    ...Array.from({ length: Math.max(cargos.length, unidades.length, setores.length, gestores.length, 1) }).map(
+      (_, i) => [cargos[i]?.nome || '', unidades[i]?.nome || '', setores[i]?.nome || '', gestores[i]?.nome || '']
+    ),
+  ];
+  const wsRef = XLSX.utils.aoa_to_sheet(linhasRef);
+  wsRef['!cols'] = larguraColunas(linhasRef);
+  XLSX.utils.book_append_sheet(wb, wsRef, 'Nomes válidos');
+
   XLSX.writeFile(wb, 'modelo-importacao-colaboradores.xlsx');
 }
 
@@ -52,17 +86,23 @@ function validarLinhaImportacao(linha) {
   const gestorNome = String(linha['Gestor'] || '').trim();
   const admissao = String(linha['Admissão'] || linha['Admissao'] || '').trim();
 
-  const cargo = state.cargos.find(
-    (c) => c.nome.toLowerCase() === cargoNome.toLowerCase() && c.desenho.aprovado && !c.descontinuado
-  );
-  const unidade = state.estrutura.find(
-    (n) => n.tipo === 'unidade' && n.nome.toLowerCase() === unidadeNome.toLowerCase()
-  );
+  // Comparação tolerante: ignora acentos, maiúsculas e espaços extras — a
+  // causa mais comum de "não encontrado" é só uma diferença de grafia.
+  const norm = (s) =>
+    String(s || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .replace(/\s+/g, ' ')
+      .toLowerCase();
+
+  const cargo = state.cargos.find((c) => norm(c.nome) === norm(cargoNome) && c.desenho.aprovado && !c.descontinuado);
+  const unidade = state.estrutura.find((n) => n.tipo === 'unidade' && norm(n.nome) === norm(unidadeNome));
   const setor = state.estrutura.find(
-    (n) => ['setor', 'equipe', 'departamento'].includes(n.tipo) && n.nome.toLowerCase() === setorNome.toLowerCase()
+    (n) => ['setor', 'equipe', 'departamento'].includes(n.tipo) && norm(n.nome) === norm(setorNome)
   );
   const gestor = _perfisEmpresa.find(
-    (pf) => ['lider', 'owner', 'rh'].includes(pf.papel) && (pf.nome || '').toLowerCase() === gestorNome.toLowerCase()
+    (pf) => ['lider', 'owner', 'rh'].includes(pf.papel) && norm(pf.nome) === norm(gestorNome)
   );
 
   const erros = [];
@@ -114,7 +154,18 @@ function renderPreviewImportacao() {
 
 function confirmarImportacaoLote() {
   const validas = _previewImportacao.filter((l) => l.erros.length === 0);
-  validas.forEach((l) => {
+  // Respeita o teto do plano também na importação em lote: só importa até
+  // preencher o limite; o excedente é barrado com aviso.
+  const { plano, limite } = limiteColaboradoresDaEmpresa();
+  const ativos = state.colaboradores.filter((c) => !c.inativo).length;
+  const vagas = Math.max(0, limite - ativos);
+  if (validas.length > vagas) {
+    showToast(
+      `O plano ${plano} permite ${limite} colaboradores. Importando ${vagas} de ${validas.length} — faça upgrade para cadastrar o restante.`
+    );
+  }
+  const aImportar = validas.slice(0, vagas);
+  aImportar.forEach((l) => {
     state.colaboradores.push({
       id: uid(),
       nome: l.nome,
@@ -136,9 +187,9 @@ function confirmarImportacaoLote() {
       ...novoCarimbo(),
     });
   });
-  registrarAuditoria('colaboradores.importados_em_lote', { quantidade: validas.length });
-  emitirEvento('colaboradores.importados_em_lote', { quantidade: validas.length });
-  showToast(`${validas.length} colaborador(es) importado(s) com sucesso.`);
+  registrarAuditoria('colaboradores.importados_em_lote', { quantidade: aImportar.length });
+  emitirEvento('colaboradores.importados_em_lote', { quantidade: aImportar.length });
+  showToast(`${aImportar.length} colaborador(es) importado(s) com sucesso.`);
   _previewImportacao = null;
   render();
 }
@@ -242,6 +293,14 @@ function pageColaboradores() {
       <h1>Colaboradores</h1>
       <p class="page-desc">Vínculo obrigatório (critério de aceite do módulo Colaboradores — PRD Cap. 5): unidade, setor, gestor direto, cargo e versão do Desenho de Cargo. Sem todos esses campos preenchidos, o colaborador não pode participar de um ciclo de avaliação.</p>
     </div>
+
+    ${(() => {
+      const { plano, limite } = limiteColaboradoresDaEmpresa();
+      const ativos = state.colaboradores.filter((c) => !c.inativo).length;
+      const restam = limite - ativos;
+      const classe = restam <= 0 ? 'lock' : restam <= 2 ? 'info' : 'info';
+      return `<div class="notice ${classe}">Plano <b>${plano}</b>: ${ativos} de ${limite} colaboradores${restam <= 0 ? ' — limite atingido. Faça upgrade para cadastrar mais.' : ` (restam ${restam})`}.</div>`;
+    })()}
 
     ${
       dessincronizados.length
@@ -369,6 +428,18 @@ function pageColaboradores() {
 }
 
 function addColaborador() {
+  // Bloqueio por plano: cada plano tem um teto de colaboradores (Essencial 10,
+  // Gestão 30, Estratégico 60). Sem plano definido, usa Essencial. Conta só os
+  // ativos. Ver PLANOS_NORTE em js/31-page-pagamento.js.
+  const { plano, limite } = limiteColaboradoresDaEmpresa();
+  const ativos = state.colaboradores.filter((c) => !c.inativo).length;
+  if (ativos >= limite) {
+    showToast(
+      `Limite do plano ${plano} atingido (${limite} colaboradores). Faça upgrade do plano para cadastrar mais — fale com o Instituto INETRIS.`
+    );
+    return;
+  }
+
   const nome = document.getElementById('p_nome').value.trim();
   if (!nome) {
     showToast('Informe o nome do colaborador.');
