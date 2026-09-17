@@ -3,6 +3,14 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.77.3 — Câmera do ponto mais robusta (plano B de câmera)
+O scanner de QR exigia estritamente a câmera traseira, o que fazia alguns
+celulares/navegadores falharem por completo (dando "câmera ocupada" mesmo sem
+estar). Agora, se a câmera traseira não abrir na primeira tentativa, o sistema
+lista as câmeras do aparelho e usa a traseira pelo nome — ou a primeira
+disponível — em vez de desistir. Isso resolve casos em que a câmera não abria
+mesmo após fechar apps e reiniciar.
+
 ## v0.77.2 — Mensagem de câmera ocupada mais clara
 Quando a câmera do ponto (QR/selfie) não abre por estar ocupada por outro app
 (WhatsApp, Zoom, Meet, outra aba), a mensagem agora diz isso claramente e

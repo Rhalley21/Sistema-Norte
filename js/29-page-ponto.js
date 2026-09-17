@@ -250,44 +250,60 @@ function iniciarLeitorQr() {
     mostrarErroLeitor('Não foi possível iniciar o leitor de QR.');
     return;
   }
+  const aoLerQr = (texto) => {
+    _pontoQrLido = texto;
+    pararLeitorQr();
+    // Com o QR lido: se ainda precisa de selfie, vai pra câmera frontal; senão já bate.
+    if (_pontoSeguranca.exigeSelfie) {
+      render();
+      setTimeout(iniciarCameraSelfie, 60);
+    } else {
+      baterPonto();
+    }
+  };
+  const config = { fps: 10, qrbox: 220 };
+  const tratarErro = (e) => {
+    console.error('Falha ao abrir a câmera para QR', e);
+    const nome = e && (e.name || e.toString());
+    let msg = 'Não foi possível abrir a câmera.';
+    if (String(nome).includes('NotAllowed') || String(nome).includes('Permission')) {
+      msg =
+        'Permissão de câmera negada. Toque no cadeado ao lado do endereço do site → Câmera → Permitir, e tente de novo.';
+    } else if (String(nome).includes('NotFound') || String(nome).includes('Devices')) {
+      msg = 'Nenhuma câmera encontrada neste aparelho.';
+    } else if (
+      String(nome).includes('NotReadable') ||
+      String(nome).includes('Track') ||
+      String(nome).includes('AbortError') ||
+      String(nome).includes('in use')
+    ) {
+      msg =
+        'A câmera está ocupada por outro app (WhatsApp, Zoom, Meet, ou outra aba). Feche esses apps/abas — ou reinicie o aparelho — e tente de novo.';
+    }
+    mostrarErroLeitor(msg);
+  };
+
+  // 1ª tentativa: câmera traseira (ideal pra QR). Se falhar — comum em alguns
+  // celulares/navegadores que recusam o modo estrito — 2ª tentativa: lista as
+  // câmeras do aparelho e usa a traseira pelo nome, ou a última disponível.
   _pontoScanner
-    .start(
-      { facingMode: 'environment' },
-      { fps: 10, qrbox: 220 },
-      (texto) => {
-        _pontoQrLido = texto;
-        pararLeitorQr();
-        // Com o QR lido: se ainda precisa de selfie, vai pra câmera frontal;
-        // senão já bate.
-        if (_pontoSeguranca.exigeSelfie) {
-          render();
-          setTimeout(iniciarCameraSelfie, 60);
-        } else {
-          baterPonto();
-        }
-      },
-      () => {} // ignora erros de frame sem QR
-    )
-    .catch((e) => {
-      console.error('Falha ao abrir a câmera para QR', e);
-      // Mensagem específica conforme o motivo, pra ajudar o usuário.
-      const nome = e && (e.name || e.toString());
-      let msg = 'Não foi possível abrir a câmera.';
-      if (String(nome).includes('NotAllowed') || String(nome).includes('Permission')) {
-        msg =
-          'Permissão de câmera negada. Toque no cadeado ao lado do endereço do site → Câmera → Permitir, e tente de novo.';
-      } else if (String(nome).includes('NotFound') || String(nome).includes('Devices')) {
-        msg = 'Nenhuma câmera encontrada neste aparelho.';
-      } else if (
-        String(nome).includes('NotReadable') ||
-        String(nome).includes('Track') ||
-        String(nome).includes('AbortError') ||
-        String(nome).includes('in use')
-      ) {
-        msg =
-          'A câmera está ocupada por outro app (WhatsApp, Zoom, Meet, ou outra aba). Feche esses apps/abas — ou reinicie o aparelho — e tente de novo.';
+    .start({ facingMode: 'environment' }, config, aoLerQr, () => {})
+    .catch(() => {
+      if (typeof Html5Qrcode.getCameras !== 'function') {
+        tratarErro({ name: 'NotFoundError' });
+        return;
       }
-      mostrarErroLeitor(msg);
+      Html5Qrcode.getCameras()
+        .then((cameras) => {
+          if (!cameras || !cameras.length) {
+            tratarErro({ name: 'NotFoundError' });
+            return;
+          }
+          const traseira = cameras.find((c) => /back|traseira|rear|environment/i.test(c.label || ''));
+          const escolhida = traseira?.id || cameras[cameras.length - 1].id;
+          _pontoScanner.start(escolhida, config, aoLerQr, () => {}).catch(tratarErro);
+        })
+        .catch(tratarErro);
     });
 }
 function pararLeitorQr() {
