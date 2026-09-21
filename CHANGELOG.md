@@ -3,6 +3,26 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.78.3 — Atestado médico abona automaticamente
+Justificativa do tipo atestado médico agora é aprovada automaticamente ao
+enviar (não conta como falta e não espera decisão do gestor) — é um direito,
+não uma falta a julgar. O RH/gestor continua vendo o atestado na lista, com o
+selo "Abonado", e pode reverter (rejeitar) caso a foto seja inválida. Os
+demais tipos (falta, atraso, ajuste) seguem precisando de aprovação.
+
+Requer reimplantar a Edge Function "ponto".
+
+## v0.78.2 — Justificativas: quantidade de dias + foto simplificada
+- Novo campo "Quantos dias?" (digitável) nas justificativas de falta e
+  atestado — permite justificar um período (ex: viagem de 3 dias) num pedido
+  só. A quantidade aparece nas listas do colaborador e do gestor.
+- A foto do atestado passou a ter só o botão "Tirar foto ou escolher da
+  galeria" (o seletor nativo, que funciona bem no celular). O botão de câmera
+  ao vivo, que estava com bug, foi removido.
+
+Requer rodar sql-ponto-db/04-justificativas-dias.sql no banco de PONTO (só
+adiciona a coluna qtd_dias) e reimplantar a Edge Function "ponto".
+
 ## v0.78.1 — Correção: foto do atestado não abria a câmera
 O botão "Tirar foto do atestado" não fazia nada: a câmera era acionada antes
 do elemento de vídeo existir na tela (a ordem estava trocada). Corrigido — a

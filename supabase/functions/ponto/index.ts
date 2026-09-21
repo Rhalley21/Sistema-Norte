@@ -370,7 +370,13 @@ serve(async (req: Request) => {
           data_ref: body.dataRef,
           motivo: body.motivo || '',
           hora_ajuste: body.horaAjuste || null,
+          qtd_dias: body.qtdDias || 1,
           atestado_path: atestadoPath,
+          // Atestado médico abona automaticamente (é um direito, não conta como
+          // falta): já nasce aprovado. O RH ainda vê na lista pra conferir a
+          // foto e pode reverter se for inválido. Os demais tipos ficam
+          // pendentes, aguardando decisão do gestor/RH.
+          status: body.tipo === 'atestado' ? 'aprovada' : 'pendente',
         })
         .select('id')
         .single();
@@ -382,7 +388,7 @@ serve(async (req: Request) => {
       // O colaborador vê as próprias justificativas.
       const { data, error } = await ponto
         .from('justificativas_ponto')
-        .select('id, tipo, data_ref, motivo, hora_ajuste, status, motivo_decisao, atestado_path, criado_em')
+        .select('id, tipo, data_ref, motivo, hora_ajuste, qtd_dias, status, motivo_decisao, atestado_path, criado_em')
         .eq('perfil_id', perfil.id)
         .order('criado_em', { ascending: false });
       if (error) return jsonResponse({ error: error.message }, 500);
@@ -397,7 +403,7 @@ serve(async (req: Request) => {
       const filtro = body.status || 'pendente';
       let q = ponto
         .from('justificativas_ponto')
-        .select('id, perfil_id, tipo, data_ref, motivo, hora_ajuste, status, atestado_path, criado_em')
+        .select('id, perfil_id, tipo, data_ref, motivo, hora_ajuste, qtd_dias, status, atestado_path, criado_em')
         .eq('empresa_id', perfil.empresa_id)
         .order('criado_em', { ascending: false });
       if (filtro !== 'todas') q = q.eq('status', filtro);

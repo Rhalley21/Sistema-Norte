@@ -20,6 +20,7 @@ create table if not exists justificativas_ponto (
   data_ref date not null,           -- o dia que a justificativa cobre
   motivo text not null,
   hora_ajuste text,                 -- só p/ ajuste_ponto: horário correto (HH:MM), opcional
+  qtd_dias integer default 1,       -- p/ falta/atestado: quantos dias o pedido cobre (ex: viagem de 3 dias)
   atestado_path text,               -- caminho da foto no bucket "atestados-ponto", se houver
   status text not null default 'pendente' check (status in ('pendente', 'aprovada', 'rejeitada')),
   motivo_decisao text,              -- observação de quem aprovou/rejeitou

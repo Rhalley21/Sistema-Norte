@@ -135,6 +135,7 @@ async function enviarJustificativa() {
   const dataRef = document.getElementById('justif_data').value;
   const motivo = document.getElementById('justif_motivo').value.trim();
   const horaAjuste = document.getElementById('justif_hora')?.value || '';
+  const qtdDias = parseInt(document.getElementById('justif_dias')?.value, 10) || 1;
   if (!dataRef || !motivo) {
     showToast('Preencha a data e o motivo.');
     return;
@@ -149,6 +150,7 @@ async function enviarJustificativa() {
       dataRef,
       motivo,
       horaAjuste: horaAjuste || undefined,
+      qtdDias,
       colaboradorId: colaborador ? colaborador.id : null,
       atestadoBase64: _justifFotoBase64 || undefined,
     },
@@ -161,7 +163,11 @@ async function enviarJustificativa() {
   }
   _justifForm = { tipo: 'falta', dataRef: '', motivo: '', horaAjuste: '' };
   _justifFotoBase64 = null;
-  showToast('Justificativa enviada. Aguarde a decisão do seu gestor.');
+  showToast(
+    tipo === 'atestado'
+      ? 'Atestado registrado e abonado automaticamente. O RH ainda poderá conferir a foto.'
+      : 'Justificativa enviada. Aguarde a decisão do seu gestor.'
+  );
   await carregarMinhasJustificativas();
 }
 
@@ -184,7 +190,11 @@ function renderCardJustificativas() {
               .join('')}
           </select>
         </div>
-        <div class="field"><label>Data</label><input id="justif_data" type="date"></div>
+        <div class="field"><label>Data${tipoAtual === 'falta' || tipoAtual === 'atestado' ? ' de início' : ''}</label><input id="justif_data" type="date"></div>
+      </div>
+      <div class="field" id="justif_dias_wrap" style="${tipoAtual === 'falta' || tipoAtual === 'atestado' ? '' : 'display:none;'}">
+        <label>Quantos dias? <small>(ex: uma viagem de 3 dias)</small></label>
+        <input id="justif_dias" type="number" min="1" max="60" value="1">
       </div>
       <div class="field" id="justif_hora_wrap" style="${tipoAtual === 'ajuste_ponto' ? '' : 'display:none;'}">
         <label>Horário correto <small>(HH:MM — o horário que deveria ter batido)</small></label>
@@ -203,13 +213,7 @@ function renderCardJustificativas() {
                    <img src="${_justifFotoBase64}" alt="atestado" style="width:90px;height:70px;object-fit:cover;border-radius:8px;border:1px solid var(--line);">
                    <button class="btn btn-ghost btn-sm" onclick="removerFotoAtestado()">Trocar foto</button>
                  </div>`
-              : _justifCameraAberta
-                ? `<video id="atestado-video" style="width:100%;max-width:320px;border-radius:10px;background:#000;" playsinline muted autoplay></video>
-                   <div style="margin-top:8px;display:flex;gap:8px;"><button class="btn btn-primary btn-sm" onclick="capturarFotoAtestado()">Tirar foto</button><button class="btn btn-ghost btn-sm" onclick="cancelarCameraAtestado()">Cancelar</button></div>`
-                : `<div style="display:flex;gap:8px;flex-wrap:wrap;">
-                     <button class="btn btn-ghost btn-sm" onclick="abrirCameraAtestado()">Tirar foto do atestado</button>
-                     <label class="btn btn-ghost btn-sm" style="cursor:pointer;margin:0;">Escolher da galeria<input type="file" accept="image/*" style="display:none;" onchange="fotoAtestadoDeArquivo(this)"></label>
-                   </div>`
+              : `<label class="btn btn-ghost btn-sm" style="cursor:pointer;margin:0;display:inline-block;">Tirar foto ou escolher da galeria<input type="file" accept="image/*" style="display:none;" onchange="fotoAtestadoDeArquivo(this)"></label>`
           }
         </div>`
           : ''
@@ -228,7 +232,7 @@ function renderCardJustificativas() {
                 ${_minhasJustificativas
                   .map(
                     (j) =>
-                      `<tr><td>${JUSTIF_TIPOS[j.tipo] || j.tipo}</td><td class="small-muted">${new Date(`${j.data_ref}T00:00:00`).toLocaleDateString('pt-BR')}</td><td><span class="pill ${_justifStatusPill(j.status)}">${_justifStatusLabel(j.status)}</span>${j.motivo_decisao ? `<br><span class="small-muted" style="font-size:11px;">${escaparHtml(j.motivo_decisao)}</span>` : ''}</td></tr>`
+                      `<tr><td>${JUSTIF_TIPOS[j.tipo] || j.tipo}</td><td class="small-muted">${new Date(`${j.data_ref}T00:00:00`).toLocaleDateString('pt-BR')}${j.qtd_dias > 1 ? ' (' + j.qtd_dias + ' dias)' : ''}</td><td><span class="pill ${_justifStatusPill(j.status)}">${_justifStatusLabel(j.status)}</span>${j.motivo_decisao ? `<br><span class="small-muted" style="font-size:11px;">${escaparHtml(j.motivo_decisao)}</span>` : ''}</td></tr>`
                   )
                   .join('')}
               </tbody></table>`
@@ -294,14 +298,16 @@ function renderSecaoAprovacaoJustificativas() {
                   (j) => `<tr>
                 <td><b>${escaparHtml(j.nome)}</b></td>
                 <td>${JUSTIF_TIPOS[j.tipo] || j.tipo}${j.hora_ajuste ? `<br><span class="small-muted">${j.hora_ajuste}</span>` : ''}</td>
-                <td class="small-muted">${new Date(`${j.data_ref}T00:00:00`).toLocaleDateString('pt-BR')}</td>
+                <td class="small-muted">${new Date(`${j.data_ref}T00:00:00`).toLocaleDateString('pt-BR')}${j.qtd_dias > 1 ? ' (' + j.qtd_dias + ' dias)' : ''}</td>
                 <td class="small-muted">${escaparHtml(j.motivo || '—')}</td>
                 <td>${j.atestadoUrl ? `<img src="${j.atestadoUrl}" alt="atestado" class="conf-foto" onclick="_confFotoAmpliada='${j.atestadoUrl}';render();">` : '<span class="small-muted">—</span>'}</td>
                 <td style="white-space:nowrap;">${
                   j.status === 'pendente'
                     ? `<button class="btn btn-sm btn-primary" onclick="decidirJustificativa('${j.id}',true)">Aprovar</button>
                        <button class="btn btn-sm btn-ghost" onclick="decidirJustificativa('${j.id}',false)">Rejeitar</button>`
-                    : `<span class="pill ${_justifStatusPill(j.status)}">${_justifStatusLabel(j.status)}</span>`
+                    : j.tipo === 'atestado' && j.status === 'aprovada'
+                      ? `<span class="pill pill-alavancar">Abonado</span> <button class="btn btn-sm btn-ghost" style="color:var(--iniciar);" onclick="decidirJustificativa('${j.id}',false)" title="Reverter se o atestado for inválido">Reverter</button>`
+                      : `<span class="pill ${_justifStatusPill(j.status)}">${_justifStatusLabel(j.status)}</span>`
                 }</td>
               </tr>`
                 )
