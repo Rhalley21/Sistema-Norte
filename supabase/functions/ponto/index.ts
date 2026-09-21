@@ -453,8 +453,25 @@ serve(async (req: Request) => {
       const inicio = body.inicioISO;
       const fim = body.fimISO;
       if (!inicio || !fim) return jsonResponse({ error: 'inicioISO e fimISO são obrigatórios.' }, 400);
-      // Se pediu de um perfil específico (relatório), precisa ser owner/rh;
-      // senão, retorna os do próprio.
+
+      // Relatório semanal (RH/owner): todos os abonos da empresa no período,
+      // com o perfil_id de cada um, pra casar com cada pessoa da grade.
+      if (body.todaEmpresa) {
+        if (!['owner', 'rh'].includes(perfil.papel)) {
+          return jsonResponse({ error: 'Sem permissão.' }, 403);
+        }
+        const { data, error } = await ponto
+          .from('justificativas_ponto')
+          .select('data_ref, tipo, perfil_id')
+          .eq('empresa_id', perfil.empresa_id)
+          .eq('status', 'aprovada')
+          .gte('data_ref', inicio.slice(0, 10))
+          .lte('data_ref', fim.slice(0, 10));
+        if (error) return jsonResponse({ error: error.message }, 500);
+        return jsonResponse({ abonos: data || [] });
+      }
+
+      // Se pediu de um perfil específico, precisa ser owner/rh; senão, retorna os do próprio.
       let alvoPerfil = perfil.id;
       if (body.perfilId && body.perfilId !== perfil.id) {
         if (!['owner', 'rh'].includes(perfil.papel)) {

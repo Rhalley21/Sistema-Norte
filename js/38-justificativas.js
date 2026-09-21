@@ -131,7 +131,7 @@ function removerFotoAtestado() {
 }
 
 async function enviarJustificativa() {
-  const tipo = document.getElementById('justif_tipo').value;
+  const tipo = _justifForm.tipo || 'falta';
   const dataRef = document.getElementById('justif_data').value;
   const motivo = document.getElementById('justif_motivo').value.trim();
   const horaAjuste = document.getElementById('justif_hora')?.value || '';
@@ -177,16 +177,16 @@ function renderCardJustificativas() {
     _justifJaCarregou = true;
     carregarMinhasJustificativas();
   }
-  const tipoAtual = document.getElementById('justif_tipo')?.value || 'atestado';
+  const tipoAtual = _justifForm.tipo || 'falta';
   return `
     <div class="card">
       <h3>Justificativas e abonos <small>faltas, atrasos, ajustes e atestados</small></h3>
 
       <div class="grid2" style="align-items:start;">
         <div class="field"><label>Tipo</label>
-          <select id="justif_tipo" onchange="render()">
+          <select id="justif_tipo" onchange="_justifForm.tipo=this.value;render();">
             ${Object.entries(JUSTIF_TIPOS)
-              .map(([v, l]) => `<option value="${v}">${l}</option>`)
+              .map(([v, l]) => `<option value="${v}" ${v === tipoAtual ? 'selected' : ''}>${l}</option>`)
               .join('')}
           </select>
         </div>

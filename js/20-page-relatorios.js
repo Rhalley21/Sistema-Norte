@@ -283,6 +283,24 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
     return;
   }
 
+  // Justificativas aprovadas (atestado, falta, etc.) da empresa no período —
+  // usadas pra abonar o dia no cálculo (não conta atraso/saída antecipada).
+  // Se falhar, segue sem abonos em vez de travar o relatório.
+  const respAbonos = await sb.functions.invoke('ponto', {
+    body: {
+      action: 'justificativa_abonos',
+      inicioISO: inicio.toISOString(),
+      fimISO: fim.toISOString(),
+      todaEmpresa: true,
+    },
+  });
+  const abonosPorPerfil = {}; // perfilId -> Set('AAAA-MM-DD')
+  if (!respAbonos.error && respAbonos.data && !respAbonos.data.error) {
+    (respAbonos.data.abonos || []).forEach((a) => {
+      (abonosPorPerfil[a.perfil_id] = abonosPorPerfil[a.perfil_id] || new Set()).add(a.data_ref);
+    });
+  }
+
   // Monta a grade semanal: uma linha por pessoa, uma coluna por dia
   // (Seg..Dom) com as horas trabalhadas, e no fim Total, Atrasos e Extras da
   // semana. A lógica de horas/almoço/atraso/extra é a mesma da tela de Ponto.
@@ -330,10 +348,11 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
       let totalExtra = 0;
       const celulasDias = chavesDias.map((ch) => {
         const doDia = porDia[ch];
-        if (!doDia || !doDia.length) return '·'; // dia sem batida
+        const diaAbonado = abonosPorPerfil[perfilId]?.has(ch) || false;
+        if (!doDia || !doDia.length) return diaAbonado ? 'abon.' : '·'; // sem batida: abonado ou realmente ausente
         const minutosDia = minutosLiquidosDia(doDia, jornada);
         totalMin += minutosDia;
-        const analise = analisarDiaVsJornada(doDia, jornada);
+        const analise = analisarDiaVsJornada(doDia, jornada, diaAbonado);
         if (analise) {
           totalAtraso += analise.atrasoMin;
           totalExtra += analise.extraMin;

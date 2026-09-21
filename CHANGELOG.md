@@ -3,6 +3,24 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.79.0 — Relatório semanal de ponto reflete os abonos
+O PDF do relatório semanal agora considera as justificativas aprovadas: um
+dia abonado (atestado, falta justificada, etc.) deixa de contar atraso ou
+saída antecipada no cálculo daquela pessoa — igual já acontecia na tela de
+Ponto do colaborador. Dias sem batida mas abonados aparecem marcados como
+"abon." na grade, em vez de "·" (que passa a significar só ausência não
+justificada). A hora extra, se houver, continua contando normalmente.
+
+Requer reimplantar a Edge Function "ponto" (nova opção todaEmpresa na ação
+justificativa_abonos, para o relatório buscar os abonos de todos de uma vez).
+
+## v0.78.4 — Correção: seleção do tipo de justificativa ficava bagunçada
+Ao trocar o "Tipo" na tela de Justificativas, o select não guardava a
+seleção: a cada re-renderização voltava para a primeira opção, mesmo com os
+campos abaixo já tendo mudado — dando a impressão de bagunça. Corrigido: o
+tipo escolhido agora fica guardado corretamente, e o select mostra a opção
+certa sempre.
+
 ## v0.78.3 — Atestado médico abona automaticamente
 Justificativa do tipo atestado médico agora é aprovada automaticamente ao
 enviar (não conta como falta e não espera decisão do gestor) — é um direito,
