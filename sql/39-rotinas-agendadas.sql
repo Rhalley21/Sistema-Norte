@@ -1,0 +1,31 @@
+-- =========================================================================
+-- NORTE — Rotinas agendadas (lembretes, escalonamento, banco de talentos)
+-- =========================================================================
+-- Este arquivo não cria nada no banco: as rotinas usam tabelas que já existem.
+-- Ele só registra que a etapa existe e guarda, abaixo, o comando que AGENDA a
+-- rotina diária. Passo a passo completo: docs/ROTINAS-AGENDADAS.md
+--
+-- Antes de agendar, nos dois lugares (uma vez só):
+--  1) Database > Extensions: ative "pg_cron" e "pg_net".
+--  2) Edge Functions: implante "rotinas-agendadas" e crie o secret CRON_SECRET
+--     (o MESMO valor usado em "chamado-automatico").
+--
+-- Troque <PROJETO> (o código do seu projeto, o texto antes de .supabase.co) e
+-- <CRON_SECRET>, tire os "-- " e rode:
+--
+-- select cron.schedule(
+--   'rotinas-diarias',
+--   '0 11 * * *',  -- 11h UTC = 8h da manhã em Brasília, todo dia
+--   $$ select net.http_post(
+--        url := 'https://<PROJETO>.supabase.co/functions/v1/rotinas-agendadas',
+--        headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', '<CRON_SECRET>'),
+--        body := '{"action":"diaria"}'::jsonb
+--      ) $$
+-- );
+--
+-- Pra conferir:  select jobname, schedule, active from cron.job;
+-- Pra desligar:  select cron.unschedule('rotinas-diarias');
+-- =========================================================================
+
+insert into migrations_aplicadas (arquivo) values ('39-rotinas-agendadas.sql')
+  on conflict (arquivo) do nothing;

@@ -179,7 +179,7 @@ function confirmarImportacaoLote() {
       movimentacoes: [
         {
           id: uid(),
-          data: new Date().toISOString().slice(0, 10),
+          data: hojeLocalISO(),
           tipo: 'Cadastro inicial',
           detalhes: `Cadastrado via importação em lote no cargo "${l.cargo.nome}" (v${l.cargo.desenho.versao})`,
         },
@@ -399,6 +399,7 @@ function pageColaboradores() {
                   ? `
                 <button class="btn btn-ghost btn-sm" onclick="_movimentarColabId='${emMovimento ? '' : p.id}'; render();">${emMovimento ? 'Cancelar' : 'Movimentar'}</button>
                 <button class="btn btn-ghost btn-sm" onclick="_editarJornadaColabId = _editarJornadaColabId==='${p.id}'?null:'${p.id}'; render();">Jornada</button>
+                ${!p.perfilId ? `<button class="btn btn-ghost btn-sm" onclick="_criarAcessoColabId = _criarAcessoColabId==='${p.id}'?null:'${p.id}'; render();">Criar acesso sem e-mail</button>` : ''}
                 ${p.movimentacoes && p.movimentacoes.length ? `<button class="btn btn-ghost btn-sm" onclick="_verHistoricoColabId = _verHistoricoColabId==='${p.id}'?null:'${p.id}'; render();">Histórico (${p.movimentacoes.length})</button>` : ''}
                 ${
                   !p.inativo
@@ -415,6 +416,7 @@ function pageColaboradores() {
           </tr>
           ${emMovimento ? renderFormMovimentacao(p, cargosAprovados, unidades, setores, contasGestor) : ''}
           ${_editarJornadaColabId === p.id ? renderFormJornada(p) : ''}
+          ${_criarAcessoColabId === p.id ? renderFormAcessoSemEmail(p) : ''}
           ${_verHistoricoColabId === p.id ? renderHistoricoMovimentacao(p) : ''}
           `;
           })
@@ -472,7 +474,7 @@ function addColaborador() {
   const unidade = state.estrutura.find((n) => n.id === unidadeId);
   const setor = state.estrutura.find((n) => n.id === setorId);
   const gestor = _perfisEmpresa.find((pf) => pf.id === gestorPerfilId);
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeLocalISO();
   state.colaboradores.push({
     id: uid(),
     nome,
@@ -550,6 +552,7 @@ function addColaborador() {
 let _verHistoricoColabId = null;
 let _checkinColabId = null;
 let _editarJornadaColabId = null;
+let _criarAcessoColabId = null;
 
 // Jornada padrão pra colaboradores cadastrados antes de existir esse campo —
 // nunca sobrescreve o que já foi definido, só serve de valor inicial no editor.
@@ -585,6 +588,72 @@ function normalizarHora(texto) {
   }
   if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) return '';
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+// Estado do resultado (login + senha provisória) pra mostrar uma vez só,
+// com aviso de copiar agora — depois de fechar não tem como recuperar.
+let _resultadoAcessoSemEmail = null; // { colabId, login, senhaProvisoria }
+
+function renderFormAcessoSemEmail(p) {
+  if (_resultadoAcessoSemEmail && _resultadoAcessoSemEmail.colabId === p.id) {
+    const r = _resultadoAcessoSemEmail;
+    return `
+    <tr>
+      <td colspan="7">
+        <div class="card" style="background:var(--surface-2);margin:0;border:2px solid var(--gold);">
+          <h3 style="font-size:14px;">Acesso criado para ${escaparHtml(p.nome)}</h3>
+          <div class="notice info">⚠️ Anote agora — a senha não será mostrada de novo. Entregue estas duas informações à pessoa.</div>
+          <table style="margin-top:10px;"><tr><td class="small-muted">Login</td><td style="font-family:var(--mono);font-weight:600;">${escaparHtml(r.login)}</td></tr>
+          <tr><td class="small-muted">Senha provisória</td><td style="font-family:var(--mono);font-weight:600;">${escaparHtml(r.senhaProvisoria)}</td></tr></table>
+          <p class="small-muted" style="margin-top:8px;">No primeiro login, o sistema vai pedir para a pessoa criar a própria senha.</p>
+          <button class="btn btn-primary" style="margin-top:8px;" onclick="_resultadoAcessoSemEmail=null;_criarAcessoColabId=null;render();">Concluído</button>
+        </div>
+      </td>
+    </tr>`;
+  }
+  return `
+    <tr>
+      <td colspan="7">
+        <div class="card" style="background:var(--surface-2);margin:0;">
+          <h3 style="font-size:14px;">Criar acesso sem e-mail para ${escaparHtml(p.nome)} <small>Para quem não tem e-mail ou celular corporativo</small></h3>
+          <div class="grid2">
+            <div class="field"><label>Login (matrícula) <small>letras e números, sem espaço</small></label><input id="acesso_login_${p.id}" type="text" placeholder="ex: 00123 ou joaosilva"></div>
+            <div class="field"><label>Papel de acesso</label>
+              <select id="acesso_papel_${p.id}">
+                <option value="colaborador" selected>Colaborador</option>
+                <option value="lider">Líder / Gestor</option>
+                <option value="rh">RH</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="criarAcessoSemEmail('${p.id}')">Gerar acesso</button>
+          <button class="btn btn-ghost" onclick="_criarAcessoColabId=null;render();">Cancelar</button>
+        </div>
+      </td>
+    </tr>`;
+}
+
+async function criarAcessoSemEmail(colabId) {
+  const p = state.colaboradores.find((c) => c.id === colabId);
+  if (!p) return;
+  const login = document.getElementById(`acesso_login_${colabId}`).value.trim();
+  const papel = document.getElementById(`acesso_papel_${colabId}`).value;
+  if (!login) {
+    showToast('Digite o login (matrícula).');
+    return;
+  }
+  const { data, error } = await sb.functions.invoke('acesso-sem-email', {
+    body: { login, nome: p.nome, papel },
+  });
+  if (error || data?.error) {
+    showToast((data && data.error) || 'Não foi possível criar o acesso.');
+    return;
+  }
+  // Vincula o colaborador ao novo perfil e salva.
+  p.perfilId = data.perfilId;
+  await salvarEstado();
+  _resultadoAcessoSemEmail = { colabId, login: data.login, senhaProvisoria: data.senhaProvisoria };
+  render();
 }
 
 function renderFormJornada(p) {
@@ -771,7 +840,7 @@ function renderHistoricoMovimentacao(p) {
 // nova (vigenteDe), sem apagar nada — permite reconstruir "quem era o quê, quando".
 function registrarVinculoHistorico(p, campo, valorAnteriorId, valorAnteriorNome, novoValorId, novoValorNome) {
   p.historicoVinculos = p.historicoVinculos || [];
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeLocalISO();
   const vigenteAnterior = p.historicoVinculos.find((v) => v.campo === campo && v.vigenteAte === null);
   if (vigenteAnterior) vigenteAnterior.vigenteAte = hoje;
   p.historicoVinculos.push({
@@ -870,7 +939,7 @@ function confirmarMovimentacao(colabId) {
   p.movimentacoes = p.movimentacoes || [];
   p.movimentacoes.push({
     id: uid(),
-    data: new Date().toISOString().slice(0, 10),
+    data: hojeLocalISO(),
     tipo,
     detalhes: mudancas.join(' · ') + (motivo ? ` — Motivo: ${motivo}` : ''),
   });
@@ -897,7 +966,7 @@ function confirmarMovimentacao(colabId) {
 function agendarCicloExtraordinarioPromocao(p) {
   const data = new Date();
   data.setMonth(data.getMonth() + 3);
-  const prazo = data.toISOString().slice(0, 10);
+  const prazo = dataLocalISO(data);
   p.proximaAvaliacaoObrigatoria = prazo;
 
   const jaTemCicloAberto = state.ciclos.some((c) => c.colaboradorId === p.id && c.estado !== 'Encerrado');
@@ -910,7 +979,7 @@ function agendarCicloExtraordinarioPromocao(p) {
       estado: 'Aberto',
       etapa: 'colaborador',
       tipoAvaliacao: 'assincrono', // ciclo automático (RN016) sempre no modelo padrão — Ao Vivo é sempre escolha manual, feita na hora de abrir
-      dataAbertura: new Date().toISOString().slice(0, 10),
+      dataAbertura: hojeLocalISO(),
       prazoLimite: prazo,
       extraordinario: true,
       motivoExtraordinario: 'Promoção — avaliação obrigatória em 3 meses (RN016)',
@@ -964,7 +1033,7 @@ async function desligarColaborador(colabId) {
   p.movimentacoes = p.movimentacoes || [];
   p.movimentacoes.push({
     id: uid(),
-    data: new Date().toISOString().slice(0, 10),
+    data: hojeLocalISO(),
     tipo: 'Desligamento',
     detalhes: 'Colaborador marcado como desligado (inativo) — acesso de login também removido.',
   });
@@ -1003,7 +1072,7 @@ async function religarColaborador(colabId) {
   p.movimentacoes = p.movimentacoes || [];
   p.movimentacoes.push({
     id: uid(),
-    data: new Date().toISOString().slice(0, 10),
+    data: hojeLocalISO(),
     tipo: 'Religação',
     detalhes: 'Colaborador religado à empresa — acesso de login reativado (se havia um vinculado).',
   });
@@ -1034,7 +1103,7 @@ function anonimizarColaborador(colabId) {
   const codigo = colabId.slice(0, 6).toUpperCase();
   p.nome = `Colaborador Anônimo #${codigo}`;
   p.anonimizado = true;
-  p.anonimizadoEm = new Date().toISOString().slice(0, 10);
+  p.anonimizadoEm = hojeLocalISO();
   p.perfilId = null; // remove qualquer vínculo restante com uma conta de login pessoal
   atualizarCarimbo(p);
   registrarAuditoria('colaborador.anonimizado', { colaboradorId: colabId });

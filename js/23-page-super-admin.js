@@ -14,6 +14,51 @@ let _superAdminCodigos = [];
 let _superAdminMetricas = null;
 let _superAdminPayloads = [];
 let _superAdminSolicitacoes = [];
+let _superAdminSolicitacoesContratacao = [];
+let _superAdminChamados = [];
+let _superAdminRotinas = null; // { diaria, chamados } (ISO) ou { indisponivel: true }
+
+// Estado de uma rotina agendada: 'nunca' (talvez nem tenha sido agendada), 'ok' ou 'atrasada'.
+function rotinaStatus(ultimaISO, limiteHoras, agora = Date.now()) {
+  if (!ultimaISO) return 'nunca';
+  return agora - new Date(ultimaISO).getTime() <= limiteHoras * 3600000 ? 'ok' : 'atrasada';
+}
+
+function rotinasStatusHtml() {
+  const r = _superAdminRotinas;
+  const linha = (titulo, detalhe, ultima, limiteHoras) => {
+    const st = rotinaStatus(ultima, limiteHoras);
+    const marca =
+      st === 'ok'
+        ? '<span class="pill pill-alavancar">rodando</span>'
+        : st === 'atrasada'
+          ? '<span class="pill pill-iniciar">atrasada</span>'
+          : '<span class="pill pill-iniciar">nunca rodou</span>';
+    const quando = ultima
+      ? `última execução: ${new Date(ultima).toLocaleString('pt-BR')}`
+      : 'nenhuma execução registrada — provavelmente ainda não foi agendada';
+    return `<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--line);"><div><b>${titulo}</b><div class="small-muted" style="font-size:12.5px;">${detalhe}</div></div><div style="text-align:right;">${marca}<div class="small-muted" style="font-size:12px;margin-top:2px;">${quando}</div></div></div>`;
+  };
+  return `<div class="card">
+    <h3>Rotinas automáticas <small>rodam sozinhas no servidor — sem elas, lembretes e prazos só acontecem quando alguém abre uma tela</small></h3>
+    ${
+      !r || r.indisponivel
+        ? '<div class="empty">Não foi possível consultar as rotinas. Confira se a função <b>rotinas-agendadas</b> foi implantada (docs/ROTINAS-AGENDADAS.md).</div>'
+        : linha(
+            'Rotina diária (8h)',
+            'Lembretes de prazo das avaliações · escalonamento de justificativas do Ponto · prazo do banco de talentos · limpeza',
+            r.diaria,
+            26
+          ) +
+          linha(
+            'Rotina de chamados (de hora em hora)',
+            'Encerrar chamados sem retorno · lembrar a equipe · resumo diário',
+            r.chamados,
+            3
+          )
+    }
+  </div>`;
+}
 let _superAdminNovoRotulo = '';
 let _superAdminNovoPonto = false; // escolha sim/não do módulo Ponto pra empresa que usar este código
 
@@ -25,6 +70,8 @@ async function carregarDadosSuperAdmin() {
     { data: codigos, error: erroCodigos },
     { data: payloads, error: erroPayloads },
     { data: solicitacoes },
+    { data: solicitacoesContratacao },
+    { data: chamados },
   ] = await Promise.all([
     sb
       .from('empresas')
@@ -43,8 +90,30 @@ async function carregarDadosSuperAdmin() {
       .from('solicitacoes_teste')
       .select('id, nome_solicitante, email, nome_empresa, telefone, status, codigo_gerado, criado_em')
       .order('criado_em', { ascending: false }),
+    sb
+      .from('solicitacoes_contratacao')
+      .select('id, nome_solicitante, email, nome_empresa, telefone, plano_desejado, observacoes, status, criado_em')
+      .order('criado_em', { ascending: false }),
+    sb
+      .from('chamados_suporte')
+      .select(
+        'id, empresa_id, nome_solicitante, email, assunto, mensagem, status, resposta, criado_em, respondido_por_ia, feedback_cliente'
+      )
+      .order('criado_em', { ascending: false }),
   ]);
   _superAdminSolicitacoes = solicitacoes || [];
+  _superAdminSolicitacoesContratacao = solicitacoesContratacao || [];
+  _superAdminChamados = chamados || [];
+  // Não bloqueia o painel: se a função ainda não existe, só mostra o aviso.
+  sb.functions
+    .invoke('rotinas-agendadas', { body: { action: 'status' } })
+    .then(({ data, error }) => {
+      _superAdminRotinas = !error && data && !data.error ? data : { indisponivel: true };
+      render();
+    })
+    .catch(() => {
+      _superAdminRotinas = { indisponivel: true };
+    });
   if (erroEmpresas || erroCodigos || erroPayloads)
     showToast(
       'Não foi possível carregar os dados: ' + (erroEmpresas?.message || erroCodigos?.message || erroPayloads?.message)
@@ -223,10 +292,10 @@ async function aprovarSolicitacaoTeste(solicitacaoId) {
   sb.functions
     .invoke('enviar-email', {
       body: {
-        para: s.email,
+        destinatario: s.email,
         assunto: 'Seu teste grátis do INETRIS foi liberado 🎉',
-        html: `<p>Olá, ${s.nome_solicitante}!</p>
-          <p>Seu teste grátis de 7 dias da plataforma INETRIS (Sistema de Gestão de Pessoas) foi liberado para a empresa <b>${s.nome_empresa}</b>.</p>
+        corpoHtml: `<p>Olá, ${escaparHtml(s.nome_solicitante)}!</p>
+          <p>Seu teste grátis de 7 dias da plataforma INETRIS (Sistema de Gestão de Pessoas) foi liberado para a empresa <b>${escaparHtml(s.nome_empresa)}</b>.</p>
           <p>Para começar, acesse o sistema, clique em <b>Cadastrar</b> e use este código de licença:</p>
           <p style="font-size:20px;font-weight:bold;letter-spacing:1px;">${codigo}</p>
           <p>O teste vale por 7 dias a partir do seu cadastro. Qualquer dúvida, é só responder este e-mail.</p>
@@ -246,6 +315,83 @@ async function recusarSolicitacaoTeste(solicitacaoId) {
     .update({ status: 'recusada', decidido_em: new Date().toISOString(), decidido_por: meuPerfilId })
     .eq('id', solicitacaoId);
   showToast('Solicitação recusada.');
+  await carregarDadosSuperAdmin();
+}
+
+async function atualizarStatusContratacao(solicitacaoId) {
+  const select = document.getElementById(`sc_status_${solicitacaoId}`);
+  if (!select) return;
+  const { error } = await sb
+    .from('solicitacoes_contratacao')
+    .update({ status: select.value, decidido_em: new Date().toISOString(), decidido_por: meuPerfilId })
+    .eq('id', solicitacaoId);
+  if (error) {
+    console.error('Falha ao atualizar status da contratação', error);
+    showToast('Não foi possível salvar. Verifique se a migration 30 foi aplicada.');
+    return;
+  }
+  showToast('Status atualizado.');
+  await carregarDadosSuperAdmin();
+}
+
+// Os mesmos 4 status do banco (sql/38) — um teste confere que não saem de sincronia.
+const STATUS_CHAMADO_LABEL = {
+  aberto: 'Aberto',
+  respondido_ia: 'Respondido (IA)',
+  em_andamento: 'Em andamento',
+  resolvido: 'Resolvido',
+};
+
+async function atualizarChamadoSuporte(chamadoId) {
+  const select = document.getElementById(`ch_status_${chamadoId}`);
+  const textarea = document.getElementById(`ch_resposta_${chamadoId}`);
+  if (!select || !textarea) return;
+  const resposta = textarea.value.trim();
+  const anterior = _superAdminChamados.find((c) => c.id === chamadoId);
+  const respostaMudou = !!resposta && resposta !== (anterior?.resposta || '');
+  const statusMudou = !!anterior && select.value !== anterior.status;
+  const atualizacao = {
+    status: select.value,
+    resposta: resposta || null,
+    atualizado_em: new Date().toISOString(),
+    atualizado_por: meuPerfilId,
+  };
+  // Quando uma PESSOA escreve a resposta, ela deixa de ser "resposta da IA".
+  if (respostaMudou) {
+    atualizacao.respondido_por_ia = false;
+    atualizacao.respondido_em = atualizacao.atualizado_em;
+  }
+  const { error } = await sb.from('chamados_suporte').update(atualizacao).eq('id', chamadoId);
+  if (error) {
+    console.error('Falha ao atualizar chamado', error);
+    showToast('Não foi possível salvar. Verifique se a migration 34 foi aplicada.');
+    return;
+  }
+  // O cliente é avisado por e-mail em qualquer mudança que importe a ele — não só quando há resposta nova.
+  const chamado = anterior;
+  if (chamado?.email && (respostaMudou || statusMudou)) {
+    const protocolo = String(chamado.id).slice(0, 8).toUpperCase();
+    const avisoDeStatus = {
+      em_andamento: 'Nossa equipe já está trabalhando no seu chamado.',
+      resolvido:
+        'Seu chamado foi marcado como resolvido. Se ainda precisar de ajuda, é só abrir um novo chamado na Central de Ajuda.',
+      aberto: 'Seu chamado foi reaberto e está na fila da nossa equipe.',
+      respondido_ia: '',
+    }[select.value];
+    const corpo = respostaMudou
+      ? `<p>Olá!</p><p>Sobre o chamado <b>"${escaparHtml(chamado.assunto)}"</b>, o suporte da INETRIS respondeu:</p><p>${escaparHtml(resposta).replace(/\n/g, '<br>')}</p>${avisoDeStatus ? `<p>${avisoDeStatus}</p>` : ''}<p>Protocolo: <b>#${protocolo}</b></p>`
+      : `<p>Olá!</p><p>Atualização do chamado <b>"${escaparHtml(chamado.assunto)}"</b>: ${avisoDeStatus}</p><p>Protocolo: <b>#${protocolo}</b></p>`;
+    sb.functions
+      .invoke('enviar-email', {
+        body: {
+          destinatario: chamado.email,
+          assunto: `${respostaMudou ? 'Resposta ao seu chamado' : 'Atualização do seu chamado'} #${protocolo}: ${chamado.assunto}`,
+          corpoHtml: corpo,
+        },
+      })
+      .catch(() => {});
+  }
+  showToast('Chamado atualizado.');
   await carregarDadosSuperAdmin();
 }
 
@@ -300,6 +446,25 @@ async function suspenderEmpresa(empresaId, nomeEmpresa) {
   showToast(`Acesso de "${nomeEmpresa}" suspenso.`);
   await carregarDadosSuperAdmin();
 }
+// Converte uma empresa em teste grátis pra cliente pagante — libera o
+// acesso de vez (não depende mais de trial_ate), sem apagar nada que já
+// foi cadastrado durante o teste.
+async function marcarEmpresaComoPagante(empresaId, nomeEmpresa) {
+  if (
+    !confirm(
+      `Marcar "${nomeEmpresa}" como cliente pagante? O acesso passa a valer sem depender mais do prazo de teste grátis.`
+    )
+  )
+    return;
+  const { error } = await sb.from('empresas').update({ is_pagante: true }).eq('id', empresaId);
+  if (error) {
+    showToast('Não foi possível marcar como pagante: ' + error.message);
+    return;
+  }
+  showToast(`"${nomeEmpresa}" agora é cliente pagante — acesso liberado.`);
+  await carregarDadosSuperAdmin();
+}
+
 async function reativarEmpresa(empresaId, nomeEmpresa) {
   if (!confirm(`Reativar o acesso de "${nomeEmpresa}"?`)) return;
   const { error } = await sb
@@ -419,11 +584,12 @@ function pageSuperAdmin() {
             link: f.linkPagamento || null,
             status: f.statusPagamento || 'Pendente',
             valor: f.valorMensal || null,
+            plano: f.plano || null,
           };
         });
         if (!linhas.length) return '<div class="empty">Nenhuma empresa cadastrada ainda.</div>';
         return `
-        <table><thead><tr><th>Empresa</th><th>WhatsApp <small>(dono edita)</small></th><th>Status</th><th>Link de pagamento <small>(você edita)</small></th><th></th></tr></thead><tbody>
+        <table><thead><tr><th>Empresa</th><th>WhatsApp <small>(dono edita)</small></th><th>Status</th><th>Plano <small>(você define)</small></th><th>Link de pagamento <small>(você edita)</small></th><th></th></tr></thead><tbody>
           ${linhas
             .map((l) => {
               const podeCobrar = l.whatsapp && l.link;
@@ -431,6 +597,12 @@ function pageSuperAdmin() {
               <td><b>${escaparHtml(l.nome)}</b></td>
               <td class="small-muted">${l.whatsapp ? escaparHtml(l.whatsapp) : '<span style="color:var(--iniciar);">sem WhatsApp</span>'}</td>
               <td><span class="pill ${l.status === 'Em dia' ? 'pill-alavancar' : l.status === 'Atrasado' || l.status === 'Cancelado' ? 'pill-iniciar' : 'pill-neutral'}">${l.status}</span></td>
+              <td>
+                <select id="plano_${l.id}" style="min-width:130px;">
+                  ${PLANOS_NORTE.map((p) => `<option value="${p.nome}" ${l.plano === p.nome ? 'selected' : ''}>${p.nome} (até ${p.limiteColaboradores})</option>`).join('')}
+                </select>
+                <button class="btn btn-sm btn-ghost" onclick="salvarPlanoEmpresa('${l.id}')">Salvar plano</button>
+              </td>
               <td>
                 <input id="link_pag_${l.id}" type="url" placeholder="https://invoice.infinitepay.io/..." value="${escaparHtml(l.link || '')}" style="min-width:220px;">
                 <button class="btn btn-sm btn-ghost" onclick="salvarLinkPagamentoEmpresa('${l.id}')">Salvar link</button>
@@ -470,6 +642,77 @@ function pageSuperAdmin() {
             .join('')}
         </tbody></table>`
           : '<div class="empty">Nenhuma solicitação de teste ainda. Elas aparecem aqui quando alguém pede pelo site.</div>'
+      }
+    </div>
+
+    <div class="card">
+      <h3>Solicitações de contratação direta <small>${_superAdminSolicitacoesContratacao.filter((s) => s.status === 'pendente').length} pendente(s)</small></h3>
+      <p class="page-desc">Quem clicou em "Quero contratar agora" na landing (em vez de pedir teste grátis) — combine o pagamento e ajuste o plano da empresa na tabela acima.</p>
+      ${
+        _superAdminSolicitacoesContratacao.length
+          ? `<table><thead><tr><th>Empresa</th><th>Solicitante</th><th>Contato</th><th>Plano</th><th>Quando</th><th>Status</th><th></th></tr></thead><tbody>
+          ${_superAdminSolicitacoesContratacao
+            .map(
+              (s) => `<tr>
+              <td><b>${escaparHtml(s.nome_empresa)}</b>${s.observacoes ? `<br><span class="small-muted">"${escaparHtml(s.observacoes)}"</span>` : ''}</td>
+              <td class="small-muted">${escaparHtml(s.nome_solicitante)}</td>
+              <td class="small-muted">${escaparHtml(s.email)}${s.telefone ? '<br>' + escaparHtml(s.telefone) : ''}</td>
+              <td><span class="pill pill-desenvolver">${escaparHtml(s.plano_desejado)}</span></td>
+              <td class="small-muted">${new Date(s.criado_em).toLocaleDateString('pt-BR')}</td>
+              <td>${
+                s.status === 'pendente'
+                  ? '<span class="pill pill-neutral">Pendente</span>'
+                  : s.status === 'em_contato'
+                    ? '<span class="pill pill-desenvolver">Em contato</span>'
+                    : s.status === 'fechada'
+                      ? '<span class="pill pill-alavancar">Fechada</span>'
+                      : '<span class="pill pill-iniciar">Perdida</span>'
+              }</td>
+              <td style="text-align:right;white-space:nowrap;">
+                <select id="sc_status_${s.id}" style="max-width:120px;">
+                  ${['pendente', 'em_contato', 'fechada', 'perdida'].map((st) => `<option value="${st}" ${s.status === st ? 'selected' : ''}>${st === 'pendente' ? 'Pendente' : st === 'em_contato' ? 'Em contato' : st === 'fechada' ? 'Fechada' : 'Perdida'}</option>`).join('')}
+                </select>
+                <button class="btn btn-sm btn-ghost" onclick="atualizarStatusContratacao('${s.id}')">Salvar</button>
+              </td>
+            </tr>`
+            )
+            .join('')}
+        </tbody></table>`
+          : '<div class="empty">Nenhuma solicitação de contratação ainda. Elas aparecem aqui quando alguém clica em "Quero contratar agora" na landing.</div>'
+      }
+    </div>
+
+    ${rotinasStatusHtml()}
+
+    <div class="card">
+      <h3>Chamados de suporte <small>${_superAdminChamados.filter((c) => c.status === 'aberto' || c.status === 'em_andamento').length} esperando a equipe · ${_superAdminChamados.filter((c) => c.status === 'respondido_ia').length} respondido(s) pela IA</small></h3>
+      ${
+        _superAdminChamados.length
+          ? `<table><thead><tr><th>Empresa</th><th>Assunto</th><th>Status</th><th>Resposta</th><th></th></tr></thead><tbody>
+          ${_superAdminChamados
+            .map((c) => {
+              const nomeEmpresa =
+                _superAdminPayloads.find((e) => e.empresa_id === c.empresa_id)?.payload?.empresa?.nomeFantasia ||
+                c.empresa_id;
+              return `<tr>
+              <td><b>${escaparHtml(nomeEmpresa)}</b></td>
+              <td>${escaparHtml(c.assunto)}${c.respondido_por_ia ? ' <span class="pill pill-neutral" title="Respondido automaticamente pela IA">IA</span>' : ''}${c.feedback_cliente === 'nao_resolveu' ? ' <span class="pill pill-iniciar" title="O cliente disse que a resposta automática não resolveu">pediu humano</span>' : ''}<div class="small-muted" style="margin-top:2px;">${escaparHtml(c.mensagem)}</div></td>
+              <td>
+                <select id="ch_status_${c.id}" style="max-width:150px;">
+                  ${Object.entries(STATUS_CHAMADO_LABEL)
+                    .map(
+                      ([st, rotulo]) => `<option value="${st}" ${c.status === st ? 'selected' : ''}>${rotulo}</option>`
+                    )
+                    .join('')}
+                </select>
+              </td>
+              <td><textarea id="ch_resposta_${c.id}" rows="2" style="min-width:180px;" placeholder="Resposta para o cliente">${escaparHtml(c.resposta || '')}</textarea></td>
+              <td><button class="btn btn-sm btn-ghost" onclick="atualizarChamadoSuporte('${c.id}')">Salvar</button></td>
+            </tr>`;
+            })
+            .join('')}
+        </tbody></table>`
+          : '<div class="empty">Nenhum chamado de suporte ainda.</div>'
       }
     </div>
 
@@ -553,6 +796,10 @@ function pageSuperAdmin() {
               e.id === empresaIdAtual
                 ? '<span class="small-muted">Não é possível suspender aqui</span>'
                 : `${
+                    !e.is_pagante && e.trial_ate
+                      ? `<button class="btn btn-sm btn-primary" onclick="marcarEmpresaComoPagante('${e.id}','${escaparParaOnclick(e.nome_fantasia)}')">Marcar como pagante</button>`
+                      : ''
+                  }${
                     e.acesso_suspenso
                       ? `<button class="btn btn-sm btn-ghost" onclick="reativarEmpresa('${e.id}','${escaparParaOnclick(e.nome_fantasia)}')">Reativar</button>`
                       : `<button class="btn btn-sm btn-ghost" style="color:var(--iniciar);" onclick="suspenderEmpresa('${e.id}','${escaparParaOnclick(e.nome_fantasia)}')">Suspender</button>`
@@ -627,6 +874,32 @@ async function salvarLinkPagamentoEmpresa(empresaId) {
     d.payload.empresa.faturamento.linkPagamento = link || null;
   }
   showToast('Link de pagamento salvo.');
+  render();
+}
+
+// Salva o plano de uma empresa direto pelo painel do Super Admin. Usa a
+// função SQL super_admin_definir_plano (ver sql/29-super-admin-definir-plano.sql),
+// que só mexe nesse campo e só roda pra Super Admin.
+async function salvarPlanoEmpresa(empresaId) {
+  const select = document.getElementById(`plano_${empresaId}`);
+  if (!select) return;
+  const plano = select.value;
+  const { error } = await sb.rpc('super_admin_definir_plano', {
+    p_empresa_id: empresaId,
+    p_plano: plano,
+  });
+  if (error) {
+    console.error('Falha ao salvar plano', error);
+    showToast('Não foi possível salvar o plano. Verifique se a migration 29 foi aplicada.');
+    return;
+  }
+  const d = _superAdminPayloads.find((p) => p.empresa_id === empresaId);
+  if (d && d.payload) {
+    d.payload.empresa = d.payload.empresa || {};
+    d.payload.empresa.faturamento = d.payload.empresa.faturamento || {};
+    d.payload.empresa.faturamento.plano = plano;
+  }
+  showToast(`Plano atualizado para ${plano}.`);
   render();
 }
 

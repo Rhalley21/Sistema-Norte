@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <!-- Sentry — monitoramento de erros (ver app.html pra explicação). -->
+    <script src="https://browser.sentry-cdn.com/7.120.0/bundle.min.js" crossorigin="anonymous"></script>
+    <script>
+      Sentry.init({
+        dsn: 'https://159a28096928627be9f215b267266383@o4512175915663360.ingest.us.sentry.io/4512175921823744',
+        tracesSampleRate: 0.1,
+        initialScope: { tags: { pagina: 'vaga' } },
+      });
+    </script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Candidatura — INETRIS</title>
+    <!-- ============================================================
+     Página pública de candidatura — NÃO faz parte do app logado
+     (index.html). Roda sozinha, sem exigir login, e fala com a
+     Edge Function "rs" (ações públicas: vaga_publica e
+     candidatura_criar). Acesse como: vaga.html?v=<id da vaga>
+     ============================================================ -->
+    <script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script>
+    <style>
+      :root {
+        --gold: #b8894b;
+        --ink: #1f2430;
+        --ink-dim: #5b6472;
+        --ink-faint: #8a92a0;
+        --line: #e4e7ec;
+        --surface: #ffffff;
+        --bg: #f6f7f9;
+        --iniciar: #ef4444;
+        --alavancar: #16a34a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: -apple-system, 'Inter', Arial, sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+      }
+      .wrap {
+        max-width: 640px;
+        margin: 0 auto;
+        padding: 32px 20px 60px;
+      }
+      .topo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 28px;
+      }
+      .topo b {
+        font-size: 18px;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 28px 24px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 6px;
+      }
+      .empresa {
+        color: var(--ink-dim);
+        font-size: 14px;
+        margin-bottom: 18px;
+      }
+      .meta {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        font-size: 13px;
+        color: var(--ink-dim);
+        margin-bottom: 18px;
+      }
+      .bloco {
+        margin-bottom: 18px;
+      }
+      .bloco h3 {
+        font-size: 14px;
+        margin: 0 0 6px;
+        color: var(--ink);
+      }
+      .bloco p,
+      .bloco div {
+        font-size: 14px;
+        color: var(--ink-dim);
+        white-space: pre-wrap;
+        line-height: 1.5;
+      }
+      .field {
+        margin-bottom: 14px;
+      }
+      .field label {
+        display: block;
+        font-size: 13px;
+        margin-bottom: 5px;
+        color: var(--ink);
+      }
+      .field input[type='text'],
+      .field input[type='email'],
+      .field input[type='tel'],
+      .field input[type='file'] {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-size: 14px;
+      }
+      .aviso {
+        background: #fdf6ec;
+        border: 1px solid var(--gold);
+        border-radius: 8px;
+        padding: 12px 14px;
+        font-size: 12.5px;
+        color: var(--ink-dim);
+        margin-bottom: 16px;
+      }
+      .field2col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .check-row {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        font-size: 14px;
+      }
+      .check-row label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: normal;
+      }
+      .office-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+      .office-row small {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--ink-dim);
+      }
+      @media (max-width: 480px) {
+        .field2col,
+        .office-row {
+          grid-template-columns: 1fr;
+        }
+      }
+      .consent {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        font-size: 13px;
+        margin-bottom: 12px;
+        color: var(--ink-dim);
+      }
+      .consent input {
+        margin-top: 3px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--gold);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 22px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        width: 100%;
+      }
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+      .erro {
+        color: var(--iniciar);
+        font-size: 13px;
+        margin: 8px 0;
+      }
+      .sucesso {
+        text-align: center;
+        padding: 20px 0;
+      }
+      .sucesso .check {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: #eaf7ef;
+        color: var(--alavancar);
+        font-size: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 14px;
+      }
+      .g-recaptcha {
+        margin-bottom: 14px;
+      }
+      .rodape {
+        text-align: center;
+        margin-top: 20px;
+        font-size: 12px;
+        color: var(--ink-faint);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="topo"><b>INETRIS</b></div>
+      <div class="card" id="app">Carregando vaga…</div>
+      <div class="rodape">
+        Seus dados são tratados conforme a Lei Geral de Proteção de Dados (LGPD).
+        <a href="privacidade.html">Política de Privacidade completa</a>
+        .
+      </div>
+    </div>
+
+    <script>
+      // ---- Configuração (mesmos valores públicos que o app principal usa) ----
+      const SUPABASE_URL = 'https://mgkmvrgfmuexgxkuslur.supabase.co';
+      const SUPABASE_ANON_KEY = 'sb_publishable_uOz0hehVdqv_7Q2LBzVbzg_J6ZH40fh';
+      // TODO: troque pela Site Key (pública) do seu reCAPTCHA — a mesma que você
+      // cadastrou em https://www.google.com/recaptcha/admin
+      const RECAPTCHA_SITE_KEY = '6LfeLM0tAAAAAEkhPUj62-mvS-IbcAzJbvYF3l0h';
+
+      function escaparHtml(s) {
+        return String(s == null ? '' : s).replace(
+          /[&<>"']/g,
+          (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+        );
+      }
+
+      async function chamarFuncaoRS(action, body) {
+        const resp = await fetch(`${SUPABASE_URL}/functions/v1/rs`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            apikey: SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ action, ...body }),
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(data.error || 'Falha na requisição.');
+        return data;
+      }
+
+      const params = new URLSearchParams(location.search);
+      const vagaPublicaId = params.get('v');
+      const app = document.getElementById('app');
+
+      function renderErro(msg) {
+        app.innerHTML = `<div class="erro">${escaparHtml(msg)}</div>`;
+      }
+
+      function renderSucesso(protocolo) {
+        app.innerHTML = `
+    <div class="sucesso">
+      <div class="check">✓</div>
+      <h1>Candidatura enviada!</h1>
+      <p style="color:var(--ink-dim);">Recebemos seus dados. Seu protocolo é:</p>
+      <p style="font-family:monospace;font-size:13px;color:var(--ink-dim);">${escaparHtml(protocolo)}</p>
+    </div>`;
+      }
+
+      function renderFormulario(vaga) {
+        app.innerHTML = `
+    <h1>${escaparHtml(vaga.titulo)}</h1>
+    <div class="empresa">${vaga.mostrar_empresa ? escaparHtml(vaga.nome_empresa_exibicao || '') : 'Empresa não divulgada'}</div>
+    <div class="meta">
+      ${vaga.local ? `<span>📍 ${escaparHtml(vaga.local)}</span>` : ''}
+      ${vaga.modalidade ? `<span>💻 ${escaparHtml(vaga.modalidade)}</span>` : ''}
+      ${vaga.mostrar_salario && vaga.faixa_salarial ? `<span>💰 ${escaparHtml(vaga.faixa_salarial)}</span>` : ''}
+    </div>
+    ${vaga.descricao ? `<div class="bloco"><h3>Sobre a vaga</h3><div>${escaparHtml(vaga.descricao)}</div></div>` : ''}
+    ${vaga.requisitos ? `<div class="bloco"><h3>Requisitos</h3><div>${escaparHtml(vaga.requisitos)}</div></div>` : ''}
+
+    <div class="aviso">
+      🔒 <b>Aviso de privacidade:</b> seus dados serão usados exclusivamente para este processo seletivo (e, se você autorizar abaixo, para futuras vagas compatíveis). Não solicitamos foto, idade, religião, gravidez ou estado civil. Pra acessar, corrigir ou pedir a exclusão dos seus dados a qualquer momento, escreva para <a href="mailto:halleyrafael78@gmail.com">halleyrafael78@gmail.com</a>.
+    </div>
+
+    <form id="form_candidatura">
+      <div class="field"><label>Nome completo *</label><input type="text" id="f_nome" required></div>
+      <div class="field"><label>E-mail *</label><input type="email" id="f_email" required></div>
+      <div class="field"><label>Telefone / WhatsApp</label><input type="tel" id="f_telefone"></div>
+      <div class="field"><label>Currículo (PDF, até 5MB) *</label><input type="file" id="f_curriculo" accept="application/pdf" required></div>
+      <div class="field2col">
+        <div class="field"><label>Cidade atual</label><input type="text" id="f_cidade"></div>
+        <div class="field"><label>Formação superior</label>
+          <select id="f_formacao"><option value="nao_possui">Não possuo</option><option value="cursando">Cursando</option><option value="completo">Completo</option></select>
+        </div>
+      </div>
+      <div class="field"><label>Experiência anterior nessa função <small>(opcional, algumas linhas já ajudam)</small></label><textarea id="f_experiencia" rows="2"></textarea></div>
+      <div class="field"><label>Disponibilidade de horários</label>
+        <select id="f_disponibilidade"><option value="comercial">Horário comercial</option><option value="turnos">Turnos</option><option value="flexivel">Flexível</option><option value="fins_de_semana">Inclui finais de semana</option></select>
+      </div>
+      <div class="field"><label>Você possui:</label>
+        <div class="check-row">
+          <label><input type="checkbox" id="f_moto"> Moto</label>
+          <label><input type="checkbox" id="f_notebook"> Notebook</label>
+          <label><input type="checkbox" id="f_smartphone"> Smartphone</label>
+        </div>
+      </div>
+      <div class="field2col">
+        <div class="field"><label>Intimidade com tecnologia</label>
+          <select id="f_tecnologia"><option value="basico">Básica</option><option value="intermediario">Intermediária</option><option value="avancado">Avançada</option></select>
+        </div>
+        <div class="field"><label>LinkedIn <small>(opcional)</small></label><input type="url" id="f_linkedin" placeholder="linkedin.com/in/..."></div>
+      </div>
+      <div class="field"><label>Conhecimento em pacote Office</label>
+        <div class="office-row">
+          <div><small>Excel</small><select id="f_excel"><option value="nao_possui">Não possuo</option><option value="basico">Básico</option><option value="intermediario">Intermediário</option><option value="avancado">Avançado</option></select></div>
+          <div><small>Word</small><select id="f_word"><option value="nao_possui">Não possuo</option><option value="basico">Básico</option><option value="intermediario">Intermediário</option><option value="avancado">Avançado</option></select></div>
+          <div><small>PowerPoint</small><select id="f_powerpoint"><option value="nao_possui">Não possuo</option><option value="basico">Básico</option><option value="intermediario">Intermediário</option><option value="avancado">Avançado</option></select></div>
+        </div>
+      </div>
+
+      <label class="consent"><input type="checkbox" id="f_maior18" required> ${vaga.jovem_aprendiz ? 'Tenho 16 anos ou mais (vaga de Jovem Aprendiz).' : 'Tenho 18 anos ou mais.'} *</label>
+      <label class="consent"><input type="checkbox" id="f_privacidade" required> Li e aceito o aviso de privacidade acima. *</label>
+      <label class="consent"><input type="checkbox" id="f_banco_talentos"> Aceito ficar disponível no banco de talentos para futuras vagas compatíveis, por até 24 meses (posso pedir a remoção a qualquer momento).</label>
+
+      <div id="recaptcha_container"></div>
+
+      <div id="f_erro" class="erro" style="display:none;"></div>
+      <button type="submit" class="btn" id="f_enviar">Enviar candidatura</button>
+    </form>`;
+
+        // Renderização EXPLÍCITA do reCAPTCHA — necessária porque o formulário é
+        // inserido na página depois (via innerHTML), então o scaneamento
+        // automático do script (que só roda uma vez, ao carregar a página) nunca
+        // encontra essa div. Sem isso, getResponse() falha com "No reCAPTCHA
+        // clients exist." Espera o script carregar (pode chegar depois deste
+        // ponto, já que é async/defer) antes de tentar renderizar.
+        function _renderRecaptchaQuandoPronto() {
+          if (typeof grecaptcha === 'undefined' || !grecaptcha.render) {
+            setTimeout(_renderRecaptchaQuandoPronto, 200);
+            return;
+          }
+          window._recaptchaWidgetId = grecaptcha.render('recaptcha_container', { sitekey: RECAPTCHA_SITE_KEY });
+        }
+        _renderRecaptchaQuandoPronto();
+
+        document.getElementById('form_candidatura').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const erroEl = document.getElementById('f_erro');
+          const btn = document.getElementById('f_enviar');
+          erroEl.style.display = 'none';
+
+          const nome = document.getElementById('f_nome').value.trim();
+          const email = document.getElementById('f_email').value.trim();
+          const telefone = document.getElementById('f_telefone').value.trim();
+          const arquivo = document.getElementById('f_curriculo').files[0];
+          const aceitePrivacidade = document.getElementById('f_privacidade').checked;
+          const aceiteBancoTalentos = document.getElementById('f_banco_talentos').checked;
+          const maior18 = document.getElementById('f_maior18').checked;
+          const perfil = {
+            maior18,
+            cidadeAtual: document.getElementById('f_cidade').value.trim(),
+            formacaoSuperior: document.getElementById('f_formacao').value,
+            experienciaAnteriorFuncao: document.getElementById('f_experiencia').value.trim(),
+            disponibilidadeHorarios: document.getElementById('f_disponibilidade').value,
+            possuiMoto: document.getElementById('f_moto').checked,
+            possuiNotebook: document.getElementById('f_notebook').checked,
+            possuiSmartphone: document.getElementById('f_smartphone').checked,
+            intimidadeTecnologia: document.getElementById('f_tecnologia').value,
+            linkedin: document.getElementById('f_linkedin').value.trim(),
+            conhecimentoExcel: document.getElementById('f_excel').value,
+            conhecimentoWord: document.getElementById('f_word').value,
+            conhecimentoPowerpoint: document.getElementById('f_powerpoint').value,
+          };
+          const recaptchaToken =
+            typeof grecaptcha !== 'undefined' && window._recaptchaWidgetId !== undefined
+              ? grecaptcha.getResponse(window._recaptchaWidgetId)
+              : '';
+
+          if (!nome || !email || !arquivo) {
+            erroEl.textContent = 'Preencha nome, e-mail e anexe o currículo.';
+            erroEl.style.display = 'block';
+            return;
+          }
+          if (!maior18) {
+            erroEl.textContent = vaga?.jovem_aprendiz
+              ? 'É necessário confirmar que você tem 16 anos ou mais.'
+              : 'É necessário confirmar que você tem 18 anos ou mais.';
+            erroEl.style.display = 'block';
+            return;
+          }
+          if (!aceitePrivacidade) {
+            erroEl.textContent = 'É necessário aceitar o aviso de privacidade.';
+            erroEl.style.display = 'block';
+            return;
+          }
+          if (!recaptchaToken) {
+            erroEl.textContent = 'Confirme que você não é um robô antes de enviar.';
+            erroEl.style.display = 'block';
+            return;
+          }
+          if (arquivo.size > 5 * 1024 * 1024) {
+            erroEl.textContent = 'O currículo precisa ter no máximo 5MB.';
+            erroEl.style.display = 'block';
+            return;
+          }
+
+          btn.disabled = true;
+          btn.textContent = 'Enviando…';
+          try {
+            const curriculoBase64 = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(arquivo);
+            });
+            const data = await chamarFuncaoRS('candidatura_criar', {
+              vagaPublicaId,
+              nome,
+              email,
+              telefone,
+              curriculoBase64,
+              aceitePrivacidade,
+              aceiteBancoTalentos,
+              perfil,
+              recaptchaToken,
+            });
+            renderSucesso(data.protocolo);
+          } catch (err) {
+            erroEl.textContent = err.message || 'Não foi possível enviar. Tente novamente.';
+            erroEl.style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'Enviar candidatura';
+            if (typeof grecaptcha !== 'undefined' && window._recaptchaWidgetId !== undefined)
+              grecaptcha.reset(window._recaptchaWidgetId);
+          }
+        });
+      }
+
+      (async function iniciar() {
+        if (!vagaPublicaId) {
+          renderErro('Link inválido — falta o identificador da vaga.');
+          return;
+        }
+        try {
+          const data = await chamarFuncaoRS('vaga_publica', { vagaPublicaId });
+          renderFormulario(data.vaga);
+        } catch (err) {
+          renderErro(err.message || 'Não foi possível carregar esta vaga.');
+        }
+      })();
+    </script>
+  </body>
+</html>

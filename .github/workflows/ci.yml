@@ -1,0 +1,65 @@
+# =========================================================================
+# CI — roda sozinho a cada push e a cada pull request.
+# Confere: lint, formatação, sintaxe, tipos das Edge Functions, sintaxe dos
+# SQL, tabelas/colunas usadas no código x banco, e os testes automatizados.
+# O resultado aparece como ✅ ou ❌ ao lado do commit, na página do GitHub.
+#
+# Também é chamado pelo workflow "Implantar Edge Functions": nada é implantado
+# se isto falhar.
+# =========================================================================
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    name: Testes e verificações
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Instalar o Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Lint (estilo e erros de código)
+        run: npm run lint
+
+      - name: Formatação
+        run: npm run format:check
+
+      - name: Sintaxe dos arquivos JS
+        run: npm run check:sintaxe
+
+      - name: Tipos das Edge Functions
+        run: npm run check:tipos
+
+      - name: Instalar o Python e o parser do PostgreSQL
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Preparar o parser de SQL
+        run: pip install pglast
+
+      - name: Sintaxe dos arquivos SQL
+        run: python scripts/validar-sql.py
+
+      - name: Tabelas e colunas do código x banco
+        run: python scripts/verificar-esquema.py
+
+      - name: Testes automatizados
+        run: npm test

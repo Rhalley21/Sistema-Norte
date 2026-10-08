@@ -110,7 +110,7 @@ function pageAuditoria() {
         <div class="field"><label>Filtrar por pessoa</label>
           <select onchange="_auditoriaFiltroPessoa=this.value; render();">
             <option value="">Todas</option>
-            ${pessoasDisponiveis.map((p) => `<option value="${p.id}" ${_auditoriaFiltroPessoa === p.id ? 'selected' : ''}>${p.nome}</option>`).join('')}
+            ${pessoasDisponiveis.map((p) => `<option value="${p.id}" ${_auditoriaFiltroPessoa === p.id ? 'selected' : ''}>${escaparHtml(p.nome)}</option>`).join('')}
           </select>
         </div>
       </div>

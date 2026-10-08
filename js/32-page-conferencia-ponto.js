@@ -20,8 +20,8 @@ function _confDatasPadrao() {
   const hoje = new Date();
   const seteAtras = new Date(hoje);
   seteAtras.setDate(seteAtras.getDate() - 6);
-  if (!_confInicio) _confInicio = seteAtras.toISOString().slice(0, 10);
-  if (!_confFim) _confFim = hoje.toISOString().slice(0, 10);
+  if (!_confInicio) _confInicio = dataLocalISO(seteAtras);
+  if (!_confFim) _confFim = dataLocalISO(hoje);
 }
 
 async function carregarConferencia() {
@@ -130,6 +130,8 @@ function pageConferenciaPonto() {
     </div>
 
     ${renderSecaoAprovacaoJustificativas()}
+    ${renderSecaoSubstituto()}
+    ${renderSecaoCompetencias()}
 
     ${
       _confFotoAmpliada

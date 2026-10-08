@@ -59,7 +59,7 @@ async function carregarDashPonto() {
 
     const porDia = {};
     porPerfil[perfilId].forEach((r) => {
-      const dia = r.registrado_em.slice(0, 10);
+      const dia = diaLocalDoRegistro(r.registrado_em);
       (porDia[dia] = porDia[dia] || []).push(r);
     });
 

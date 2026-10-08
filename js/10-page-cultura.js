@@ -28,13 +28,38 @@ function indicadorPilarCard(pilar, titulo, lista) {
   return `
   <div class="card">
     <h3>${titulo} <small>Pilar ${pilar} — indicadores universais da empresa</small></h3>
-    ${lista.map((i) => `<div class="chip">${escaparHtml(i.nome)} <span class="small-muted">(${i.origem})</span></div>`).join('') || '<p class="small-muted">Nenhum indicador ainda.</p>'}
+    ${
+      lista
+        .map(
+          (i) =>
+            `<div class="chip" style="display:inline-flex;align-items:center;gap:6px;">${escaparHtml(i.nome)} <span class="small-muted">(${i.origem})</span><button onclick="removerIndicadorCultura('${pilar}','${i.id}')" title="Remover indicador" style="border:none;background:none;color:var(--ink-faint);cursor:pointer;font-size:14px;line-height:1;padding:0 2px;">×</button></div>`
+        )
+        .join('') || '<p class="small-muted">Nenhum indicador ainda.</p>'
+    }
     <div style="margin-top:14px;display:flex;gap:8px;">
       <input id="novo_${pilar}" placeholder="Novo indicador personalizado" ${bloqueado ? 'disabled' : ''} style="flex:1;padding:9px 11px;background:var(--surface-2);border:1px solid var(--line);border-radius:7px;color:var(--ink);">
       <button class="btn btn-sm" onclick="addIndicadorCultura('${pilar}')" ${bloqueado ? 'disabled' : ''}>Adicionar</button>
     </div>
     ${bloqueado ? '<div class="small-muted" style="margin-top:6px;">Limite de 2 indicadores personalizados atingido para este pilar (RN013) — total de 4 com os 2 padrão da metodologia.</div>' : ''}
   </div>`;
+}
+function removerIndicadorCultura(pilar, indicadorId) {
+  const listKey = pilar === 'T' ? 'indicadoresT' : 'indicadoresE';
+  const flagKey = pilar === 'T' ? 'indicadoresPadraoRemovidosT' : 'indicadoresPadraoRemovidosE';
+  const indicador = state.cultura[listKey].find((i) => i.id === indicadorId);
+  if (!indicador) return;
+  const avisoExtra =
+    indicador.origem === 'padrão'
+      ? ' Este é um indicador padrão da metodologia NORTE — removê-lo é uma escolha da empresa, e ele não será recolocado automaticamente depois.'
+      : '';
+  if (!confirm(`Remover o indicador "${indicador.nome}"?${avisoExtra}`)) return;
+  state.cultura[listKey] = state.cultura[listKey].filter((i) => i.id !== indicadorId);
+  // Se removeu o último indicador padrão do pilar, marca a intenção — sem
+  // isso, o sistema recolocaria os padrão sozinho na próxima vez que abrir.
+  if (indicador.origem === 'padrão' && !state.cultura[listKey].some((i) => i.origem === 'padrão')) {
+    state.cultura[flagKey] = true;
+  }
+  render();
 }
 function salvarCultura() {
   state.cultura.missao = document.getElementById('c_missao').value;

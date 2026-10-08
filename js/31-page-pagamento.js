@@ -16,9 +16,30 @@
 // precoNovo = cliente novo; precoAtual = cliente com 12 meses (fidelidade).
 // limiteColaboradores define o teto de cadastro daquele plano.
 const PLANOS_NORTE = [
-  { nome: 'Essencial', limiteColaboradores: 10, precoNovo: 297, precoAtual: 197, detalhe: 'Até 10 colaboradores' },
-  { nome: 'Gestão', limiteColaboradores: 30, precoNovo: 597, precoAtual: 397, detalhe: '11 a 30 colaboradores' },
-  { nome: 'Estratégico', limiteColaboradores: 60, precoNovo: 997, precoAtual: 697, detalhe: '31 a 60 colaboradores' },
+  {
+    nome: 'Essencial',
+    limiteColaboradores: 10,
+    precoNovo: 297,
+    precoAtual: 197,
+    implantacao: 590,
+    detalhe: 'Até 10 colaboradores',
+  },
+  {
+    nome: 'Gestão',
+    limiteColaboradores: 30,
+    precoNovo: 597,
+    precoAtual: 397,
+    implantacao: 990,
+    detalhe: '11 a 30 colaboradores',
+  },
+  {
+    nome: 'Estratégico',
+    limiteColaboradores: 60,
+    precoNovo: 997,
+    precoAtual: 697,
+    implantacao: 1490,
+    detalhe: '31 a 60 colaboradores',
+  },
 ];
 
 // Limite de colaboradores do plano de uma empresa. Sem plano definido, usa o
@@ -33,6 +54,17 @@ function formatarPrecoPlano(valor) {
   return `R$ ${Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 }
 
+// O desconto de "cliente atual" vale só nos primeiros 12 meses de contrato
+// (contando a partir de faturamento.dataInicio). Depois disso, volta pro
+// valor cheio de cliente novo — mesmo sem mudar de plano.
+function precoVigentePlano(plano) {
+  const dataInicio = state.empresa?.faturamento?.dataInicio;
+  if (!dataInicio) return { valor: plano.precoNovo, comDesconto: false };
+  const diasDesde = (Date.now() - new Date(`${dataInicio}T00:00:00`).getTime()) / 86400000;
+  const comDesconto = diasDesde <= 365;
+  return { valor: comDesconto ? plano.precoAtual : plano.precoNovo, comDesconto };
+}
+
 function corDoStatusPagamento(status) {
   if (status === 'Em dia') return 'pill-alavancar';
   if (status === 'Atrasado' || status === 'Cancelado') return 'pill-iniciar';
@@ -43,6 +75,16 @@ function formatarValorMensal(v) {
   const n = parseFloat(v);
   if (isNaN(n)) return '—';
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+// Cliente pede a troca de plano — não muda sozinho (a cobrança ainda é
+// manual, ver nota no topo do arquivo). Fica registrado na auditoria pra
+// o Instituto INETRIS ver e providenciar o ajuste + cobrança.
+function solicitarMudancaPlano(nomePlano) {
+  registrarAuditoria('empresa.solicitou_mudanca_plano', { planoSolicitado: nomePlano });
+  showToast(
+    `Solicitação registrada para o plano ${nomePlano}. O Instituto INETRIS vai entrar em contato para confirmar e ajustar sua cobrança.`
+  );
 }
 
 function pagePagamento() {
@@ -65,16 +107,20 @@ function pagePagamento() {
       </div>
 
       <div class="grid3" style="margin:18px 0;">
-        ${PLANOS_NORTE.map(
-          (p) => `
+        ${PLANOS_NORTE.map((p) => {
+          const { valor, comDesconto } = precoVigentePlano(p);
+          return `
           <div class="card" style="margin:0;${p.nome === planoAtual ? 'border:2px solid var(--gold);position:relative;' : ''}">
             ${p.nome === planoAtual ? '<span class="pill pill-alavancar" style="position:absolute;top:-12px;left:12px;">Seu plano</span>' : ''}
             <div class="small-muted">${p.nome}</div>
-            <div style="font-size:24px;font-weight:600;margin:4px 0;">${formatarPrecoPlano(p.precoNovo)}<span class="small-muted" style="font-size:13px;font-weight:400;">/mês</span></div>
+            <div style="font-size:24px;font-weight:600;margin:4px 0;">${formatarPrecoPlano(valor)}<span class="small-muted" style="font-size:13px;font-weight:400;">/mês</span></div>
             <div class="small-muted" style="font-size:12px;">${p.detalhe}</div>
+            ${p.nome === planoAtual && comDesconto ? '<div class="small-muted" style="font-size:11px;color:var(--gold);">Preço especial de cliente atual (12 primeiros meses)</div>' : ''}
+            ${p.nome === planoAtual && !comDesconto ? '<div class="small-muted" style="font-size:11px;">Valor cheio — os 12 meses de condição especial já passaram</div>' : ''}
+            ${p.nome !== planoAtual ? `<button class="btn btn-ghost btn-sm" style="margin-top:10px;width:100%;" onclick="solicitarMudancaPlano('${p.nome}')">Solicitar este plano</button>` : ''}
           </div>
-        `
-        ).join('')}
+        `;
+        }).join('')}
       </div>
 
       <table style="width:100%;font-size:14px;border-top:1px solid var(--line);">

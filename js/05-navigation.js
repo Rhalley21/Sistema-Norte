@@ -29,7 +29,17 @@ const STEPS_BASE = [
     papeis: ['owner', 'rh'],
     apenasSePontoHabilitado: true,
   }, // RH/Admin conferem as batidas com as fotos
+  { id: 'rs_talentos', label: 'R&S — Banco de talentos', group: 'Pessoas', papeis: ['owner', 'rh'] }, // candidatos que autorizaram ficar no banco
+  {
+    id: 'folha_papel',
+    label: 'Folha de Ponto (papel)',
+    group: 'Pessoas',
+    papeis: ['owner', 'rh'],
+    apenasSePontoHabilitado: true,
+  }, // RH fotografa a folha de ponto escrita à mão; o sistema lê, o RH confere e confirma
   { id: 'clima', label: 'Pesquisa de Clima / eNPS', group: 'Pessoas' },
+  { id: 'nr1', label: 'NR1 — Riscos Psicossociais', group: 'Pessoas' }, // todo mundo responde a própria pesquisa; owner/rh veem a gestão dentro da página
+  { id: 'rs', label: 'R&S — Recrutamento', group: 'Pessoas', papeis: ['owner', 'rh', 'lider'] }, // requisição, aprovação e pipeline de candidatos
   { id: 'sucessao', label: 'Mapa de Sucessão', group: 'Pessoas', papeis: ['owner', 'rh'] },
   { id: 'ciclos', label: 'Ciclos de Avaliação', group: 'Ciclo NORTE' },
   { id: 'diagnostico', label: 'Diagnóstico & PDI', group: 'Ciclo NORTE' },
@@ -39,6 +49,7 @@ const STEPS_BASE = [
   { id: 'configuracoes', label: 'Configurações', group: 'Base', papeis: ['owner'] },
   { id: 'pagamento', label: 'Pagamento', group: 'Base', papeis: ['owner'] }, // assinatura/mensalidade — só o Administrador da empresa
   { id: 'auditoria', label: 'Auditoria', group: 'Base', papeis: ['owner', 'rh'] },
+  { id: 'central_ajuda', label: 'Central de Ajuda', group: 'Base' }, // sem `papeis`: todo mundo pode abrir um chamado
   { id: 'dashboard_role', label: 'Dashboards', group: 'Base' },
   // Só visível pra quem é Super Admin da PLATAFORMA (dono do NORTE) — não
   // tem relação com o papel dentro de uma Empresa (owner/rh/lider/colaborador).
@@ -88,6 +99,10 @@ function stepUnlocked(id) {
       return true;
     case 'conferencia_ponto':
       return true;
+    case 'folha_papel':
+      return true;
+    case 'rs_talentos':
+      return true;
     case 'ciclos':
       return state.colaboradores.length > 0;
     case 'diagnostico':
@@ -114,38 +129,71 @@ function stepUnlocked(id) {
 /* ---------- Render root ---------- */
 let _ultimaRotaRenderizada = null;
 let _ultimoCicloAtivoRenderizado = undefined;
+// BUG CORRIGIDO: o leitor de QR e as câmeras (selfie do ponto, foto do atestado) só eram
+// desligados pelos botões da própria tela. Quem abria a câmera e trocava de tela pelo
+// menu deixava a câmera LIGADA em segundo plano (luz de "câmera em uso" acesa) até
+// recarregar a página. Agora tudo é liberado sempre que a tela muda ou a pessoa sai.
+function liberarRecursosDeTela() {
+  [pararLeitorQr, pararCameraSelfie, pararCameraAtestado].forEach((parar) => {
+    try {
+      parar();
+    } catch (e) {
+      /* já estava parado */
+    }
+  });
+  _justifCameraAberta = false;
+}
+
 function render() {
   const app = document.getElementById('app');
-  // Botão de voltar automático: aparece em todas as telas menos o painel
-  // (que é a tela inicial). Volta pra tela anterior, como o do navegador.
-  const mostrarVoltar = state.route && state.route !== 'dashboard_role';
-  const botaoVoltar = mostrarVoltar
-    ? `<button class="btn-voltar-global" onclick="voltarTela()" title="Voltar para a tela anterior">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        Voltar
-      </button>`
-    : '';
-  app.innerHTML = `
-    ${renderSidebar()}
-    <main>${botaoVoltar}${renderRoute()}</main>
-  `;
-  // BUG CORRIGIDO: antes, TODA chamada de render() forçava a rolagem pro
-  // topo da página — inclusive ações simples dentro da mesma tela (ex.:
-  // marcar uma nota Iniciar/Desenvolver/Alavancar numa avaliação longa),
-  // fazendo a pessoa perder a posição e ter que rolar de novo a cada clique.
-  // Agora só rola pro topo quando a pessoa realmente muda de tela (rota) ou
-  // abre/fecha um ciclo — nunca por causa de uma interação dentro da mesma tela.
   const mudouDeTela = state.route !== _ultimaRotaRenderizada || state.cicloAtivo !== _ultimoCicloAtivoRenderizado;
-  if (mudouDeTela) window.scrollTo(0, 0);
-  _ultimaRotaRenderizada = state.route;
-  _ultimoCicloAtivoRenderizado = state.cicloAtivo;
-  agendarSalvamento();
-  aplicarMarcaDagua();
-  // Gráficos (Chart.js) precisam ser montados depois do HTML já estar na
-  // tela — inicializarGraficosDashboard() sozinha detecta se os canvas
-  // existem (só quando estamos no dashboard do Administrador) e não faz
-  // nada nas outras telas.
-  inicializarGraficosDashboard();
+  if (mudouDeTela) liberarRecursosDeTela();
+
+  const desenhar = () => {
+    // Botão de voltar automático: aparece em todas as telas menos o painel
+    // (que é a tela inicial). Volta pra tela anterior, como o do navegador.
+    const mostrarVoltar = state.route && state.route !== 'dashboard_role';
+    const botaoVoltar = mostrarVoltar
+      ? `<button class="btn-voltar-global" onclick="voltarTela()" title="Voltar para a tela anterior">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Voltar
+        </button>`
+      : '';
+    app.innerHTML = `
+      ${renderSidebar()}
+      <main>${botaoVoltar}${renderRoute()}</main>
+    `;
+    // BUG CORRIGIDO: antes, TODA chamada de render() forçava a rolagem pro
+    // topo da página — inclusive ações simples dentro da mesma tela (ex.:
+    // marcar uma nota Iniciar/Desenvolver/Alavancar numa avaliação longa),
+    // fazendo a pessoa perder a posição e ter que rolar de novo a cada clique.
+    // Agora só rola pro topo quando a pessoa realmente muda de tela (rota) ou
+    // abre/fecha um ciclo — nunca por causa de uma interação dentro da mesma tela.
+    if (mudouDeTela) window.scrollTo(0, 0);
+    _ultimaRotaRenderizada = state.route;
+    _ultimoCicloAtivoRenderizado = state.cicloAtivo;
+    agendarSalvamento();
+    aplicarMarcaDagua();
+    // Gráficos (Chart.js) precisam ser montados depois do HTML já estar na
+    // tela — inicializarGraficosDashboard() sozinha detecta se os canvas
+    // existem (só quando estamos no dashboard do Administrador) e não faz
+    // nada nas outras telas.
+    inicializarGraficosDashboard();
+  };
+
+  if (mudouDeTela) {
+    // BUG CORRIGIDO: ao trocar de tela para uma página pesada (o Dashboard,
+    // com vários cards e gráficos), o navegador podia continuar mostrando
+    // pixels da tela antiga por uma fração de segundo enquanto montava a
+    // nova — dando um efeito visível de sobreposição/"fantasma" (relatado
+    // com vídeo). Limpando a tela primeiro e só desenhando o conteúdo novo
+    // no próximo quadro de pintura do navegador, garante que a tela antiga
+    // já sumiu antes do conteúdo pesado começar a aparecer.
+    app.innerHTML = '';
+    requestAnimationFrame(desenhar);
+  } else {
+    desenhar();
+  }
 }
 
 function logoEmpresaAtual() {
@@ -304,7 +352,13 @@ async function atualizarDadosAoVivo(silencioso) {
   // estava com a tela aberta, o RH continuava vendo a versão antiga do
   // ciclo (ainda na etapa do Líder) até dar um F5 na página inteira.
   if (!silencioso) showToast('Atualizando dados…');
-  await carregarEstado();
+  try {
+    await carregarEstado();
+  } catch (erro) {
+    console.error('Falha ao atualizar dados', erro);
+    if (!silencioso) showToast('Não foi possível atualizar agora. Tente de novo em alguns instantes.');
+    return; // não renderiza nem prossegue com dados possivelmente incompletos
+  }
   esconderAvisoAtualizacao();
   render();
 }

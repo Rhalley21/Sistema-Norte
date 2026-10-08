@@ -16,6 +16,8 @@ const PONTO_DIAS_HISTORICO = 7;
 let _meusRegistrosPontoHoje = [];
 let _meuHistoricoPonto = []; // últimos PONTO_DIAS_HISTORICO dias, incluindo hoje
 let _meusDiasAbonados = new Set(); // datas (AAAA-MM-DD) com justificativa aprovada — abonam atraso/falta
+let _saldoBancoHoras = null; // minutos (positivo ou negativo) do mês atual; null = ainda não carregou
+let _saldoBancoHorasCarregando = false;
 let _pontoCarregando = false;
 let _pontoBatendoAgora = false;
 let _pontoJaCarregouUmaVez = false;
@@ -50,6 +52,21 @@ function inicioDoDiaISO(data) {
   const d = new Date(data);
   d.setHours(0, 0, 0, 0);
   return d.toISOString();
+}
+
+// Saldo do banco de horas do mês atual (positivo ou negativo). Carregado
+// separado do resto pra não travar a tela principal se demorar.
+async function carregarSaldoBancoHoras() {
+  _saldoBancoHorasCarregando = true;
+  const hoje = new Date();
+  const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  const inicioProxMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1);
+  const { data, error } = await sb.functions.invoke('ponto', {
+    body: { action: 'banco_horas_saldo', inicioISO: inicioMes.toISOString(), fimISO: inicioProxMes.toISOString() },
+  });
+  _saldoBancoHorasCarregando = false;
+  if (!error && data && !data.error) _saldoBancoHoras = data.saldoMin ?? 0;
+  render();
 }
 
 async function carregarDadosPonto() {
@@ -118,7 +135,7 @@ function minutosTrabalhadosEm(registros) {
 function descontoAlmocoMin(registrosDoDia, jornada) {
   if (!jornada || !jornada.almocoInicio || !jornada.almocoFim) return 0;
   if (registrosDoDia.length === 0) return 0;
-  const diaBase = registrosDoDia[0].registrado_em.slice(0, 10); // AAAA-MM-DD
+  const diaBase = diaLocalDoRegistro(registrosDoDia[0].registrado_em); // AAAA-MM-DD, no calendário local
   const almocoIni = new Date(`${diaBase}T${jornada.almocoInicio}:00`);
   const almocoFim = new Date(`${diaBase}T${jornada.almocoFim}:00`);
   if (almocoFim <= almocoIni) return 0;
@@ -427,8 +444,8 @@ function totaisPorDia() {
   for (let i = PONTO_DIAS_HISTORICO - 1; i >= 0; i--) {
     const d = new Date(hoje);
     d.setDate(d.getDate() - i);
-    const chave = d.toISOString().slice(0, 10);
-    const doDia = _meuHistoricoPonto.filter((r) => r.registrado_em.slice(0, 10) === chave);
+    const chave = dataLocalISO(d);
+    const doDia = _meuHistoricoPonto.filter((r) => diaLocalDoRegistro(r.registrado_em) === chave);
     dias.push({ data: d, chave, minutos: minutosLiquidosDia(doDia, jornada) });
   }
   return dias;
@@ -469,6 +486,7 @@ function pagePonto() {
   if (!_pontoJaCarregouUmaVez) {
     _pontoJaCarregouUmaVez = true;
     carregarDadosPonto();
+    carregarSaldoBancoHoras();
   }
 
   // O render() monta o HTML na tela de forma síncrona logo após esta função
@@ -485,7 +503,7 @@ function pagePonto() {
   const maxMinutosGrafico = Math.max(480, ...dias.map((d) => d.minutos)); // piso de 8h pra escala não ficar exagerada em dias curtos
 
   const jornada = minhaJornada();
-  const hojeChave = new Date().toISOString().slice(0, 10);
+  const hojeChave = hojeLocalISO();
   const analiseHoje = analisarDiaVsJornada(_meusRegistrosPontoHoje, jornada, _meusDiasAbonados.has(hojeChave));
 
   return `
@@ -591,7 +609,7 @@ function pagePonto() {
           ${dias
             .map((d) => {
               const alturaPct = Math.max(4, Math.round((d.minutos / maxMinutosGrafico) * 100));
-              const ehHoje = d.chave === new Date().toISOString().slice(0, 10);
+              const ehHoje = d.chave === hojeLocalISO();
               return `
               <div class="ponto-grafico-col" title="${d.data.toLocaleDateString('pt-BR')} — ${formatarMinutos(d.minutos)}">
                 <div class="ponto-grafico-valor">${d.minutos ? formatarMinutos(d.minutos) : ''}</div>
@@ -635,6 +653,31 @@ function pagePonto() {
       }
     </div>
 
+    ${renderCardSaldoBancoHoras()}
     ${renderCardJustificativas()}
   `;
+}
+
+// Card com o saldo do banco de horas do mês atual — positivo (fez mais) em
+// verde, negativo (deve horas) em vermelho.
+function renderCardSaldoBancoHoras() {
+  const mesAtual = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  let conteudo;
+  if (_saldoBancoHorasCarregando || _saldoBancoHoras === null) {
+    conteudo = '<div class="empty">Carregando…</div>';
+  } else {
+    const positivo = _saldoBancoHoras >= 0;
+    const h = Math.floor(Math.abs(_saldoBancoHoras) / 60);
+    const m = Math.abs(_saldoBancoHoras) % 60;
+    conteudo = `
+      <div style="display:flex;align-items:baseline;gap:8px;">
+        <div style="font-family:var(--mono);font-size:26px;font-weight:600;color:${positivo ? 'var(--alavancar)' : 'var(--iniciar)'};">${positivo ? '+' : '−'}${h}h${String(m).padStart(2, '0')}</div>
+        <div class="small-muted">${positivo ? 'de saldo' : 'a compensar'}</div>
+      </div>`;
+  }
+  return `
+    <div class="card">
+      <h3>Banco de horas <small>saldo de ${mesAtual}, sem contar dias abonados</small></h3>
+      ${conteudo}
+    </div>`;
 }

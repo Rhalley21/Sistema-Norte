@@ -2155,69 +2155,107 @@ hr.sep {
 }
 .landing-planos h2 {
   font-size: 22px;
-  margin-bottom: 26px;
+  margin-bottom: 8px;
   color: var(--ink);
 }
+.landing-planos-sub {
+  font-size: 14px;
+  color: var(--ink-dim);
+  max-width: 460px;
+  margin: 0 auto 32px;
+  line-height: 1.5;
+}
+/* Painel único (não 3 cards soltos) — colunas separadas por linhas
+   verticais, como uma ficha de preços. O plano recomendado ganha um
+   fundo levemente tingido, sem selo flutuante nem escala. */
 .landing-planos-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
-}
-.landing-plano {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 28px 22px;
+  border-radius: 20px;
+  overflow: hidden;
+  text-align: left;
+}
+.landing-plano {
+  padding: 32px 26px;
+  border-left: 1px solid var(--line);
   position: relative;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+}
+.landing-plano:first-child {
+  border-left: none;
 }
 .landing-plano.destaque {
-  border: 2px solid var(--gold);
-  transform: scale(1.04);
-  box-shadow: var(--shadow-card);
+  background: var(--gold-soft);
 }
 .landing-plano-tag {
-  position: absolute;
-  top: -12px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--gold);
-  color: #fff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  padding: 4px 14px;
-  border-radius: 20px;
-  white-space: nowrap;
+  color: var(--gold);
+  margin-bottom: 14px;
 }
 .landing-plano-nome {
-  font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+.landing-plano-faixa {
+  font-size: 13px;
   color: var(--ink-faint);
-  margin-bottom: 10px;
+  margin-bottom: 20px;
 }
 .landing-plano-preco {
-  font-family: var(--mono);
-  font-size: 32px;
-  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: 34px;
+  font-weight: 600;
   color: var(--ink);
+  letter-spacing: -0.01em;
 }
 .landing-plano-preco span {
   font-size: 14px;
   font-weight: 400;
   color: var(--ink-faint);
 }
-.landing-plano-detalhe {
-  margin-top: 10px;
+.landing-plano-implantacao {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
   font-size: 13px;
   color: var(--ink-dim);
+}
+.landing-plano-implantacao b {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  font-weight: 600;
+}
+.landing-plano .btn {
+  margin-top: 22px;
+  width: 100%;
+  justify-content: center;
 }
 .landing-planos-nota {
   margin-top: 22px;
   font-size: 13px;
   color: var(--ink-faint);
+}
+.landing-planos-nota a {
+  color: var(--gold);
+  font-weight: 500;
+}
+.landing-planos-personalizado {
+  margin-top: 14px;
+  padding: 16px 20px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  font-size: 13px;
+  color: var(--ink-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 .landing-teste {
   background: var(--surface);
@@ -2270,8 +2308,12 @@ hr.sep {
   .landing-planos-grid {
     grid-template-columns: 1fr;
   }
-  .landing-plano.destaque {
-    transform: none;
+  .landing-plano {
+    border-left: none;
+    border-top: 1px solid var(--line);
+  }
+  .landing-plano:first-child {
+    border-top: none;
   }
 }
 
@@ -2329,4 +2371,17 @@ hr.sep {
 .kpi-card-inetris.kpi-ativo {
   border-color: var(--gold);
   box-shadow: 0 0 0 2px var(--gold-soft);
+}
+
+/* Folha de ponto em papel (js/42-page-folha-papel.js) */
+.fp-tabela td,
+.fp-tabela th {
+  padding: 5px 6px;
+  vertical-align: middle;
+}
+.fp-hora {
+  width: 64px;
+  text-align: center;
+  padding: 5px 4px;
+  font-variant-numeric: tabular-nums;
 }

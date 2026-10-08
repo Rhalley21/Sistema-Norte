@@ -49,13 +49,16 @@ function _justifStatusLabel(s) {
 function fotoAtestadoDeArquivo(input) {
   const arquivo = input.files && input.files[0];
   if (!arquivo) return;
-  const leitor = new FileReader();
-  leitor.onload = (e) => {
-    _justifFotoBase64 = e.target.result;
-    _justifCameraAberta = false;
-    render();
-  };
-  leitor.readAsDataURL(arquivo);
+  // Foto de celular tem 4–8 MB: reduz antes de enviar (o servidor aceita até 5 MB).
+  comprimirImagem(arquivo, 1600, 0.82)
+    .then((dataUrl) => {
+      _justifFotoBase64 = dataUrl;
+      _justifCameraAberta = false;
+      render();
+    })
+    .catch(() =>
+      showToast('Não consegui abrir essa imagem. Tente tirar a foto direto pela câmera ou salvar como JPG.')
+    );
 }
 
 function abrirCameraAtestado() {
@@ -241,6 +244,130 @@ function renderCardJustificativas() {
     </div>`;
 }
 
+/* =========== Fechamento de competência (mês) — gestor/RH =========== */
+let _competencias = [];
+let _competJaCarregou = false;
+let _competMesEscolhido = ''; // 'AAAA-MM' do <input type="month">
+
+async function carregarCompetencias() {
+  const { data, error } = await sb.functions.invoke('ponto', { body: { action: 'competencia_status' } });
+  if (!error && data && !data.error) _competencias = data.competencias || [];
+  render();
+}
+
+async function fecharCompetencia() {
+  if (!_competMesEscolhido) {
+    showToast('Escolha o mês para fechar.');
+    return;
+  }
+  const { data, error } = await sb.functions.invoke('ponto', {
+    body: { action: 'competencia_fechar', competencia: `${_competMesEscolhido}-01` },
+  });
+  if (error || data?.error) {
+    showToast((data && data.error) || 'Não foi possível fechar a competência.');
+    return;
+  }
+  showToast('Competência fechada. Justificativas para esse período ficam bloqueadas até reabertura.');
+  _competMesEscolhido = '';
+  await carregarCompetencias();
+}
+
+async function reabrirCompetencia(competencia) {
+  const motivo = prompt('Motivo da reabertura (fica registrado):') || '';
+  const { data, error } = await sb.functions.invoke('ponto', {
+    body: { action: 'competencia_reabrir', competencia, motivo },
+  });
+  if (error || data?.error) {
+    showToast((data && data.error) || 'Não foi possível reabrir.');
+    return;
+  }
+  showToast('Competência reaberta.');
+  await carregarCompetencias();
+}
+
+function renderSecaoCompetencias() {
+  if (!_competJaCarregou) {
+    _competJaCarregou = true;
+    carregarCompetencias();
+  }
+  return `
+    <div class="card">
+      <h3>Fechamento de competência <small>trava o mês — justificativas para esse período ficam bloqueadas</small></h3>
+      <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
+        <div class="field" style="margin:0;"><label>Mês</label><input type="month" onchange="_competMesEscolhido=this.value;" style="max-width:160px;"></div>
+        <button class="btn btn-primary" onclick="fecharCompetencia()">Fechar competência</button>
+      </div>
+      ${
+        _competencias.length
+          ? `<table style="margin-top:14px;"><thead><tr><th>Competência</th><th>Status</th><th></th></tr></thead><tbody>
+            ${_competencias
+              .map((c) => {
+                const [ano, mes] = c.competencia.slice(0, 7).split('-');
+                const label = new Date(`${ano}-${mes}-01T00:00:00`).toLocaleDateString('pt-BR', {
+                  month: 'long',
+                  year: 'numeric',
+                });
+                return `<tr>
+                <td>${label}</td>
+                <td>${c.reaberto ? '<span class="pill pill-desenvolver">Reaberta</span>' : '<span class="pill pill-iniciar">Fechada</span>'}</td>
+                <td style="text-align:right;">${
+                  !c.reaberto
+                    ? `<button class="btn btn-sm btn-ghost" onclick="reabrirCompetencia('${c.competencia}')">Reabrir</button>`
+                    : '—'
+                }</td>
+              </tr>`;
+              })
+              .join('')}
+          </tbody></table>`
+          : '<div class="empty" style="margin-top:10px;">Nenhuma competência fechada ainda.</div>'
+      }
+    </div>`;
+}
+
+/* =========== Substituto de aprovador (para quando o gestor está ausente) =========== */
+let _candidatosSubstituto = [];
+let _substitutoJaCarregou = false;
+let _substitutoSelecionado = ''; // valor do select, atualizado ao trocar
+
+async function carregarCandidatosSubstituto() {
+  const { data, error } = await sb.functions.invoke('ponto', { body: { action: 'substituto_listar_candidatos' } });
+  if (!error && data && !data.error) _candidatosSubstituto = data.candidatos || [];
+  render();
+}
+
+async function salvarSubstituto() {
+  const { data, error } = await sb.functions.invoke('ponto', {
+    body: { action: 'substituto_definir', substitutoPerfilId: _substitutoSelecionado || null },
+  });
+  if (error || data?.error) {
+    showToast((data && data.error) || 'Não foi possível salvar.');
+    return;
+  }
+  showToast(_substitutoSelecionado ? 'Substituto definido.' : 'Substituto removido.');
+}
+
+function renderSecaoSubstituto() {
+  if (!_substitutoJaCarregou) {
+    _substitutoJaCarregou = true;
+    carregarCandidatosSubstituto();
+  }
+  return `
+    <div class="card">
+      <h3>Meu substituto <small>quem também pode aprovar as justificativas da sua equipe, se você estiver ausente</small></h3>
+      <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
+        <div class="field" style="margin:0;min-width:220px;">
+          <label>Substituto</label>
+          <select onchange="_substitutoSelecionado=this.value;">
+            <option value="">Nenhum</option>
+            ${_candidatosSubstituto.map((c) => `<option value="${c.id}">${escaparHtml(c.nome)} (${c.papel === 'rh' ? 'RH' : c.papel === 'owner' ? 'Admin' : 'Líder'})</option>`).join('')}
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="salvarSubstituto()">Salvar</button>
+      </div>
+      <p class="small-muted" style="margin-top:8px;">Se uma justificativa da sua equipe ficar 3 dias sem decisão, seu substituto e o RH recebem um aviso por e-mail.</p>
+    </div>`;
+}
+
 /* =========== Aprovação (gestor/RH) — usada na Conferência de Ponto =========== */
 let _justifPendentes = [];
 let _justifPendCarregando = false;
@@ -295,8 +422,8 @@ function renderSecaoAprovacaoJustificativas() {
             : `<table><thead><tr><th>Colaborador</th><th>Tipo</th><th>Data</th><th>Motivo</th><th>Atestado</th><th></th></tr></thead><tbody>
               ${_justifPendentes
                 .map(
-                  (j) => `<tr>
-                <td><b>${escaparHtml(j.nome)}</b></td>
+                  (j) => `<tr style="${j.escalonado ? 'background:var(--iniciar-soft);' : ''}">
+                <td><b>${escaparHtml(j.nome)}</b>${j.escalonado && j.status === 'pendente' ? `<br><span class="pill pill-iniciar" style="font-size:10px;">⚠ Atrasado (${j.diasPendente}d) — escalonado</span>` : ''}</td>
                 <td>${JUSTIF_TIPOS[j.tipo] || j.tipo}${j.hora_ajuste ? `<br><span class="small-muted">${j.hora_ajuste}</span>` : ''}</td>
                 <td class="small-muted">${new Date(`${j.data_ref}T00:00:00`).toLocaleDateString('pt-BR')}${j.qtd_dias > 1 ? ' (' + j.qtd_dias + ' dias)' : ''}</td>
                 <td class="small-muted">${escaparHtml(j.motivo || '—')}</td>

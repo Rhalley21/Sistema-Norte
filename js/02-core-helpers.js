@@ -36,12 +36,30 @@ const state = {
       { id: 'e-padrao-1', nome: 'Interesse em aprender e se desenvolver continuamente', origem: 'padrão' },
       { id: 'e-padrao-2', nome: 'Disposição para assumir novos desafios', origem: 'padrão' },
     ],
+    // Marca quando a empresa removeu DE PROPÓSITO todos os indicadores
+    // padrão de um pilar — sem isso, o auto-preenchimento (ver
+    // garantirIndicadoresPadraoCultura) recolocaria os padrão de volta.
+    indicadoresPadraoRemovidosT: false,
+    indicadoresPadraoRemovidosE: false,
   },
   cargos: [], // {id,nome,familia,natureza,cbo,indicadoresN:[],indicadoresO:[],desenho:{versao,atividades,aprovado}}
   colaboradores: [], // {id,nome,cargoId,setorId,gestorNome,admissao}
   bancoAcoes: [],
   feedbackContinuo: [], // check-ins 1:1 fora do ciclo formal — RN003 não é afetada (não pontua)
   pesquisasClima: [], // pesquisas de clima/eNPS, módulo separado da avaliação de desempenho
+  nr1: {
+    sst: null, // { nome, contato, origem: 'cliente'|'inetris', definidoEm } — sem isso, não publica campanha
+    dimensoes: null, // preenchido com DIMENSOES_NR1_PADRAO na primeira vez que a empresa abre o módulo; editável
+    campanhas: [],
+    riscos: [],
+    acoes: [],
+  },
+  rs: {
+    // Recrutamento e Seleção. Fase 1: requisição de vaga (com aprovação) +
+    // pipeline de candidatos (cadastro manual — sem página pública ainda).
+    requisicoes: [], // cada uma é a "vaga" depois de aprovada/publicada
+    candidatos: [],
+  },
   ciclos: [], // {id,colaboradorId,cargoId,estado,dataAbertura,notas:{colaborador:{},gestor:{},rh:{}},diagnostico,pdiDesenvolvimento,pdiMentalidade}
   ciclosSelecionado: null,
   avaliadorAtivo: 'colaborador',
@@ -507,7 +525,7 @@ function logoPreviewInternoHTML(fieldId, valor) {
   if (!valor) return '<span class="small-muted">Nenhum logotipo definido ainda.</span>';
   return `
     <div style="display:flex;align-items:center;gap:10px;">
-      <img src="${valor}" style="max-height:60px;max-width:200px;border:1px solid var(--line);border-radius:6px;background:#fff;padding:4px;">
+      <img src="${escaparHtml(valor)}" style="max-height:60px;max-width:200px;border:1px solid var(--line);border-radius:6px;background:#fff;padding:4px;">
       <button type="button" class="btn btn-ghost btn-sm" onclick="logoRemover('${fieldId}')">Remover logotipo</button>
     </div>`;
 }
@@ -799,7 +817,7 @@ function renderGraficoTrajetoriaIDA(ciclosComDiagnostico) {
   const rotulosX = pontos
     .map(
       (c, i) => `
-    <text x="${xDoIndice(i)}" y="${H - PAD_B + 16}" font-size="9" fill="var(--ink-faint)" text-anchor="middle">${new Date(c.dataAbertura).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })}</text>
+    <text x="${xDoIndice(i)}" y="${H - PAD_B + 16}" font-size="9" fill="var(--ink-faint)" text-anchor="middle">${dataDeExibicao(c.dataAbertura).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })}</text>
   `
     )
     .join('');
@@ -966,6 +984,69 @@ function rgbParaHexLocal(r, g, b) {
    template de HTML. Não precisa usar em números, IDs internos gerados
    pelo sistema, ou texto fixo escrito no próprio código.
    ========================================================= */
+// Reduz uma foto (do celular costuma ter 4–8 MB) antes de enviar: sobe mais rápido,
+// custa menos e cabe no limite de 5 MB dos servidores. Devolve um data URL JPEG.
+function comprimirImagem(arquivo, ladoMax = 2000, qualidade = 0.85) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(arquivo);
+    const img = new Image();
+    img.onload = () => {
+      const escala = Math.min(1, ladoMax / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * escala);
+      canvas.height = Math.round(img.height * escala);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', qualidade));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('formato'));
+    };
+    img.src = url;
+  });
+}
+
+// Quando uma Edge Function responde com erro (limite, falta de permissão...), o texto
+// útil vem no CORPO da resposta, não em error.message ("non-2xx status code").
+async function mensagemDeErroFuncao(error, data, padrao) {
+  if (data && data.error) return data.error;
+  try {
+    if (error && error.context && typeof error.context.json === 'function') {
+      const corpo = await error.context.json();
+      if (corpo && corpo.error) return corpo.error;
+    }
+  } catch (e) {
+    // sem corpo legível — segue com a mensagem padrão
+  }
+  return padrao || 'Não foi possível concluir agora. Tente novamente.';
+}
+
+/* ---------- Datas no fuso LOCAL ----------
+   BUG CORRIGIDO: o sistema calculava "hoje" com hojeLocalISO(),
+   que devolve a data em UTC. No Brasil (UTC−3), das 21h à meia-noite isso já é o
+   DIA SEGUINTE — ciclo aberto com data errada, prazo "vencido" antes da hora e,
+   no Ponto, batida depois das 21h contada no dia seguinte. Estas funções usam
+   sempre o calendário local de quem está usando. */
+function dataLocalISO(d = new Date()) {
+  const dia = d instanceof Date ? d : new Date(d);
+  return `${dia.getFullYear()}-${String(dia.getMonth() + 1).padStart(2, '0')}-${String(dia.getDate()).padStart(2, '0')}`;
+}
+function hojeLocalISO() {
+  return dataLocalISO(new Date());
+}
+// Dia local de um carimbo de data/hora (ex.: registrado_em vindo do banco, em UTC).
+function diaLocalDoRegistro(carimbo) {
+  return dataLocalISO(new Date(carimbo));
+}
+// Data "só dia" (AAAA-MM-DD) lida à meia-noite LOCAL — new Date('2026-10-10') lê
+// em UTC e, exibida no Brasil, mostra dia 09. Carimbos completos passam direto.
+function dataDeExibicao(valor) {
+  if (valor instanceof Date) return valor;
+  const texto = String(valor || '');
+  return /^\d{4}-\d{2}-\d{2}$/.test(texto) ? new Date(`${texto}T00:00:00`) : new Date(texto);
+}
+
 function escaparHtml(texto) {
   if (texto === null || texto === undefined) return '';
   return String(texto)
@@ -1113,6 +1194,12 @@ function inicializarGraficosDashboard() {
     document.getElementById('rhDonutIda') ||
     document.getElementById('gestorDonutIda') ||
     document.getElementById('colabGaugePdi') ||
+    document.getElementById('donutCiclosRH') ||
+    document.getElementById('donutCiclosGestor') ||
+    document.getElementById('barJustifRH') ||
+    document.getElementById('barJustifGestor') ||
+    document.getElementById('donutRiscosNr1') ||
+    document.getElementById('donutJustifColab') ||
     document.querySelector('[id^="radar_"]');
   if (temTelaComGrafico && !window.Chart) {
     garantirChart().then(() => inicializarGraficosDashboard());
@@ -1318,8 +1405,94 @@ function inicializarGraficosDashboard() {
         );
       }
     }
+    if (document.getElementById('donutCiclosRH') && d.ciclosPorStatus) {
+      const cs = d.ciclosPorStatus;
+      _chartsAtivos.push(
+        new Chart(document.getElementById('donutCiclosRH'), {
+          type: 'doughnut',
+          data: {
+            labels: ['Aberto', 'Pendência de Avaliador', 'Encerrado'],
+            datasets: [
+              {
+                data: [cs['Aberto'] + cs['Em Consolidação'], cs['Pendência de Avaliador'], cs['Encerrado']],
+                backgroundColor: ['#f59e0b', '#ef4444', '#16a34a'],
+                borderWidth: 0,
+                borderRadius: 6,
+                spacing: 3,
+                hoverOffset: 6,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: { legend: { display: false } },
+          },
+        })
+      );
+    }
+    if (document.getElementById('donutRiscosNr1') && d.riscosPorNivel) {
+      const r = d.riscosPorNivel;
+      _chartsAtivos.push(
+        new Chart(document.getElementById('donutRiscosNr1'), {
+          type: 'doughnut',
+          data: {
+            labels: ['Baixo', 'Médio', 'Alto/Crítico'],
+            datasets: [
+              {
+                data: [r.Baixo, r.Médio, r.Alto + r.Crítico],
+                backgroundColor: ['#16a34a', '#f59e0b', '#ef4444'],
+                borderWidth: 0,
+                borderRadius: 6,
+                spacing: 3,
+                hoverOffset: 6,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: { legend: { display: false } },
+          },
+        })
+      );
+    }
   }
-
+  if (document.getElementById('barJustifRH') && _dashAlertas?.justificativasPorStatus) {
+    const j = _dashAlertas.justificativasPorStatus;
+    _chartsAtivos.push(
+      new Chart(document.getElementById('barJustifRH'), {
+        type: 'bar',
+        data: {
+          labels: ['Pendente', 'Aprovada', 'Rejeitada'],
+          datasets: [
+            {
+              data: [j.pendente, j.aprovada, j.rejeitada],
+              backgroundColor: ['#f59e0b', '#16a34a', '#ef4444'],
+              borderRadius: 4,
+              maxBarThickness: 34,
+            },
+          ],
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              beginAtZero: true,
+              ticks: { color: corEixo, font: { size: 10 }, precision: 0 },
+              grid: { color: corGrade },
+            },
+            y: { ticks: { color: corTexto, font: { size: 11 } }, grid: { display: false } },
+          },
+        },
+      })
+    );
+  }
   if (_dadosGraficosDashboardGestor) {
     const d = _dadosGraficosDashboardGestor;
     if (document.getElementById('gestorDonutIda')) {
@@ -1421,6 +1594,66 @@ function inicializarGraficosDashboard() {
         })
       );
     }
+    if (document.getElementById('donutCiclosGestor') && d.ciclosPorStatus) {
+      const cs = d.ciclosPorStatus;
+      _chartsAtivos.push(
+        new Chart(document.getElementById('donutCiclosGestor'), {
+          type: 'doughnut',
+          data: {
+            labels: ['Aberto', 'Pendência de Avaliador', 'Encerrado'],
+            datasets: [
+              {
+                data: [cs['Aberto'] + cs['Em Consolidação'], cs['Pendência de Avaliador'], cs['Encerrado']],
+                backgroundColor: ['#f59e0b', '#ef4444', '#16a34a'],
+                borderWidth: 0,
+                borderRadius: 6,
+                spacing: 3,
+                hoverOffset: 6,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: { legend: { display: false } },
+          },
+        })
+      );
+    }
+  }
+  if (document.getElementById('barJustifGestor') && _dashAlertas?.justificativasPorStatus) {
+    const j = _dashAlertas.justificativasPorStatus;
+    _chartsAtivos.push(
+      new Chart(document.getElementById('barJustifGestor'), {
+        type: 'bar',
+        data: {
+          labels: ['Pendente', 'Aprovada', 'Rejeitada'],
+          datasets: [
+            {
+              data: [j.pendente, j.aprovada, j.rejeitada],
+              backgroundColor: ['#f59e0b', '#16a34a', '#ef4444'],
+              borderRadius: 4,
+              maxBarThickness: 34,
+            },
+          ],
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              beginAtZero: true,
+              ticks: { color: corEixo, font: { size: 10 }, precision: 0 },
+              grid: { color: corGrade },
+            },
+            y: { ticks: { color: corTexto, font: { size: 11 } }, grid: { display: false } },
+          },
+        },
+      })
+    );
   }
 
   if (_dadosGraficosDashboardColaborador?.pctPdiPessoal !== null && document.getElementById('colabGaugePdi')) {
@@ -1444,6 +1677,34 @@ function inicializarGraficosDashboard() {
           maintainAspectRatio: false,
           cutout: '75%',
           plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        },
+      })
+    );
+  }
+
+  if (document.getElementById('donutJustifColab') && _dadosGraficosDashboardColaborador?.justifPorStatus) {
+    const j = _dadosGraficosDashboardColaborador.justifPorStatus;
+    _chartsAtivos.push(
+      new Chart(document.getElementById('donutJustifColab'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Pendente', 'Aprovada', 'Rejeitada'],
+          datasets: [
+            {
+              data: [j.pendente, j.aprovada, j.rejeitada],
+              backgroundColor: ['#f59e0b', '#16a34a', '#ef4444'],
+              borderWidth: 0,
+              borderRadius: 6,
+              spacing: 3,
+              hoverOffset: 6,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '70%',
+          plugins: { legend: { display: false } },
         },
       })
     );

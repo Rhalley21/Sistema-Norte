@@ -1,0 +1,47 @@
+# =========================================================================
+# Configuração das Edge Functions — usada na IMPLANTAÇÃO AUTOMÁTICA
+# (.github/workflows/implantar-funcoes.yml). Aqui fica gravado o "Verify JWT"
+# de cada função, pra uma implantação nunca religar (ou desligar) isso sem querer.
+#
+# verify_jwt = false  -> a função é chamada SEM login (ou pelo agendador) e se
+#                        protege sozinha (reCAPTCHA, limite por IP, segredo...).
+# verify_jwt = true   -> só aceita quem manda um login válido.
+#
+# Se você criar uma função nova, ADICIONE uma seção aqui (um teste cobra isso).
+# =========================================================================
+project_id = "mgkmvrgfmuexgxkuslur"
+
+# ---- Funções públicas (sem login) ----
+[functions.teste-gratis]       # formulário da página de vendas: reCAPTCHA + limite por IP
+verify_jwt = false
+
+[functions.login-bloqueio]     # roda ANTES do login: conta tentativas por e-mail+IP
+verify_jwt = false
+
+[functions.rs]                 # candidatura pública (reCAPTCHA); as ações do RH conferem a sessão por dentro
+verify_jwt = false
+
+[functions.chamado-automatico] # ações do usuário conferem a sessão por dentro; a rotina exige o CRON_SECRET
+verify_jwt = false
+
+[functions.rotinas-agendadas]  # chamada pelo agendador (CRON_SECRET); a ação "status" é do Super Admin logado
+verify_jwt = false
+
+# ---- Funções que exigem login ----
+[functions.acesso-sem-email]
+verify_jwt = true
+
+[functions.assistente-ajuda]
+verify_jwt = true
+
+[functions.enviar-email]       # usuário logado, ou outra função nossa com a chave de serviço
+verify_jwt = true
+
+[functions.folha-ponto]
+verify_jwt = true
+
+[functions.nr1]
+verify_jwt = true
+
+[functions.ponto]
+verify_jwt = true

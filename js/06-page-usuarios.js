@@ -12,7 +12,7 @@ let _historicoAcessos = [];
 async function carregarUsuarios() {
   const { data: perfis } = await sb
     .from('perfis')
-    .select('id, nome, papel, desativado, estrutura_nome, escopo_estendido')
+    .select('id, nome, papel, desativado, estrutura_nome, escopo_estendido, email')
     .eq('empresa_id', empresaIdAtual);
   _perfisEmpresa = perfis || [];
   const { data: convites } = await sb

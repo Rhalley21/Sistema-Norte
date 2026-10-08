@@ -254,7 +254,7 @@ function segundaFeiraDaSemanaAtual() {
   const deslocamento = diaSemana === 0 ? -6 : 1 - diaSemana; // volta até a segunda-feira
   const segunda = new Date(hoje);
   segunda.setDate(hoje.getDate() + deslocamento);
-  return segunda.toISOString().slice(0, 10);
+  return dataLocalISO(segunda);
 }
 
 async function exportarPontoSemanalPDF(dataInicioISO) {
@@ -317,7 +317,7 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
   for (let i = 0; i < 7; i++) {
     const d = new Date(inicio);
     d.setDate(d.getDate() + i);
-    chavesDias.push(d.toISOString().slice(0, 10));
+    chavesDias.push(dataLocalISO(d));
   }
 
   const linhasTabela = [];
@@ -339,7 +339,7 @@ async function exportarPontoSemanalPDF(dataInicioISO) {
 
       const porDia = {};
       eventos.forEach((r) => {
-        const dia = r.registrado_em.slice(0, 10);
+        const dia = diaLocalDoRegistro(r.registrado_em);
         (porDia[dia] = porDia[dia] || []).push(r);
       });
 
@@ -693,7 +693,7 @@ async function exportarRelatorioInstitucionalPDF() {
   doc.text(`Colaboradores elegíveis sem ciclo aberto no momento: ${semCicloAberto}`, 14, y);
 
   doc.save(
-    `relatorio_institucional_${(state.empresa?.nomeFantasia || 'empresa').replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`
+    `relatorio_institucional_${(state.empresa?.nomeFantasia || 'empresa').replace(/\s+/g, '_')}_${hojeLocalISO()}.pdf`
   );
   registrarAuditoria('relatorio.exportado', { tipo: 'institucional_consolidado' });
   showToast('Relatório Institucional Consolidado exportado.');
@@ -994,7 +994,7 @@ async function exportarConsolidadoExcel() {
   const ws = XLSX.utils.json_to_sheet(linhas);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Consolidado');
-  XLSX.writeFile(wb, `consolidado_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  XLSX.writeFile(wb, `consolidado_${hojeLocalISO()}.xlsx`);
   registrarAuditoria('relatorio.exportado', { tipo: 'consolidado_unidade_setor', unidadeId, setorId });
   showToast('Relatório consolidado exportado em Excel.');
 }

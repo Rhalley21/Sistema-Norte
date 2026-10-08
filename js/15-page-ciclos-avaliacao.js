@@ -61,7 +61,7 @@ function pageCiclos() {
     if (ciclo && !cicloVisivelParaMim(ciclo)) state.cicloAtivo = null;
   }
 
-  const dataPadraoPrazo = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const dataPadraoPrazo = dataLocalISO(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
 
   return `
     <div class="page-head">
@@ -83,7 +83,7 @@ function pageCiclos() {
         <div class="field"><label>Colaborador</label>
           <select id="cy_colab">${semCicloAberto.map((p) => `<option value="${p.id}">${escaparHtml(p.nome)}</option>`).join('')}</select>
         </div>
-        <div class="field"><label>Prazo final da avaliação <small>(lembretes em D-5, D-2 e D-0)</small></label>
+        <div class="field"><label>Prazo final da avaliação <small>(lembretes por e-mail em D-5, D-2 e D-0)</small></label>
           <input id="cy_prazo" type="date" value="${dataPadraoPrazo}">
         </div>
         <div class="field"><label>Modelo de avaliação</label>
@@ -112,7 +112,7 @@ function pageCiclos() {
 /* ---------- Prazos, lembretes e pendência de avaliador (regra interna, sem RN correspondente no PRD) ---------- */
 function diasAteVencimento(ciclo) {
   if (!ciclo.prazoLimite) return null;
-  const hoje = new Date(new Date().toISOString().slice(0, 10));
+  const hoje = new Date(hojeLocalISO());
   const prazo = new Date(ciclo.prazoLimite);
   return Math.round((prazo - hoje) / (1000 * 60 * 60 * 24));
 }
@@ -150,7 +150,7 @@ function registrarAusenciaCiclo(cicloId) {
     etapa: ciclo.etapa,
     motivo,
     registradoPor: meuPerfilId,
-    data: new Date().toISOString().slice(0, 10),
+    data: hojeLocalISO(),
   });
   // A ausência formal é o que desbloqueia o fechamento: avança a etapa mesmo
   // sem as notas do avaliador ausente. O cálculo da média ponderada (RN003) já lida
@@ -196,7 +196,7 @@ function reabrirCiclo(cicloId) {
   ciclo.revisoes = ciclo.revisoes || [];
   ciclo.revisoes.push({
     numero: ciclo.revisoes.length + 1,
-    reabertoEm: new Date().toISOString().slice(0, 10),
+    reabertoEm: hojeLocalISO(),
     justificativa,
     diagnosticoOriginal: ciclo.diagnostico,
     pdiDesenvolvimentoOriginal: ciclo.pdiDesenvolvimento,
@@ -291,7 +291,7 @@ function abrirNovoCiclo() {
     estado: 'Aberto',
     etapa: 'colaborador', // colaborador -> lider -> rh -> (consolidado via consolidarCiclo) — só se aplica ao modelo assíncrono
     tipoAvaliacao, // 'assincrono' (padrão, 3 etapas com pesos 25/50/25) ou 'ao_vivo' (sessão presencial, nota combinada)
-    dataAbertura: new Date().toISOString().slice(0, 10),
+    dataAbertura: hojeLocalISO(),
     prazoLimite: prazo || null,
     ausencias: [],
     notas: { colaborador: {}, gestor: {}, rh: {}, consolidado: {} },
@@ -507,7 +507,7 @@ function renderHistoricoRevisoes(ciclo) {
           (r) => `
         <div style="padding:10px 0;border-bottom:1px dashed var(--line);">
           <b>Revisão ${r.numero}</b> — reaberto em ${r.reabertoEm}
-          <div class="small-muted">Motivo: ${r.justificativa}</div>
+          <div class="small-muted">Motivo: ${escaparHtml(r.justificativa)}</div>
           <div class="small-muted">Classificação geral na versão anterior: <span class="pill ${pillClass(r.diagnosticoOriginal.geral)}">${pillLabel(r.diagnosticoOriginal.geral)}</span></div>
         </div>
       `
@@ -858,7 +858,7 @@ function consolidarCiclo(cicloId) {
   diagnostico.resumoExecutivo = gerarResumoExecutivo(diagnostico);
   ciclo.diagnostico = diagnostico;
   ciclo.estado = 'Diagnóstico Gerado';
-  ciclo.dataConsolidacao = new Date().toISOString().slice(0, 10);
+  ciclo.dataConsolidacao = hojeLocalISO();
 
   // PDI Desenvolvimento — RN019 (só indicadores Iniciar/Desenvolver) e RN023 (evidência específica por ação): ação do Banco de Ações compatível com
   // o pilar do indicador, com evidência específica (nunca genérica).
@@ -1047,7 +1047,7 @@ function renderCardReuniaoFeedback(ciclo) {
       `
           : `
         <div class="grid2">
-          <div class="field"><label>Data da reunião</label><input id="rf_data_${ciclo.id}" type="date" value="${rf.data || new Date().toISOString().slice(0, 10)}"></div>
+          <div class="field"><label>Data da reunião</label><input id="rf_data_${ciclo.id}" type="date" value="${rf.data || hojeLocalISO()}"></div>
           <div class="field"><label>Anotações da conversa <small>(opcional)</small></label><input id="rf_notas_${ciclo.id}" value="${rf.notas || ''}" placeholder="Pontos combinados na conversa"></div>
         </div>
         <button class="btn btn-primary" onclick="registrarReuniaoFeedback('${ciclo.id}')">Registrar reunião realizada</button>
@@ -1343,7 +1343,7 @@ function registrarEvidenciaPDI(cicloId, idx) {
 function validarEvidenciaPDI(cicloId, idx) {
   const ciclo = state.ciclos.find((c) => c.id === cicloId);
   ciclo.pdiDesenvolvimento[idx].validadoPeloGestor = true;
-  ciclo.pdiDesenvolvimento[idx].validadoEm = new Date().toISOString().slice(0, 10);
+  ciclo.pdiDesenvolvimento[idx].validadoEm = hojeLocalISO();
   ciclo.pdiDesenvolvimento[idx].status = 'concluído';
   atualizarCarimbo(ciclo);
   registrarAuditoria('pdi.evidencia_validada', { cicloId, indicador: ciclo.pdiDesenvolvimento[idx].indicador });
@@ -1427,7 +1427,7 @@ function aprovarPDI(cicloId) {
     return;
   }
   ciclo.pdiAprovado = true;
-  ciclo.dataAprovacaoPDI = new Date().toISOString().slice(0, 10);
+  ciclo.dataAprovacaoPDI = hojeLocalISO();
   atualizarCarimbo(ciclo);
   registrarAuditoria('pdi.aprovado', { cicloId });
   emitirEvento('pdi.aprovado', { cicloId });

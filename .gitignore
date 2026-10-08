@@ -1,0 +1,14 @@
+# Dependências (cada pessoa instala com "npm install" — não vão pro repositório)
+node_modules/
+
+# Segredos: NUNCA versionar
+.env
+.env.*
+*.pem
+
+# Arquivos temporários do sistema, do editor e do Supabase CLI
+.DS_Store
+Thumbs.db
+*.log
+supabase/.temp/
+coverage/

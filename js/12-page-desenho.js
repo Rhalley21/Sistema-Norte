@@ -142,7 +142,7 @@ function renderHistoricoVersoes(cargo) {
             <tr>
               <td><b>v${v.versao}</b></td>
               <td class="small-muted">${v.data}</td>
-              <td class="small-muted">${v.motivo}</td>
+              <td class="small-muted">${escaparHtml(v.motivo)}</td>
             </tr>
           `
             )
@@ -256,7 +256,14 @@ function indicadorCargoCard(cargo, pilar, key, titulo) {
   return `
   <div class="card">
     <h3><span class="tag tag-${pilar.toLowerCase()}">${pilar}</span> ${titulo}</h3>
-    ${cargo[key].map((i) => `<div class="chip">${escaparHtml(i.nome)}${i.competencia ? ` <span class="small-muted">(${escaparHtml(i.competencia)})</span>` : ''}</div>`).join('') || '<p class="small-muted">Nenhum indicador ainda.</p>'}
+    ${
+      cargo[key]
+        .map(
+          (i) =>
+            `<div class="chip" style="display:inline-flex;align-items:center;gap:6px;">${escaparHtml(i.nome)}${i.competencia ? ` <span class="small-muted">(${escaparHtml(i.competencia)})</span>` : ''}<button onclick="removerIndicadorCargo('${cargo.id}','${key}','${i.id}')" title="Remover indicador" style="border:none;background:none;color:var(--ink-faint);cursor:pointer;font-size:14px;line-height:1;padding:0 2px;">×</button></div>`
+        )
+        .join('') || '<p class="small-muted">Nenhum indicador ainda.</p>'
+    }
     <div class="grid2" style="margin-top:12px;">
       <input id="ni_${pilar}_${cargo.id}" placeholder="Novo indicador ${pilar}" style="padding:9px 11px;background:var(--surface-2);border:1px solid var(--line);border-radius:7px;color:var(--ink);">
       <input id="nc_${pilar}_${cargo.id}" placeholder="Competência (opcional)" style="padding:9px 11px;background:var(--surface-2);border:1px solid var(--line);border-radius:7px;color:var(--ink);">
@@ -272,6 +279,20 @@ function addIndicadorCargo(cargoId, key, pilar) {
   const competencia = inputComp.value.trim();
   if (!nome) return;
   cargo[key].push({ id: uid(), nome, competencia: competencia || undefined });
+  render();
+}
+function removerIndicadorCargo(cargoId, key, indicadorId) {
+  const cargo = state.cargos.find((c) => c.id === cargoId);
+  if (!cargo) return;
+  const indicador = cargo[key].find((i) => i.id === indicadorId);
+  if (!indicador) return;
+  if (
+    !confirm(
+      `Remover o indicador "${indicador.nome}"? Avaliações já concluídas que usaram esse indicador mantêm o histórico; ele só deixa de aparecer em avaliações novas.`
+    )
+  )
+    return;
+  cargo[key] = cargo[key].filter((i) => i.id !== indicadorId);
   render();
 }
 function salvarRascunhoDesenho(cargoId, silencioso) {
@@ -342,7 +363,7 @@ function publicarDesenho(cargoId) {
   }
 
   const novaVersao = jaPublicadoAntes ? cargo.desenho.versao + 1 : cargo.desenho.versao;
-  const dataPublicacao = new Date().toISOString().slice(0, 10);
+  const dataPublicacao = hojeLocalISO();
   const d = cargo.desenho;
 
   // RN024: guarda um retrato imutável desta versão no histórico — nunca é apagado.

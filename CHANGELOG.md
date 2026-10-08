@@ -3,6 +3,1382 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.110.0 — Rotina diária: aviso de fim do teste grátis e encerramento automático das campanhas do NR1
+Dois itens da lista "deveria rodar sozinho" que ainda dependiam de alguém abrir uma tela. (Os outros dois
+da mesma lista — prazo do banco de talentos e rotina dos chamados — já estavam na v0.109.0; ambos só passam a
+rodar quando o agendamento for feito, passo 4 de docs/ROTINAS-AGENDADAS.md.)
+
+**Aviso de fim do teste grátis.** Antes só havia um banner dentro do sistema: nenhum e-mail "seu teste acaba
+em 2 dias" e nenhum contato depois que ele acabava — a venda mais fácil de perder. Agora o **Administrador**
+da empresa recebe e-mail **2 dias antes** do fim, **no último dia**, **1 dia depois** e **7 dias depois**
+(textos diferentes, com links para os planos e o WhatsApp comercial). Só para quem ainda é teste: não recebem
+clientes pagantes, empresas suspensas, nem o RH. Cada e-mail sai uma única vez, e e-mail que falha é tentado
+de novo na rodada seguinte. A **equipe recebe um resumo por dia** com as empresas perto do fim (ou recém-
+terminadas) e o contato do Administrador de cada uma, para decidir quem procurar. O dia do fim é contado no
+calendário de Brasília (um teste que acaba às 23h30 ainda é "último dia").
+
+**Encerramento automático das campanhas do NR1.** Antes só encerrava quando alguém chamava a função, e só para
+a empresa de quem chamava. Agora a rotina encerra, para todas as empresas, as campanhas ativas cuja data final
+já passou (a data final é inclusiva: encerra na manhã seguinte, horário de Brasília), de forma atômica (nunca
+fecha duas vezes) e **avisa o Administrador e o RH**. Empresa suspensa tem a campanha encerrada, mas não recebe
+e-mail. A função `nr1` continua encerrando também ao ser chamada (rede de segurança); um teste garante que as
+duas usam a mesma regra.
+
+**Estrutura**: cada tarefa da rotina virou uma função que recebe o banco e o envio de e-mail, o que permitiu
+testar o COMPORTAMENTO (não só regras soltas) com um banco simulado: quem recebe, quem não recebe, nada duplicado,
+fronteiras de data. Isso também cobriu retroativamente os lembretes de avaliação da v0.109.0.
+
+**Decisão sua**: os e-mails dizem que "seus dados continuam guardados" depois do teste. Hoje é verdade (nada é
+apagado sozinho), mas é uma promessa. Se um dia você quiser excluir automaticamente testes não convertidos após
+N dias, é preciso ajustar esses textos junto.
+
+**Para ativar**: reimplantar `rotinas-agendadas` e `assistente-ajuda` (e `ponto`/`chamado-automatico` se ainda não
+fez a v0.109.0) e agendar a rotina (docs/ROTINAS-AGENDADAS.md). Novo secret opcional `URL_SITE`.
+
+**Testes**: 264 no total (29 novos), com seis regressões plantadas para provar que os testes as pegam (e-mail
+duplicado, campanha já encerrada reaberta no filtro, data em UTC, pessoa desativada, e-mail pro RH em vez do
+Administrador, retenção curta). **Não testado**: a execução real no Supabase.
+
+## v0.109.0 — Rotinas agendadas: lembretes por e-mail, escalonamento do Ponto e prazo do banco de talentos
+Três coisas que o sistema "prometia" só aconteciam quando alguém abria uma tela — justamente quando
+mais precisavam rodar sozinhas. Agora rodam todo dia às 8h (Brasília), no servidor:
+
+**1) Lembretes de prazo das avaliações, por e-mail.** Antes, "lembretes em D-5, D-2 e D-0" era só um
+aviso dentro da tela do avaliador: quem não entrava no sistema nunca era lembrado. Agora quem está
+**com a avaliação pendente** (o colaborador na autoavaliação, o líder direto ou o RH — a mesma regra
+do aviso "avaliação pendente") recebe e-mail 5 dias antes, 2 dias antes e no dia do prazo. Cada lembrete
+sai uma única vez; só avaliação assíncrona em andamento; respeita o botão de desligar lembretes nas
+Configurações; empresa suspensa ou com teste vencido não recebe. A contagem de dias é a mesma da tela
+(um teste compara as duas).
+
+**2) Escalonamento das justificativas do Ponto.** A regra "3 dias parada sobe pro substituto do gestor e
+pro RH" já existia, mas só executava quando alguém abria a tela de conferência — se o aprovador estava
+sumido, nada subia. A lógica foi extraída para uma função única, usada pela tela e pela rotina diária
+(nova ação interna `rotina_escalonamento` na função `ponto`, só com a chave de serviço).
+
+**3) Prazo do banco de talentos (24 meses).** A remoção dos vencidos só acontecia quando o RH abria a tela.
+Agora a rotina remove todo dia, mesmo que ninguém abra — o prazo é uma promessa feita ao candidato.
+
+**Segurança e cuidado**: a rotina **nunca escreve** nos dados da empresa (só lê — escrever ali do servidor
+poderia sobrescrever o que alguém estivesse editando); cada tarefa é isolada (uma falha não derruba as
+outras) e a falha manda e-mail à equipe; só aceita o segredo do agendador ou a chave de serviço.
+
+**Visibilidade**: novo cartão **Super Admin → Rotinas automáticas** mostra a última execução de cada rotina
+(rodando / atrasada / nunca rodou). É o que impede o pior cenário: a rotina nunca ter sido agendada e
+ninguém perceber.
+
+**Correções de passagem**
+- A base do assistente dizia "lembretes automáticos" sem explicar; agora descreve exatamente como funciona.
+- A limpeza do `rate_limit_log` (sql/35 e rotina) apagava com 7 dias, mas vários limites contam 30 dias
+  (leituras de folha de ponto, perguntas ao assistente) — se o agendador de limpeza estivesse ativo, esses
+  contadores zerariam toda semana. Agora a retenção é de 35 dias.
+
+**Para ativar** (docs/ROTINAS-AGENDADAS.md):
+1. Ativar as extensões `pg_cron` e `pg_net` no Supabase.
+2. Implantar `rotinas-agendadas` (já está no config.toml e no deploy automático; **Verify JWT desligado**) e
+   reimplantar `ponto`, `chamado-automatico`, `assistente-ajuda`. Secret `CRON_SECRET` (o mesmo nas duas rotinas).
+3. Rodar os dois comandos `cron.schedule` do documento (diária e de chamados) e o teste imediato do passo 5.
+4. Conferir o cartão no painel Super Admin.
+**Sem o agendamento (passo 3) nada disto roda sozinho.**
+
+**Testes**: 235 no total (25 novos), validados plantando cinco regressões (rotina escrevendo nos dados da
+empresa, lembrete no dia errado, nome sem escape, aviso ao RH de outra empresa, ação interna sem
+autenticação). Inclui teste de comportamento do escalonamento com banco e e-mail simulados e a conferência
+de que o servidor e a tela contam os dias até o prazo do mesmo jeito.
+
+**Não testado**: a execução real no Supabase (pg_cron + pg_net + envio de e-mail) — por isso o teste imediato
+do passo 5 e o cartão de status.
+
+## v0.108.0 — CI e implantação automática das Edge Functions
+Antes, nada conferia sozinho se uma mudança quebrou algo (os testes só valiam se alguém
+lembrasse de rodar) e cada Edge Function precisava ser colada à mão no painel do Supabase —
+sem como saber qual versão estava de fato no ar.
+
+**CI (`.github/workflows/ci.yml`)** — a cada push e pull request o GitHub roda: lint,
+formatação, sintaxe dos JS, **tipos das Edge Functions** (TypeScript, agora uma etapa de
+verdade e não um filtro improvisado), **sintaxe dos 43 SQL** (parser do PostgreSQL),
+**tabelas e colunas usadas no código x banco** e os testes. Vira ✅/❌ ao lado do commit.
+
+**Implantação (`.github/workflows/implantar-funcoes.yml`)** — implanta no Supabase só as
+funções que mudaram, e só depois do CI passar:
+- manual (Actions > Run workflow): por padrão é uma **simulação** (mostra o que seria feito);
+- automática a cada push: **desligada** até você criar a variável `DEPLOY_AUTOMATICO = true`;
+- o "Verify JWT" de cada função fica gravado em `supabase/config.toml` (as 4 públicas —
+  teste-gratis, login-bloqueio, rs, chamado-automatico — ficam desligadas), então uma
+  implantação nunca mais religa isso sem querer;
+- entradas do usuário passam por variável de ambiente e só nomes de funções que existem são
+  aceitos (sem injeção de comando); token só via secret; permissões mínimas.
+
+**Também novo**: `.gitignore` (antes não existia — `node_modules` podia estar indo pro
+repositório), `npm run verificar` (tudo local num comando), scripts multiplataforma (o
+`check:sintaxe` antigo usava um laço de shell que não rodava no Windows), TypeScript declarado
+no `package.json`, `engines` (Node 22.13+), e `docs/CI-E-IMPLANTACAO.md` com o passo a passo,
+a tabela de secrets de cada função, rollback e solução de problemas.
+
+**Testes**: 210 no total (23 novos): seleção do que implantar (inclusive com um repositório git
+de verdade), toda função tem configuração explícita, só as 4 públicas sem JWT e cada uma se
+protege sozinha, workflows sem segredo escrito nem injeção, `package-lock` em dia, e **um
+scanner que impede chave secreta (Anthropic, Resend, Supabase, GitHub, AWS, service_role)
+de entrar no código**. Cada um foi validado plantando uma falha de propósito.
+
+**Como foi validado**: simulação do CI do zero (cópia sem `node_modules`, `npm ci`, todas as
+etapas em ordem), `actionlint` nos workflows e YAML válido. **NÃO foi possível testar a
+implantação real no Supabase** a partir daqui — por isso a ordem recomendada: simulação, uma
+função de teste, só então o automático.
+
+**Para ativar**: ver `docs/CI-E-IMPLANTACAO.md` (8 passos; os 4 primeiros bastam pra ter o CI).
+**Atenção**: a pasta `.github/` é oculta em alguns sistemas — confira que subiu com `git add .`.
+
+## v0.107.0 — Central de Ajuda 100% automática (com a equipe só quando precisa)
+O que era manual na Central de Ajuda passou a ser automático:
+
+- **A IA tenta responder cada chamado novo na hora** (dúvida de uso, usando a
+  mesma base do chat) e o cliente recebe a resposta por e-mail.
+- **Assuntos que NUNCA vão pra IA**, mesmo que ela quisesse: cobrança/boleto/
+  nota fiscal/reembolso, cancelamento de plano/contrato, LGPD e exclusão de
+  dados (inclusive o botão "Solicitar meus dados"), jurídico e incidente de
+  segurança. Esses vão direto pra uma pessoa. Se a IA disser que não sabe, ou
+  estiver fora do ar, o chamado também segue pra equipe, sem prejuízo ao cliente.
+- **O cliente decide com um clique**: novo status "Respondido (IA)" com os botões
+  "Resolveu" (fecha) e "Ainda preciso de ajuda" (a equipe assume e é avisada por
+  e-mail na hora, com o chamado e a resposta que a IA deu).
+- **Encerramento automático**: respondido pela IA sem retorno em 3 dias → encerrado,
+  com e-mail ao cliente.
+- **Lembrete automático pra equipe**: chamado parado esperando uma pessoa há mais de
+  24h gera e-mail (e repete a cada 24h), mais um **resumo diário às 8h de Brasília**
+  do que a IA respondeu, pra conferir.
+- **Toda mudança de status avisa o cliente por e-mail** (antes só saía quando havia
+  texto de resposta). Quando uma pessoa responde, a resposta deixa de contar como "IA".
+- Painel Super Admin: selo "IA" e "pediu humano" nos chamados, contagem separada
+  (esperando a equipe × respondidos pela IA).
+
+**Segurança e privacidade**: reserva atômica (nunca duas respostas automáticas ao
+mesmo chamado); só o autor (ou Admin/RH) da MESMA empresa mexe no chamado; o cliente
+continua sem permissão de alterar chamados direto no banco; a rotina exige um segredo
+do agendador. Política de Privacidade e Termos atualizados (o texto do chamado pode ser
+lido pela IA; respostas automáticas são informativas) — Word regerado.
+
+**Para ativar** (4 passos, uma vez só):
+1. Rodar `sql/38-ajuda-automatica.sql`.
+2. Criar a Edge Function `chamado-automatico` (**"Verify JWT" desligado**) e o secret
+   `CRON_SECRET` (texto longo aleatório). Precisa de `assistente-ajuda` e `enviar-email`
+   já implantadas.
+3. Agendar a rotina: ativar as extensões `pg_cron` e `pg_net` e rodar o comando que está
+   comentado no fim do sql/38 (de hora em hora). **Sem este passo, o encerramento
+   automático e os lembretes não rodam** — o resto funciona sem ele.
+4. Subir o zip; reimplantar `assistente-ajuda` (base atualizada).
+
+**Testes**: 187 no total (15 novos). Escrevendo-os, o filtro de assuntos sensíveis falhou
+com "quero cancelar o meu plano" (só aceitava um artigo antes de "plano") — corrigido.
+
+## v0.106.0 — R&S: Banco de talentos (tela para o RH)
+Os candidatos que marcavam "aceito ficar disponível no banco de talentos"
+tinham os dados guardados, mas o RH não tinha onde ver — e a Política de
+Privacidade prometia esse uso. Agora existe a página **R&S — Banco de
+talentos** (menu Pessoas, só Administrador e RH; atalho no topo do R&S).
+
+- **O que o RH vê**: nome, e-mail, telefone, cidade, formação, disponibilidade,
+  vaga de onde veio, data de entrada e quando sai do banco; "Ver perfil" abre o
+  perfil completo (equipamentos, Excel/Word/PowerPoint, LinkedIn, experiência).
+  Busca por nome/cidade/experiência/vaga, filtros (formação, disponibilidade,
+  moto, notebook) e botão **Currículo** (link temporário de 10 minutos).
+- **A mesma pessoa aparece uma vez**, mesmo tendo se candidatado a várias vagas
+  (com os dados mais recentes e o número de candidaturas).
+- **Prazo (LGPD): 24 meses** a partir da autorização mais recente; depois a
+  pessoa sai sozinha. É uma constante só (`BANCO_TALENTOS_MESES`, no servidor) e
+  um teste garante que o MESMO número está no servidor, no texto do formulário
+  ("por até 24 meses"), na Política de Privacidade (seção 7), no FAQ e na base do
+  assistente. Para mudar o prazo, mude nos cinco lugares — o teste avisa se
+  esquecer algum.
+- **Remover a qualquer momento** (inclusive a pedido do candidato). A abertura de
+  currículo e a remoção ficam na **Auditoria** (sem dado pessoal no registro).
+- **Segurança**: o navegador nunca recebe o caminho do arquivo (pede o currículo
+  pelo id do talento, validado como UUID); tudo filtrado pela empresa e só
+  Administrador/RH; texto de candidato escapado na tela (teste de regressão).
+- Política de Privacidade (HTML e Word) e texto do formulário atualizados com o prazo.
+
+**Para ativar**: reimplantar a Edge Function `rs` e subir o zip. Sem SQL novo.
+Os candidatos que já estavam no banco passam a contar o prazo da data em que
+autorizaram; quem já passou de 24 meses sai na primeira abertura da tela.
+**Atenção**: o prazo de 24 meses é um padrão escolhido por nós — confirme com o
+advogado que revisar a Política de Privacidade.
+
+**Testes**: 172 no total (10 novos).
+
+## v0.105.0 — Revisão completa: segurança, fuso horário e correções
+Releitura de todo o código e da lógica. Primeiro, varreduras automáticas
+(todas validadas com erros plantados de propósito): nenhuma tabela/coluna
+usada no código que não exista no SQL; toda ação pedida a uma Edge
+Function existe nela; os 42 SQL têm sintaxe válida no parser do
+PostgreSQL; sem declarações duplicadas. Depois, os bugs abaixo.
+
+**Segurança**
+- **`enviar-email` era um canal aberto** (qualquer destinatário e qualquer
+  remetente @inetris.com.br, sem login e sem limite — pior agora que o teste
+  grátis é automático). Agora exige usuário logado (ou outra função nossa),
+  remetente fixo, um único e-mail válido, tamanhos máximos e limites:
+  150/hora por usuário; 500/dia por empresa paga, 30/dia em teste grátis.
+- **XSS armazenado** corrigido (motivo de alteração do cargo, justificativa
+  de reprovação, nome na auditoria, competências críticas, logotipo).
+- **HTML injetado em e-mails**: nome do candidato (formulário público) ia cru
+  em 9 modelos de e-mail do R&S, na confirmação de candidatura, no teste grátis
+  e no escalonamento do Ponto. Tudo escapado.
+- **Candidatura**: e-mail validado, tamanhos limitados, perfil só aceita os
+  campos do formulário (antes: qualquer JSON), currículo exigido no servidor.
+- **`login-bloqueio`**: qualquer pessoa podia travar a conta de outra (bastava
+  chamar registrar_falha 5x). Agora o bloqueio é por e-mail + IP e há teto de
+  falhas por IP.
+- **Senha provisória e código de convite** saíam de `Math.random()`; agora
+  sorteio criptográfico sem viés (senha com 12 caracteres).
+- **Selfie e foto de atestado**: aceitavam qualquer conteúdo e tamanho. Pior:
+  a regra "selfie obrigatória" só olhava se veio algum texto — mandando lixo,
+  a batida era registrada sem selfie. Agora a imagem é conferida pelos bytes e
+  tamanho, e empresa que exige selfie não registra sem uma imagem válida e
+  guardada. A foto do atestado é reduzida no navegador antes de enviar.
+- Aprovação manual de teste (Super Admin): o e-mail nunca saía (campos com
+  nome errado); corrigido.
+
+**Fuso horário** (o sistema é do Brasil, UTC−3; servidor e toISOString() são UTC)
+- **Banco de horas errado no servidor**: a hora da batida era lida em UTC e
+  comparada com a jornada em horário de Brasília. Chegar 30 min cedo dava +30
+  min de crédito falso por dia (~11 h/mês) e a tolerância se perdia. Corrigido
+  e coberto por testes. **Os saldos exibidos vão mudar para o valor correto.**
+- "Hoje" calculado em UTC em 50+ lugares (das 21h à meia-noite já era o dia
+  seguinte): ciclo aberto com data errada, batida da noite no dia seguinte,
+  desconto de almoço no dia errado, abono conferido com a data errada,
+  relatórios semanais. Novos helpers `hojeLocalISO`, `dataLocalISO`,
+  `diaLocalDoRegistro`, `dataDeExibicao`; um teste impede o padrão antigo de voltar.
+- NR1: a campanha encerrava 3 horas antes do fim do último dia.
+- Dados de demonstração do Ponto eram gerados às 05:00 locais; mês anterior
+  do painel errava na virada do mês.
+
+**Outros**
+- Câmera e leitor de QR ficavam ligados em segundo plano ao trocar de tela
+  pelo menu; agora liberados na troca de tela e no logout (com teste que cobre
+  qualquer câmera nova).
+- ESLint: removidas 5 "globais" que não existiam.
+
+**Para ativar**: reimplantar as Edge Functions `enviar-email`, `rs`,
+`teste-gratis`, `login-bloqueio`, `ponto`, `nr1` e `acesso-sem-email`; subir o zip.
+Sem SQL novo. Funções públicas (`teste-gratis`, `login-bloqueio`, `rs`):
+se o projeto usa as chaves `sb_publishable_...`, deixar "Verify JWT" DESLIGADO.
+O e-mail de boas-vindas do cadastro agora exige sessão ativa.
+
+**Testes**: de 116 para 162 (fuso, segurança das funções, câmeras, imagens).
+
+**Achados NÃO resolvidos (precisam de decisão)**: banco de talentos sem tela
+para o RH; aceite dos Termos só é exigido por quem se cadastra pela tela
+(contas "sem e-mail" e usuários antigos nunca aceitam); 9 funções sem nenhum
+chamador (sobras, não quebram nada): abrirCameraAtestado,
+cancelarCameraAtestado, capturarFotoAtestado, atualizarStatusPDI,
+pdiMentalidadeNaoIniciado, renderCiclosTable, mostrarAvisoAtualizacao,
+_rotuloIndicador, _rsEtapaNome.
+
+## v0.104.0 — Central de Ajuda: resposta automática + assistente de IA
+A Central de Ajuda agora responde sozinha em três camadas, da mais barata
+pra mais cara:
+
+**1. Sem IA (custo zero)**
+- **E-mail de confirmação na hora**: ao abrir um chamado, a pessoa recebe
+  "Recebemos seu chamado #PROTOCOLO" (o protocolo também aparece na tela e
+  no aviso pra equipe).
+- **Sugestões enquanto digita**: ao escrever o assunto/mensagem do chamado,
+  aparecem as respostas do FAQ que combinam ("Talvez isto já resolva:"),
+  mostrando só as que chegam perto da melhor — sem ruído de uma palavra solta.
+- O FAQ foi ampliado (de 3 para 18 perguntas) e virou dados, usados também
+  nas sugestões.
+
+**2. Assistente de IA** (nova Edge Function `assistente-ajuda`)
+- Responde "como faço X no sistema?" **só com base numa base de
+  conhecimento** escrita a partir do que o sistema realmente tem. Se a base
+  não cobre, ou o assunto exige a equipe (erro, cobrança, liberação de
+  acesso, exclusão de dados), diz que não sabe e oferece **"Abrir chamado com
+  esta conversa"** (já preenchido, a equipe não precisa perguntar tudo de novo).
+- **Não vê nenhum dado da empresa**, não executa nada no sistema e não
+  guarda a conversa (só conta perguntas pra aplicar limite). CPF, CNPJ e
+  números longos são removidos antes de ir pra IA. Não dá aconselhamento
+  jurídico/trabalhista/médico/de SST. Ignora pedidos pra mudar suas regras.
+- Limites: 30 perguntas por pessoa por hora e 400 por empresa a cada 30 dias.
+  Modelo pequeno e barato por padrão (`ANTHROPIC_MODEL_AJUDA` pra trocar).
+- Aviso claro na tela de que é IA e pode errar.
+
+**Anti-defasagem**: a base do assistente e o FAQ são conferidos por testes
+contra o código real — limites de plano, regra de bloqueio de login, pesos
+e lembretes do ciclo, e se cada nome de menu citado ainda existe. Se uma
+tela for renomeada, o teste falha em vez do assistente ensinar o caminho
+errado em silêncio.
+
+**Erro corrigido de passagem**: o FAQ antigo dizia que o acesso sem e-mail
+ficava em "Usuários & Acesso" — na verdade é em **Colaboradores** ("Criar
+acesso sem e-mail"). Corrigido (e agora há teste que garante isso).
+
+**Documentos legais**: Política de Privacidade (nova seção 2.6, Anthropic
+também pro assistente) e Termos (respostas do assistente são informativas e
+podem errar) atualizados; Word regerado. Revisão por advogado continua pendente.
+
+**Para ativar**
+1. Criar a Edge Function `assistente-ajuda` (código em
+   `supabase/functions/assistente-ajuda/index.ts`). Usa o MESMO secret
+   `ANTHROPIC_API_KEY` da leitura de folha de ponto.
+2. Subir o zip. Sem SQL novo (o limite usa a tabela do sql/35, que já
+   precisa estar aplicada).
+
+**Testes**: 116 no total (26 novos).
+
+**Manutenção**: quando uma tela ou regra do sistema mudar, atualizar a
+`BASE_CONHECIMENTO` dentro da Edge Function — é o que o assistente sabe.
+
+## v0.103.0 — Folha de ponto em papel: lista de presença do dia
+Feedback de uso real: muitas empresas não têm folha mensal por pessoa —
+têm uma **lista do dia**, onde cada funcionário escreve o nome e a hora,
+sem colunas, e o mesmo nome aparece de novo na saída. A primeira versão só
+entendia a folha mensal organizada; este fluxo cobre o outro formato.
+
+**Como funciona**
+- Botão **Importar lista do dia** na tela Folha de Ponto (papel). A IA lê
+  a **data do topo** e agrupa os horários por nome.
+- Entrada/saída não dependem da posição na folha: os horários de cada
+  pessoa são colocados **na ordem do relógio** (1º = entrada, 2º = saída,
+  3º = volta do almoço...), então linhas fora de ordem não atrapalham.
+- O sistema **sugere quem é cada nome** (ignora acento e "de/da", aceita
+  nome parcial, inicial "S." e uma letra trocada em nome longo) e mostra a
+  sugestão pra conferência. Regras que protegem de erro silencioso:
+  só "Maria" com duas Marias fica **sem sugestão**; "Mario" não vira
+  "Maria"; abreviação ou letra aproximada nunca conta como "exato";
+  nome que ninguém tem fica como "não identificado".
+- Tabela de conferência: escolher o colaborador de cada nome (ou ignorar),
+  corrigir horários, ver o total do dia (com ⚠ quando falta um par).
+  Linhas duvidosas ficam destacadas até serem conferidas.
+- **Aplicar às folhas**: cada pessoa recebe esse **dia** na folha do mês
+  dela — como **rascunho** (nada é confirmado automaticamente). Quem já
+  tinha horários naquele dia escolhe **Somar** (junta sem repetir — importar
+  a mesma foto duas vezes não duplica nada) ou **Substituir**. Folha já
+  confirmada fica bloqueada (é preciso reabrir). Nomes escritos de dois
+  jeitos que apontam pro mesmo colaborador são somados.
+- A foto da lista fica ligada à folha de cada pessoa ("Ver foto (dia 10)").
+  Como é uma foto só para várias folhas, apagar um rascunho **não** apaga a
+  foto enquanto outra folha ainda a usa (checagem feita no servidor).
+- Os totais, o PDF e o Excel do mês já existentes funcionam sem mudança.
+
+**Para ativar**: só reimplantar a Edge Function `folha-ponto` e subir o
+zip. Sem SQL novo, sem secret novo.
+
+**Testes**: 90 no total (31 novos): sanitização da lista (ordem dos
+horários, nomes repetidos, data inválida, entrada hostil), data do
+Brasil, casamento de nomes (incluindo os casos ambíguos), e mesclar/
+aplicar dia. Escrevendo os testes, um deles apontou uma falha real da
+primeira regra de sugestão ("Maria S." era tratado como exato para
+Maria Silva por causa da inicial) — corrigida antes da entrega.
+
+**Limites conhecidos**: turno que atravessa a meia-noite não é pareado
+entre folhas de dias diferentes (a saída da madrugada cai na lista do dia
+seguinte e aparece como horário sem par); se alguém esquece de assinar
+uma vez, os pares podem ficar trocados — o ⚠ de "horário sem par" e a
+conferência do RH existem pra isso.
+
+## v0.102.0 — Folha de ponto em papel (foto lida por IA, conferida pelo RH)
+Pra empresas que ainda registram o ponto à mão: o RH fotografa a folha, o
+sistema lê os horários, o RH confere e confirma, e saem os totais e
+relatórios do mês.
+
+**Como funciona**
+- Nova tela **Folha de Ponto (papel)** (Administrador e RH; liga junto
+  com o módulo Ponto). Escolhe a competência e o colaborador, envia a
+  foto (a foto é reduzida no navegador antes de subir).
+- Edge Function nova **`folha-ponto`**: confere que o arquivo é imagem de
+  verdade pela assinatura dos bytes (mesma lição do currículo), guarda no
+  bucket **privado** `folhas-ponto-papel` e pede ao Claude (visão) a
+  transcrição. A resposta da IA é tratada como dado não confiável: horários
+  inválidos, dias fora do mês, tipos inventados e textos longos são
+  descartados/limitados antes de chegar ao navegador.
+- A IA **só sugere**. Tudo aparece numa tabela editável dia a dia; dias com
+  leitura duvidosa ficam destacados (amarelo/vermelho) até alguém conferir.
+  Nada vira registro até o RH clicar em **Confirmar**.
+- Avisos automáticos: nome lido na folha diferente do colaborador escolhido,
+  mês diferente da competência, marcação sem par, período maior que 16h,
+  dias úteis sem marcação.
+- Folha **confirmada fica travada** (inclusive contra edição direta pela
+  API — trigger no banco). Pra alterar: Reabrir, com motivo obrigatório,
+  tudo registrado na auditoria (lida / confirmada / reaberta / excluída).
+- Totais por colaborador: dias, horas trabalhadas, atrasos, horas extras,
+  saldo, faltas e pendências — mesma regra de atraso/extra (com
+  tolerância) do ponto eletrônico, pra os dois ficarem comparáveis. Turno
+  que atravessa a meia-noite é tratado à parte.
+- Relatórios: **PDF da folha** (com linhas de assinatura) e **Excel do mês**
+  com todos os colaboradores (horas em h:mm e em decimal, pra folha de
+  pagamento).
+- Foto muito pequena/letra miúda? Dá pra enviar meia folha por vez
+  (dias 1–16 e 17–31): as leituras se somam.
+
+**Custo e limites** — cada leitura é uma chamada paga à API da Anthropic
+(na SUA conta). Teto de 150 leituras por empresa a cada 30 dias
+(`LIMITE_LEITURAS` na função), pra um cliente não gerar uso sem limite.
+
+**Documentos legais atualizados**: Anthropic entra como prestador de
+serviço na Política de Privacidade (a foto é enviada a ela só quando o
+recurso é usado); os Termos passam a dizer que o Cliente confere a
+transcrição e guarda o papel original; a página de vendas cita o recurso.
+Continua pendente a revisão por advogado.
+
+**Testes**: 40 novos (59 no total) — cálculos de horas/atraso/extra/falta,
+turno noturno, tolerância, checagens de nome e mês, e a validação de
+imagem e a sanitização da resposta da IA (que rodam sobre o código real
+da Edge Function).
+
+**Para ativar**
+1. Rodar `sql/37-folha-ponto-papel.sql` (tabela, travas e bucket privado).
+2. Implantar a Edge Function `folha-ponto` e configurar o secret
+   `ANTHROPIC_API_KEY` (opcional: `ANTHROPIC_MODEL`, padrão
+   `claude-sonnet-5-5`).
+3. Testar com UMA foto real antes de liberar pros clientes.
+
+**Limites desta primeira versão**: a folha em papel fica numa tabela
+própria e **não alimenta** o banco de horas/fechamento de competência do
+ponto eletrônico (os relatórios dela são os da própria tela); líder e
+colaborador não enxergam essas folhas.
+
+## v0.101.2 — Correção real: "Começar teste grátis" ia pro WhatsApp
+Achado arquitetural: ao longo da sessão, construímos um fluxo de teste
+grátis 100% automático (Edge Function "teste-gratis", reCAPTCHA, geração
+de código na hora) — mas ele vivia em `js/35-tela-entrada.js`, usado
+dentro do `app.html`. Quando a landing nova (`index.html`/`planos.html`,
+estática e independente) virou a porta de entrada do site, e a landing
+interna do `app.html` foi desativada (foi pra direto o login), esse
+fluxo automático ficou "órfão" — nenhuma página viva apontava mais pra
+ele. Enquanto isso, **todos** os botões da landing nova (incluindo os de
+teste grátis) estavam ligados ao mesmo link de WhatsApp, sem distinção.
+
+Corrigido: a landing nova agora tem o formulário de teste grátis de
+verdade (nome, e-mail, empresa, telefone, reCAPTCHA), chamando a mesma
+Edge Function "teste-gratis" que já existe — direto nela, sem depender
+de mais nenhum arquivo. Só os 4 botões de "teste grátis"/"conhecer o
+INETRIS" foram redirecionados pro formulário; os de "Quero contratar
+agora" e "Fale com a gente" continuam indo pro WhatsApp, como já estava.
+Testado: os 4 apontam pro formulário, os outros 4 continuam pro
+WhatsApp — nenhum dos dois grupos se confundiu.
+
+`planos.html` (a cópia que também fica acessível) foi sincronizado com
+o mesmo conteúdo.
+
+Sem mudança de banco, sem mudança de Edge Function (só reaproveita a que
+já existia).
+
+## v0.101.1 — Dois reforços de segurança: currículo de verdade + bloqueio no servidor
+
+**1) Validação real do arquivo de currículo:** antes, o sistema confiava
+no que o navegador dizia que o arquivo era ("Content-Type: PDF"), sem
+checar o conteúdo de verdade — alguém podia renomear qualquer arquivo
+pra ".pdf" e o sistema aceitava. Agora confere a assinatura real do
+arquivo (todo PDF de verdade começa com os bytes `%PDF-`) antes de
+aceitar — se não bater, recusa a candidatura com um aviso claro. Testado
+com PDF de verdade, HTML disfarçado e executável disfarçado.
+
+**2) Bloqueio de login movido pro servidor:** o bloqueio após 5 tentativas
+erradas vivia só no `localStorage` do navegador — limpar o navegador ou
+trocar de dispositivo contornava completamente. Nova Edge Function
+"login-bloqueio" torna isso real: o contador vive no banco, por e-mail,
+e vale em qualquer lugar. Testada a lógica de bloqueio na 6ª tentativa.
+
+**Limitação que continua existindo, por transparência:** nenhuma das duas
+camadas (localStorage + banco) impede alguém de chamar a API de
+autenticação do Supabase diretamente, por fora da nossa tela de login —
+fechar essa brecha específica exigiria configurar um Auth Hook direto no
+painel do Supabase (um passo mais avançado, não feito nesta rodada).
+
+Requer rodar sql/35-rate-limit.sql (se ainda não tiver rodado — a tabela
+já existia, só reaproveitamos) e reimplantar a Edge Function "rs" e a
+nova "login-bloqueio".
+
+## v0.101.0 — Termos de Uso / Privacidade ligados ao sistema + canal LGPD
+Os dois últimos itens pendentes da revisão de "pronto pra vender":
+
+**Termos e Política de Privacidade:**
+- Campos em colchetes preenchidos: data (30/09/2026) e Encarregado de
+  Dados (Instituto INETRIS — halleyrafael78@gmail.com).
+- Publicados como páginas do site: `termos.html` e `privacidade.html`,
+  linkadas no rodapé da landing e dentro da Central de Ajuda.
+- **Checkbox obrigatório** no formulário de cadastro ("Li e aceito os
+  Termos de Uso e a Política de Privacidade") — sem marcar, não cria
+  conta.
+- A data exata do aceite fica registrada por pessoa (`perfis.termos_aceitos_em`),
+  como prova em caso de disputa — não é só um "sim/não".
+- **Continua pendente**: revisão por advogado antes de qualquer contrato
+  real (texto em si não mudou, só os campos que estavam em aberto).
+
+**Canal de direitos da LGPD:**
+- Botão **"Solicitar meus dados (LGPD)"** na Central de Ajuda, que já
+  abre um chamado com o pedido pré-formatado (acesso, correção, exclusão,
+  portabilidade) — só preencher o detalhe.
+- Candidatos do R&S (que não logam no sistema) têm o e-mail do
+  Encarregado de Dados diretamente no aviso de privacidade da página
+  pública de candidatura, e um link pra Política completa.
+
+Requer rodar sql/36-aceite-termos.sql (adiciona a coluna e atualiza a
+trigger de cadastro). Sem mudança de Edge Function.
+
+## v0.100.0 — Super Admin: botão "Marcar como pagante"
+Investigando a pergunta sobre o que acontece depois dos 7 dias de teste,
+confirmei que o comportamento já estava certo desde que o módulo foi
+construído: o acesso é bloqueado automaticamente quando o teste expira
+(`trial_ate` vencido e `is_pagante` ainda falso), mas **os dados nunca
+são apagados** — ficam intactos, prontos pra quando o cliente decidir
+assinar.
+
+**Mas encontrei uma lacuna real**: não existia, em lugar nenhum da
+interface, um jeito de marcar uma empresa como "virou cliente pagante" —
+a única forma de reverter o bloqueio era um UPDATE manual direto no
+banco. Corrigido: nova coluna de ação no painel do Super Admin, **"Marcar
+como pagante"**, que aparece pra qualquer empresa ainda em teste grátis
+(expirado ou não) e libera o acesso de vez, sem depender mais do prazo.
+
+Sem mudança de banco (só usa a coluna `is_pagante` que já existia).
+
+## v0.99.9 — Limite de taxa (rate limit) nas Edge Functions públicas
+Camada extra de proteção contra abuso, pra complementar o reCAPTCHA (que
+sozinho não é à prova de bots profissionais):
+
+- **Teste grátis**: no máximo 3 solicitações por IP a cada 24 horas.
+- **Candidatura do R&S**: no máximo 10 candidaturas por IP a cada 1 hora.
+
+Quem passar do limite recebe um aviso claro pra tentar mais tarde (erro
+429), em vez de travar silenciosamente. Testei a lógica (permite até o
+limite, bloqueia depois, e IPs diferentes não se afetam entre si).
+
+Requer rodar sql/35-rate-limit.sql e reimplantar as Edge Functions
+"teste-gratis" e "rs".
+
+## v0.99.8 — Teste grátis 100% automático (decisão: sem revisão manual)
+Antes, cada pedido de teste grátis exigia você clicar em "Aprovar" no
+painel do Super Admin. A partir de agora, quem preenche o formulário na
+landing recebe o código de acesso **na hora**, por e-mail — sem esperar
+ninguém.
+
+- Nova Edge Function pública (`teste-gratis`): gera o código de licença,
+  registra a solicitação já aprovada, e envia o e-mail — tudo numa
+  chamada só, sem exigir login.
+- O formulário de teste grátis ganhou um **reCAPTCHA** (a única proteção
+  contra abuso, já que não existe mais revisão humana — decisão tomada
+  conscientemente).
+- **Bug real corrigido de passagem**: o e-mail de aprovação manual (o
+  fluxo antigo) usava os nomes de campo errados (`para`/`html` em vez de
+  `destinatario`/`corpoHtml`) — o mesmo tipo de bug já corrigido em outro
+  lugar do sistema, mas que tinha passado despercebido aqui. Como esse
+  fluxo manual deixa de ser usado, o bug fica sem efeito prático, mas o
+  texto da confirmação na tela (que ainda dizia "o Instituto vai analisar
+  e enviar em breve") também foi atualizado pra refletir a entrega
+  instantânea.
+
+Requer reimplantar a Edge Function nova "teste-gratis" (e configurar o
+secret RECAPTCHA_SECRET_KEY nela, o mesmo valor já usado na função "rs").
+Sem mudança de SQL.
+
+## v0.99.7 — Testes automatizados: primeiros 19, nas contas mais críticas
+Item 2 do "que falta pra vender" — começando pelos cálculos onde um erro
+silencioso seria mais grave: classificação de desempenho (Iniciar/
+Desenvolver/Alavancar), matriz de risco do NR1, e preço/limite de
+colaboradores por plano.
+
+**Como funciona:** os testes carregam os arquivos JS **de verdade** do
+sistema (não uma cópia reescrita da lógica, que poderia divergir com o
+tempo) dentro de uma "caixa de areia" do Node, com `document`/`state`
+simulados só o suficiente pra rodar. Roda com `npm test`, usando o test
+runner que já vem embutido no Node — sem dependência nova nenhuma.
+
+Durante a escrita, um dos testes que eu mesmo escrevi errado apontou pra
+um comportamento real do cálculo de fidelidade (usa hora exata, não só a
+data) — corrigido o teste, não o código, depois de confirmar que o
+comportamento real estava certo. Fica registrado como exemplo de como
+testes ajudam a entender o sistema, não só a pegar bug.
+
+19 testes, 19 passando. Cobertura inicial — mais cálculos críticos (banco
+de horas, indicadores de R&S) ficam pra uma próxima rodada.
+
+Sem mudança de banco, sem mudança em nenhum arquivo que roda no navegador
+— só arquivos novos dentro de `tests/`.
+
+## v0.99.6 — Suporte estruturado: Central de Ajuda
+Item 1 do "que falta pra vender" — antes, todo suporte era você
+respondendo direto por fora. Agora:
+
+- **Nova página "Central de Ajuda"**, visível pra qualquer usuário
+  logado, com FAQ (perguntas frequentes já escritas) e um botão pra
+  **abrir chamado** (assunto + mensagem).
+- Cada chamado tem status (Aberto → Em andamento → Resolvido), visível
+  pra toda a empresa que abriu — não se perde mais numa conversa de
+  WhatsApp.
+- Você recebe um e-mail assim que um chamado novo é aberto.
+- **Painel do Super Admin**: nova seção com todos os chamados de todas
+  as empresas, num só lugar — você muda o status e escreve uma resposta,
+  que já dispara um e-mail de volta pro cliente automaticamente.
+
+Também corrigido, de passagem: a consulta de perfis da empresa nunca
+buscava o campo `email` — usado agora pela Central de Ajuda, mas que
+também deixa esse dado disponível pra outras partes do sistema que
+precisarem.
+
+Requer rodar sql/34-central-de-ajuda.sql no projeto principal.
+
+## v0.99.5 — Onboarding: checklist de primeiros passos
+Empresa nova, sem ninguém do lado ajudando, agora vê um card no topo do
+Dashboard do Administrador: "Primeiros passos", com uma barra de
+progresso e 5 itens — cadastro da empresa, estrutura organizacional,
+publicar um cargo, cadastrar colaboradores, abrir o primeiro ciclo de
+avaliação. Cada item tem um botão "Ir" direto pra tela certa. O
+progresso é calculado a partir dos dados reais (não é um contador manual
+que pode dessincronizar) — testei os cenários de empresa vazia, empresa
+completa, e o caso de borda de colaborador cadastrado mas inativo (não
+conta como concluído). O card some sozinho quando os 5 passos estiverem
+feitos, e também pode ser ocultado manualmente antes disso.
+
+Sem mudança de banco.
+
+## v0.99.4 — Auditoria de segurança + monitoramento de erros (Sentry)
+Dois itens da lista de "o que falta pra vender", ambos concluídos:
+
+**Auditoria de segurança (RLS entre empresas):** revisei as 34 políticas
+de acesso do sistema, uma por uma. Encontrada 1 falha real: a política de
+criar notificação só conferia a empresa de quem cria, nunca conferia se o
+destinatário pertencia à mesma empresa — permitindo, em teoria, notificar
+qualquer pessoa de qualquer empresa. Corrigida (`33-fix-notificacoes-cross-empresa.sql`),
+testada com o cenário de ataque simulado. As outras 33 políticas foram
+conferidas e estão corretas.
+
+**Monitoramento de erros (Sentry):** adicionado em todas as páginas do
+site (sistema, planos, candidatura pública) — qualquer erro real de
+JavaScript que acontecer pra qualquer pessoa agora é capturado
+automaticamente e aparece no painel do Sentry, com detalhes de onde e
+quando aconteceu. Antes, só se ficava sabendo se o cliente avisasse.
+
+Requer rodar sql/33-fix-notificacoes-cross-empresa.sql no projeto
+principal. O Sentry já está ativo assim que subir os arquivos HTML —
+sem configuração adicional.
+
+## v0.99.3 — Revisão completa do código: 1 bug real encontrado e corrigido
+A pedido, reli o projeto inteiro procurando bugs, com vários métodos:
+cruzamento de toda função chamada (onclick/onchange) contra toda função
+declarada, IDs duplicados de formulário, nomes de coluna do código
+comparados com as restrições reais do banco (`check` constraints), e
+todo `getElementById` comparado com os IDs de fato criados no HTML —
+em cada arquivo e no projeto inteiro.
+
+**Encontrado 1 bug real:** o gerador de "dados de teste" do Ponto criava
+uma justificativa com `tipo: 'atraso'` — valor que não existe na lista
+permitida pelo banco (só `'atraso_saida'`, `'falta'`, `'ajuste_ponto'`,
+`'atestado'`). Isso fazia essa parte específica da geração de dados de
+demonstração falhar sempre. Corrigido pra `'atraso_saida'`. Não afetava
+justificativas reais criadas por colaboradores — só o gerador de teste.
+
+Os outros achados da varredura (2 pares de IDs duplicados, algumas
+funções aparentemente "não declaradas") foram todos conferidos e
+confirmados como falsos positivos — código correto, só padrões que
+minha varredura automática não reconhecia de primeira.
+
+Requer reimplantar a Edge Function "ponto".
+
+## v0.99.2 — R&S: tela de publicar não pede mais info repetida
+A tela "Configurar página pública" pedia pra digitar de novo descrição,
+requisitos e cidade — coisas que já tinham sido preenchidas no perfil
+desejado da requisição. Agora isso é montado automaticamente: descrição
+vem das principais atividades, requisitos juntam hard skills, soft
+skills, experiência e formação (só o que fizer sentido, nada de campo
+vazio ou "não exigido" aparecendo à toa), e cidade vem direto da
+requisição. Sobrou só o essencial pra decidir na hora de publicar:
+título, modalidade, e se mostra salário/nome da empresa.
+
+## v0.99.1 — R&S: idade mínima de 16 anos para vagas de Jovem Aprendiz
+Diferente de coletar a idade exata (que é sobre perfil demográfico e cai
+na Lei 9.029/1995), isso é uma exigência legal de elegibilidade por tipo
+de contrato — a CLT permite Jovem Aprendiz a partir de 16 anos, mas exige
+18 nos demais formatos. Agora:
+- "Formato de contratação" na requisição ganhou a opção **Jovem
+  Aprendiz**.
+- Ao publicar a vaga, o sistema detecta sozinho esse formato e ajusta a
+  página pública automaticamente: mostra "Tenho 16 anos ou mais" nessas
+  vagas, e "Tenho 18 anos ou mais" em todas as outras — sem precisar de
+  nenhum passo extra do RH.
+
+Continua sendo só uma confirmação de elegibilidade (não substitui a
+conferência de documento na contratação de verdade). Requer rodar
+sql/32-rs-jovem-aprendiz.sql e reimplantar a Edge Function "rs".
+
+## v0.99.0 — R&S: perfil detalhado — vaga e candidato
+Expansão grande, a pedido, dividida em duas partes:
+
+**O que a vaga pede** (formulário de requisição, preenchido pelo RH):
+nível de maturidade, perfil DISC desejado, outro teste de personalidade,
+hard skills, soft skills, principais atividades, salário fixo,
+remuneração variável, formato de contratação, disponibilidade de
+horários, interno/externo, cidade, experiência anterior necessária,
+requisitos técnicos (moto/notebook/smartphone), intimidade com
+tecnologia, formação superior necessária, e nível exigido de
+Excel/Word/PowerPoint.
+
+**O que o candidato informa** (página pública, mantido simples e rápido
+de preencher): cidade atual, formação superior, experiência anterior,
+disponibilidade de horários, o que possui (moto/notebook/smartphone),
+intimidade com tecnologia, conhecimento em Excel/Word/PowerPoint, e
+LinkedIn (opcional). O RH vê tudo isso num botão "Ver perfil do
+candidato", dentro do pipeline.
+
+**Duas informações da lista original ficaram de fora, de propósito:**
+idade exata e gênero — coletar isso no formulário de candidatura fere a
+Lei 9.029/1995 (que proíbe usar sexo, idade e outros critérios
+protegidos como filtro de contratação). Mantido o checkbox "Tenho 18
+anos ou mais" no lugar de idade — confirma elegibilidade sem coletar o
+número.
+
+Requer rodar sql/31-rs-perfil-candidato.sql (adiciona uma coluna
+flexível pras respostas do candidato) e reimplantar a Edge Function "rs".
+
+## v0.98.4 — Correção: link público da vaga dava 404 (app.htmlvaga.html)
+Quando o sistema passou a rodar em `app.html` em vez de `index.html`
+(v0.98.1), o link público de cada vaga do R&S quebrou — a função que o
+monta trocava "index.html" por vazio, e como esse nome não existe mais,
+o resultado virava `app.htmlvaga.html` (sem barra nenhuma), um endereço
+que não existe. Corrigido pra usar só a pasta atual, não importa o nome
+do arquivo. Testei com "app.html", "index.html" e sem nome de arquivo —
+os três geram o link certo agora. Vale imediatamente pras vagas já
+publicadas antes, sem precisar republicar nada.
+
+## v0.98.3 — Landing interna removida de vez (não depende mais de configuração)
+A correção anterior (v0.98.2) só mudava o padrão — ainda era possível a
+landing interna aparecer em certas condições. Agora `renderTelaAuth()`
+vai **sempre** direto pro login, sem exceção: a página `planos.html` é a
+única landing do sistema a partir de agora. As funções antigas
+(`renderLanding`, `irParaLanding`) continuam no arquivo, só não são mais
+chamadas por nenhum caminho de entrada.
+
+## v0.98.2 — Removida a landing interna redundante do app.html
+Com a página `planos.html` (agora `index.html`) fazendo o papel de landing
+comercial completa, a landing interna antiga (dentro do próprio sistema,
+mostrada por padrão pra quem não estava logado) ficou redundante e
+confusa — quem chegasse em `app.html` via link direto via de novo os
+planos, só que numa versão mais simples e desatualizada. Agora
+`app.html` vai direto pro login quando não há sessão — sem passar por
+nenhuma landing intermediária. A função interna continua existindo no
+código, só não é mais a porta de entrada padrão.
+
+Requer reimplantar só o arquivo (sem SQL nem Edge Function). Importante:
+o número de versão dos `<script>` do app.html também foi atualizado
+(v0.98.2), pra garantir que o navegador busque os arquivos novos e não
+fique preso em cache antigo.
+
+## v0.98.1 — A página de planos virou a porta de entrada do site
+Reorganização de endereços, a pedido: agora quem visita o endereço
+principal (`/`) vê primeiro a **página de planos** (recursos, preços,
+FAQ) — não a tela de login. O sistema em si continua funcionando
+normalmente, só que agora no endereço **`/app.html`**.
+
+- `index.html` → passou a ser a página de planos (era `planos.html`).
+- `app.html` → o sistema completo (login, dashboard, todos os módulos) —
+  cópia exata do que antes vivia em `index.html`.
+- A página de planos ganhou um botão **"Já sou cliente · Entrar"** no
+  menu, ao lado de "Testar grátis", levando direto pro `/app.html`.
+
+Quem acessa `/app.html` direto (link salvo, favorito) continua
+funcionando exatamente como antes — nada mudou ali além do endereço.
+
+## v0.98.0 — Nova página pública: planos.html
+Adicionada a landing page completa de planos e recursos (`planos.html`),
+lado a lado com `index.html` e `vaga.html` no mesmo site. Todos os botões
+de contato ("Testar grátis", "Quero contratar agora", etc.) abrem o
+WhatsApp direto, em nova aba, com uma mensagem inicial já preenchida, pro
+número (55) 89 9985-7062.
+
+Essa página é independente do sistema logado — pode ser divulgada
+separadamente (redes sociais, anúncios) sem exigir login. Sem SQL, sem
+Edge Function.
+
+## v0.97.4 — Redesign da seção de preços da landing
+Trocado o layout genérico de 3 cards soltos (com selo flutuante, texto em
+caixa alta, escala no card do meio) por um **painel único de preços**,
+mais parecido com uma ficha comercial de verdade: colunas separadas por
+linhas verticais, plano recomendado destacado só por um fundo suave (sem
+badge nem escala), preço com números tabulares, rótulos em minúscula.
+
+A implantação (única vez) deixou de ser um "+ R$X" solto e virou uma linha
+própria, separada por um traço, com a palavra "implantação" por extenso —
+mais claro que é um valor separado da mensalidade. Testei o resultado
+renderizado (desktop e mobile) com um navegador de verdade antes de
+finalizar.
+
+## v0.97.3 — Correção real: tela branca (ReferenceError: renderTelaAuth is not defined)
+A correção anterior (v0.97.2) causou um erro novo, capturado certinho pelo
+print do console: `renderTelaAuth is not defined`. Causa real: o Supabase
+dispara o evento inicial de sessão **muito cedo** — antes mesmo de todos
+os arquivos `<script>` da página terminarem de carregar. Como
+`renderTelaAuth` só existe depois que `js/35-tela-entrada.js` (carregado
+bem mais tarde na lista) termina de rodar, esse evento early podia
+disparar ANTES dela existir, quebrando a página inteira (tela branca).
+
+Corrigido com o mesmo tipo de proteção já usada antes pro reCAPTCHA: antes
+de chamar `renderTelaAuth()`, o código agora confere se ela já existe — se
+não existir ainda, tenta de novo a cada 50ms, até existir de verdade.
+Testada a lógica de espera.
+
+## v0.97.2 — Correção real: landing não aparecia nem em aba anônima
+A correção anterior (v0.96.0) estava certa, mas incompleta: existe um
+SEGUNDO ponto no código que decide o que mostrar na abertura — o listener
+`onAuthStateChange` do Supabase, que dispara sozinho assim que a página
+carrega, mesmo sem nenhuma sessão. Esse segundo ponto chamava
+`renderLogin()` direto, sobrescrevendo a landing que o primeiro ponto já
+tinha decidido mostrar — por isso continuava só login, até em aba anônima
+(confirmado com print). Corrigido: os dois pontos agora concordam
+(`renderTelaAuth()`), e testei os três cenários (visita nova, clicar em
+Entrar, fazer logout) — todos mostram a tela certa.
+
+## v0.97.1 — Valores reais dos planos + taxa de implantação + regra dos 12 meses
+Os preços mensais já estavam certos (Essencial 297/197, Gestão 597/397,
+Estratégico 997/697). O que faltava:
+- **Taxa de implantação** (única vez): R$ 590 (até 10), R$ 990 (11 a 30),
+  R$ 1.490 (31 a 60) — mostrada na landing, junto com cada plano.
+- **Nota sobre acima de 60 colaboradores**: "proposta personalizada",
+  com link direto pro formulário de contratação.
+- **Correção real**: a tela de Pagamento (dentro do sistema, pra quem já é
+  cliente) estava mostrando o preço de **cliente novo** — errado, já que
+  quem está logado ali já é cliente. Agora calcula o preço certo com base
+  na data de início do contrato: **preço de cliente atual** (com desconto)
+  durante os primeiros 12 meses, e volta pro **valor cheio** depois disso
+  — exatamente como a regra diz. Testei os três cenários (dentro dos 12
+  meses, depois dos 12 meses, sem data de início cadastrada) e todos batem
+  certo.
+
+Sem mudança de banco.
+
+## v0.97.0 — Landing: "Quero contratar agora" (Fase 1, sem pagamento automático ainda)
+Cada plano na landing ganhou um botão **"Quero contratar agora"**, além do
+fluxo de teste grátis já existente — pra quem já decidiu e quer pular
+direto pra contratação. Abre um formulário (nome, e-mail, empresa,
+telefone, observações), grava a solicitação, e avisa o Instituto INETRIS
+por e-mail.
+
+Fase 1: **sem link de pagamento automático ainda** — fica registrado pro
+Instituto entrar em contato e combinar o pagamento manualmente (mesmo
+modelo já usado na cobrança por WhatsApp). Quando os valores/forma de
+pagamento forem definidos, entra a Fase 2 com o link automático.
+
+**Painel do Super Admin**: nova seção "Solicitações de contratação direta",
+com status (Pendente → Em contato → Fechada/Perdida) que você atualiza
+conforme conversa com o cliente.
+
+Requer rodar sql/30-solicitacoes-contratacao.sql no projeto principal.
+
+## v0.96.1 — Correção: tela "fantasma" ao trocar de página (visível a olho nu)
+Reportado por vídeo: ao trocar de tela pra uma página pesada (o Dashboard,
+com vários gráficos e cards), por uma fração de segundo a tela antiga
+aparecia sobreposta à nova, como um efeito de "fantasma". Analisei quadro
+a quadro e confirmei: acontecia só nessa transição específica (a mais
+pesada de montar), não nas outras — reproduzindo exatamente o padrão de
+uma tela demorando mais tempo pra ser pintada pelo navegador enquanto a
+antiga ainda não tinha sumido da tela.
+
+Corrigido: ao trocar de rota (não em toda atualização de tela — só quando
+muda de página de verdade), o sistema agora limpa a tela primeiro e só
+desenha o conteúdo novo no próximo quadro de pintura do navegador. Isso
+garante que a tela antiga já sumiu antes do conteúdo pesado começar a
+aparecer, eliminando a sobreposição. Testada a lógica: confirma que limpa
+antes de desenhar ao trocar de tela, e que NÃO limpa à toa quando é só
+uma atualização dentro da mesma tela (evita um "flash" branco desnecessário
+em ações do dia a dia).
+
+## v0.96.0 — Reativada a tela de entrada comercial (landing + teste grátis)
+Antes de logar, o sistema volta a mostrar a landing comercial (hero, planos
+com preços reais vindos de `PLANOS_NORTE`, formulário de solicitação de
+teste grátis de 7 dias) — em vez de abrir direto na tela de login. Quem já
+é cliente clica em "Entrar" e vai pro login normal.
+
+No processo de reativar, encontrei e corrigi um bug real que essa tela
+tinha desde que foi construída (só nunca tinha sido notado, porque estava
+desativada): o aviso por e-mail pro Instituto sobre uma nova solicitação
+usava nomes de campo errados (`para`/`html` em vez de
+`destinatario`/`corpoHtml`) — a solicitação era salva certinho, mas o
+e-mail de aviso falhava **em silêncio**, sem avisar ninguém. Corrigido.
+
+Conferido: a tabela `solicitacoes_teste` e as políticas de acesso público
+(sql/24-teste-gratis.sql) já existiam e continuam corretas — sem mudança
+de banco necessária, contanto que esse arquivo já tenha sido aplicado
+antes.
+
+## v0.95.1 — Trocar o plano da empresa: agora tem tela, sem precisar de SQL
+Corrige a falta que causou o bloqueio ao cadastrar colaboradores: até aqui,
+o plano de uma empresa (Essencial/Gestão/Estratégico, que define o limite
+de colaboradores) só podia ser ajustado direto no banco.
+
+- **Super Admin**: nova coluna "Plano" na tabela de Cobrança por WhatsApp —
+  escolhe o plano de qualquer empresa e salva. Segue o mesmo padrão de
+  segurança já usado pro link de pagamento: uma função SQL que só mexe
+  nesse campo específico, e só roda se quem chamou for Super Admin (nunca
+  dá acesso de escrita a mais nada da empresa).
+- **Cliente**: na tela de Pagamento, cada plano que não é o atual ganhou o
+  botão "Solicitar este plano" — registra o pedido na auditoria (a
+  cobrança continua manual, então não muda sozinho; o Instituto INETRIS
+  vê o pedido e ajusta).
+
+Requer rodar sql/29-super-admin-definir-plano.sql no projeto principal.
+
+## v0.95.0 — R&S completo: scorecard de entrevista e indicadores
+Fecha os dois itens que faltavam do módulo de Recrutamento e Seleção:
+
+- **Scorecard de entrevista**: em cada candidato, um botão "+ Novo
+  scorecard" abre um formulário com as **competências comportamentais já
+  cadastradas no desenho do cargo** (não inventa critério novo) — cada uma
+  avaliada de 1 a 5, mais uma recomendação (avançar / neutro / não
+  avançar) e observações. Vários avaliadores podem registrar o próprio
+  scorecard pro mesmo candidato; a lista mostra a média de cada um e quem
+  avaliou.
+- **Indicadores de recrutamento**: três KPIs no topo da tela —
+  **tempo médio de contratação** (da publicação da vaga até a conversão em
+  colaborador), **taxa de aceite** (dos candidatos que chegaram a receber
+  proposta, quantos realmente aceitaram), e candidatos por vaga. Calculado
+  sob demanda a partir dos dados que já existem — testei as duas contas
+  principais e batem certo.
+
+Com isso, o módulo R&S está completo conforme a especificação original.
+Sem mudança de banco.
+
+## v0.94.4 — R&S: aviso da tela atualizado
+O aviso dizia "ainda não há página pública de candidatura" — desatualizado
+desde que ela foi construída e testada com sucesso. Agora reflete o que
+realmente já funciona (requisição, pipeline, página pública, e-mails por
+etapa) e o que ainda falta (scorecard de entrevista, indicadores).
+
+## v0.94.3 — Correção: "Converter em colaborador" não fazia nada
+A função inteira tinha sido apagada por acidente numa edição anterior
+(mesma classe de erro que já aconteceu antes nesta sessão: só o botão
+sobrou, chamando uma função que não existia mais no arquivo — por isso
+não dava erro visível, só não fazia nada). Restaurada, e fiz uma varredura
+em **todo o projeto** cruzando toda função chamada em onclick/onchange
+contra toda função declarada — confirmando que não sobrou mais nenhuma
+faltando em lugar nenhum.
+
+## v0.94.2 — Correção: reCAPTCHA travava o envio ("No reCAPTCHA clients exist")
+O formulário da página pública é montado depois que os dados da vaga
+carregam — mas o reCAPTCHA só escaneia a página automaticamente uma vez,
+no carregamento inicial, e nunca via mais tarde. Resultado: o widget nunca
+era registrado de verdade, e ao tentar validar, o erro "No reCAPTCHA
+clients exist" travava o botão em "Enviando…" pra sempre. Corrigido:
+agora o widget é renderizado explicitamente por código (esperando o
+script do Google carregar, com nova tentativa a cada 200ms se precisar),
+depois que o formulário já está na tela. Testada a lógica de espera.
+
+## v0.94.1 — R&S: e-mail automático ao candidato em toda mudança de etapa
+O candidato agora é avisado por e-mail sempre que o RH move ele pelo
+pipeline (nova candidatura, triagem, contato inicial, avaliação,
+entrevista, finalista, proposta, aprovado) e também quando é reprovado —
+com uma mensagem específica pra cada etapa, explicando o que está
+acontecendo. A confirmação de recebimento agora dispara **na hora**, direto
+da página pública, sem esperar o RH importar a candidatura. Envio é
+best-effort: se falhar (e-mail inválido, serviço fora do ar), não trava o
+pipeline — só registra no console.
+
+Requer reimplantar a Edge Function "rs" (ganhou o envio de confirmação).
+Sem mudança de SQL.
+
+## v0.94.0 — "Gerar dados de teste" agora cobre o sistema inteiro
+Pra usar em apresentações, sem faltar nada. Antes gerava só o básico
+(estrutura mínima, 2 cargos, 2 colaboradores, 1 ciclo aberto). Agora gera:
+- **Estrutura** com 7 níveis (unidade, 2 departamentos, 2 setores, 2 equipes).
+- **7 cargos** publicados, de famílias variadas (Liderança, Comercial,
+  Administrativo/Financeiro, Coordenação, Operacional).
+- **10 colaboradores**, distribuídos pela estrutura e pelos cargos.
+- **10 ciclos de avaliação em estados variados**: 2 abertos, 2 com
+  pendência de avaliador, e 6 **consolidados de verdade** — reaproveitando
+  a função real de cálculo do sistema (`consolidarCiclo`), com resultados
+  variados (bom/misto/fraco) pra popular os gráficos do dashboard com
+  distribuição realista. Metade já tem reunião de feedback registrada e
+  uma ação do PDI marcada como concluída.
+- **3 check-ins** de feedback contínuo.
+- **1 pesquisa de clima encerrada**, com 12 respostas anônimas de exemplo.
+- **NR1**: SST cadastrado, 1 risco + 1 ação de exemplo, e (via Edge
+  Function, melhor esforço) uma campanha encerrada com respostas reais no
+  servidor — um setor com volume suficiente pra mostrar resultado, outros
+  pequenos pra mostrar a agregação em ação.
+- **R&S**: 1 requisição aprovada e publicada, com 4 candidatos em etapas
+  diferentes do pipeline.
+- **Ponto** (se o módulo estiver habilitado): uma semana de registros
+  (com um dia de atraso de propósito, pra aparecer no banco de horas) e 2
+  justificativas de exemplo (uma pendente, uma já aprovada).
+
+Continua sem apagar nada que já exista — só adiciona por cima. As partes
+de NR1 e Ponto são melhor esforço: se a Edge Function correspondente ainda
+não estiver implantada, essa parte é só ignorada (com aviso no console),
+sem quebrar o resto da geração.
+
+Requer reimplantar as Edge Functions "nr1" e "ponto" (ambas ganharam uma
+ação nova de seed). Sem mudança de SQL.
+
+## v0.93.2 — CORREÇÃO CRÍTICA: risco real de perda de dados no login
+Encontrada a causa provável de um incidente real onde os dados de uma
+empresa foram substituídos por um estado vazio.
+
+**O bug:** se `carregarEstado()` falhasse silenciosamente (instabilidade de
+rede, timeout, etc. — algo mais provável de acontecer com várias pessoas
+logando ao mesmo tempo), o erro era só registrado no console e o app
+seguia normalmente, como se os dados tivessem carregado. O `state` ficava
+nos valores vazios do `seed()`, e o próximo `render()` agendava um
+salvamento automático — que **gravava esse estado vazio por cima dos
+dados reais da empresa**, sem nenhum aviso.
+
+**A correção (duas camadas):**
+1. `carregarEstado()` agora lança um erro explícito se a leitura falhar,
+   em vez de retornar em silêncio.
+2. Uma trava nova (`_cargaInicialOk`) bloqueia **qualquer** salvamento
+   automático até que a carga tenha sido confirmada como bem-sucedida
+   nesta sessão — tanto no login quanto no botão de atualizar. Se a carga
+   falhar, aparece um aviso claro ("não foi possível carregar, tente de
+   novo — nada foi alterado") em vez de deixar o app seguir com dados
+   incompletos.
+
+Testado o cenário exato do incidente: com a trava, uma falha de carga
+agora bloqueia o salvamento (nada é perdido); só depois de uma carga
+confirmada é que o salvamento volta a funcionar normalmente.
+
+**Aplicar com urgência** — sem SQL, é só o novo `norte-organizado.zip`.
+
+## v0.93.1 — R&S: chave pública do reCAPTCHA configurada
+A Site Key do reCAPTCHA já está no `vaga.html`. Falta só configurar a
+Secret Key como segredo (`RECAPTCHA_SECRET_KEY`) na Edge Function "rs", no
+painel do Supabase — sem isso, toda candidatura continua sendo rejeitada.
+
+## v0.93.0 — R&S: página pública de candidatura
+Quem se candidata a uma vaga não precisa mais ser cadastrado manualmente:
+- **Página pública nova** (`vaga.html?v=<id>`), fora do app logado — sem
+  exigir login. Mostra título, descrição, requisitos, local, modalidade, e
+  opcionalmente salário e nome da empresa (configurável por vaga, incluindo
+  vaga confidencial). Formulário com nome, e-mail, telefone, upload de
+  currículo em PDF (até 5MB), aviso de privacidade (aceite obrigatório),
+  consentimento separado para banco de talentos, e reCAPTCHA do Google.
+- **Ao publicar uma vaga** (RH), agora abre um formulário pra configurar o
+  conteúdo público, e o sistema gera um **link único** pra divulgar — com
+  botão de copiar.
+- **Candidaturas recebidas** aparecem destacadas na tela do RH, com botão
+  "Importar" que traz pro pipeline normal (mesma esteira dos candidatos
+  cadastrados manualmente).
+- **Arquitetura de segurança**: como no NR1, os dados públicos (vaga
+  espelhada, candidaturas, banco de talentos) vivem em tabelas próprias,
+  sem nenhuma política de acesso direto — só a Edge Function nova "rs"
+  (com a chave de serviço) toca nelas. Isso evita expor o resto dos dados
+  da empresa pra internet e evita duas candidaturas simultâneas se
+  atropelarem.
+
+Requer rodar sql/28-rs-pagina-publica.sql, criar o bucket privado
+"curriculos-rs", implantar a Edge Function "rs", e configurar o secret
+RECAPTCHA_SECRET_KEY (sem isso, toda candidatura é rejeitada). Também é
+necessário editar vaga.html e colocar a Site Key pública do reCAPTCHA.
+
+## v0.92.0 — Módulo R&S (Fase 1: requisição, aprovação, pipeline)
+Início do módulo de Recrutamento e Seleção, no menu "Pessoas":
+- **Requisição de vaga**: vinculada a um cargo já publicado — a vaga herda
+  missão e responsabilidades do desenho de cargo, sem alterar o cargo
+  original. Campos: unidade, setor, quantidade, motivo, prazo,
+  confidencialidade.
+- **Aprovação**: toda requisição nasce "pendente"; owner/rh aprovam ou
+  reprovam antes de qualquer publicação — nenhuma vaga abre sem passar por
+  aprovação.
+- **Publicação e encerramento**: depois de aprovada, a vaga é publicada
+  (cadastro manual de candidatos — ainda sem página pública) e pode ser
+  encerrada com motivo registrado.
+- **Pipeline de candidatos**: cadastro manual (nome, contato, origem,
+  currículo/resumo), com aviso de possível duplicidade por e-mail/telefone
+  sem apagar histórico. Etapas fixas (Nova candidatura → Triagem → Contato
+  inicial → Avaliação → Entrevista → Finalista → Proposta → Aprovado), com
+  histórico completo de cada mudança (quem, quando, de onde pra onde).
+  Reprovação com motivo registrado, reversível.
+- **Conversão em colaborador**: candidato aprovado gera um novo cadastro em
+  Colaboradores, reaproveitando cargo/unidade/setor da vaga.
+
+Fase 1 é a fundação — scorecards de entrevista, comunicação por e-mail,
+página pública de candidatura e indicadores ainda não existem nesta versão.
+Sem mudança de banco — vive no mesmo blob por empresa, com compatibilidade
+automática para empresas já existentes.
+
+## v0.91.0 — NR1: exportar relatório em PDF (para enviar ao SST)
+Como o SST não tem conta no sistema, agora há um botão **"Exportar PDF"**
+em cada campanha publicada, que gera um relatório com: resultado
+consolidado por dimensão (empresa toda e por grupo, já respeitando o
+mínimo de anonimato e a agregação hierárquica de grupos pequenos),
+inventário de riscos, e plano de ação com status e eficácia. O RH baixa e
+envia ao profissional de SST por fora do sistema. Segue o mesmo padrão
+visual dos outros relatórios em PDF (logo, cores da identidade visual).
+Sem mudança de banco.
+
+## v0.90.1 — RH: KPIs acima dos gráficos, com detalhe extra (como no Admin)
+Os 4 cards do topo do dashboard do RH (Avaliações em andamento, Pendências
+de avaliador, PDIs ativos, Colaboradores sem risco) subiram para ANTES dos
+gráficos (ficavam depois) e ganharam uma linha extra de contexto em cada
+um, no mesmo padrão do dashboard do Admin: "Avaliações em andamento" mostra
+quantas estão abertas vs em consolidação; "Pendências de avaliador" e "PDIs
+ativos" ficaram clicáveis, levando direto para resolver; "Colaboradores sem
+risco" mostra a proporção (ex: 23 de 25). Sem mudança de banco.
+
+## v0.90.0 — Dashboards reorganizados: pendências → gráficos → resto
+Os três dashboards (RH, Líder e Colaborador) passaram a seguir a mesma
+ordem visual em todos: primeiro as pendências, depois todos os gráficos
+juntos, e por último as tabelas/listas/informações complementares. Antes
+os gráficos apareciam espalhados entre KPIs e tabelas; agora ficam
+concentrados logo após as pendências, e "Minha equipe" (líder), "Meu
+cargo/ciclo" (colaborador) e as tabelas de competências/risco (RH) vêm
+depois, todos juntos. Nenhum gráfico ou informação foi removido — só a
+ordem mudou. Sem mudança de banco nem de Edge Function.
+
+## v0.89.2 — Dashboards do RH, Líder e Colaborador muito mais completos
+Os três dashboards passaram a reunir tudo que foi construído nas últimas
+sessões (justificativas de ponto, banco de horas, competência, substituto
+de aprovador, NR1), que antes ficava "escondido" em telas que só apareciam
+se a pessoa lembrasse de checar.
+
+**RH — "Suas pendências agora" ganhou:** justificativas de ponto
+aguardando decisão (com as escalonadas em destaque), ações do NR1 com
+prazo vencido, ações NR1 aguardando verificação de eficácia, aviso de
+competência do mês anterior não fechada, aviso de substituto de aprovador
+não definido, e alerta de banco de horas próprio negativo.
+
+**RH — novo "Painel operacional" com 3 gráficos:** ciclos por status
+(rosca), justificativas dos últimos 30 dias por status (barras), riscos
+NR1 por nível (rosca) — cada um só aparece se houver dado real.
+
+**Líder — pendências ganharam:** justificativas de ponto da equipe,
+substituto não definido, banco de horas próprio negativo.
+
+**Líder — nova tabela "Minha equipe":** cada colaborador com cargo, setor,
+status do ciclo atual, nível de desempenho e justificativas de ponto
+pendentes — tudo num lugar só, sem precisar visitar outras telas.
+
+**Líder — novo painel com 2 gráficos:** ciclos da equipe por status
+(rosca), justificativas da equipe por status (barras).
+
+**Colaborador — pendências ganharam:** justificativas de ponto próprias
+aguardando decisão, pesquisas NR1 aguardando resposta.
+
+**Colaborador — novo painel com gráfico + saldo:** rosca "Minhas
+justificativas" (histórico por status) e card do saldo do banco de horas
+do mês (colorido, verde se positivo, vermelho se negativo).
+
+Requer rodar reimplantar a Edge Function "ponto" (nova ação
+`dashboard_alertas`, que verifica substituto, competência anterior e conta
+justificativas por status). Sem mudança de banco.
+
+## v0.88.1 — NR1: removido o campo "Origem" do SST
+O cadastro do responsável técnico (SST) tinha um campo "Origem" (nomeado
+pelo cliente / serviço contratado do INETRIS). Removido — o cadastro agora
+é só nome e contato.
+
+## v0.88.0 — Indicadores dos pilares NORTE agora podem ser removidos
+Até aqui, uma vez que um indicador era adicionado a um pilar (N/O/R/T/E) —
+tanto no Desenho de Cargo quanto na Cultura Organizacional — não havia
+como removê-lo. Agora cada indicador tem um botão "×" pra remover, com
+confirmação. Na Cultura Organizacional, remover um indicador padrão da
+metodologia é permitido (é uma escolha da empresa), mas com aviso — e,
+diferente de antes, a remoção não é desfeita automaticamente na próxima
+vez que o sistema abrir (havia uma proteção pra empresas antigas que
+recolocava os indicadores padrão sozinha; agora ela respeita quando a
+remoção foi intencional). Sem mudança de banco.
+
+## v0.87.1 — Correções de segurança encontradas na revisão (NR1)
+Revisão do código da Edge Function "nr1" encontrou e corrigiu dois problemas
+reais:
+- **Vazamento entre empresas**: a ação de ver o log de visualização de uma
+  campanha não conferia se a campanha pertencia à empresa de quem
+  perguntava — em teoria, alguém sabendo o id de uma campanha de outra
+  empresa poderia consultar quem viu o resultado dela. Corrigido: agora
+  confirma que a campanha é da mesma empresa antes de responder.
+- **Elegibilidade não validada no servidor**: a segmentação de público
+  (por unidade/setor/cargo/lista) só era conferida na tela — o servidor
+  aceitava qualquer resposta de qualquer pessoa da empresa. Corrigido:
+  agora o servidor confere a elegibilidade antes de aceitar a resposta.
+
+Também corrigido: a lista de campanhas mostrava "Nenhuma campanha criada
+ainda" por um instante enquanto ainda carregava do servidor, antes de
+aparecer a lista real — agora mostra "Carregando campanhas…" nesse meio-tempo.
+
+## v0.87.0 — NR1: campanhas e respostas movidas para o servidor
+Corrige a limitação de privacidade apontada: até aqui, campanhas, respostas
+e a lista de quem já respondeu viviam no mesmo bloco de dados que qualquer
+usuário logado da empresa baixa no navegador — tecnicamente dava para ver
+no Console quem participou (não o quê) de uma campanha NR1.
+
+Agora essas partes vivem só no **servidor**, numa Edge Function nova
+("nr1") com 5 tabelas próprias, sem nenhuma política de acesso direto do
+navegador — só a função (com a chave de serviço) toca nesses dados:
+- Campanhas, respostas (sem ligação com quem respondeu — nem o servidor
+  sabe), participação (quem já respondeu, separado do conteúdo),
+  consentimento de privacidade, e o log de visualização do resultado.
+- O navegador só recebe o que cada ação decide devolver: números
+  consolidados, ou "só sobre a própria pessoa" (se ela já respondeu/
+  aceitou) — nunca um despejo bruto das listas.
+- Toda a experiência (criar/publicar/encerrar campanha, responder, aceitar
+  o aviso de privacidade, ver resultado consolidado, salvar rascunho,
+  fechamento automático) continua igual — só a forma como os dados viajam
+  e são guardados mudou.
+
+SST, dimensões/perguntas, inventário de risco e plano de ação continuam no
+navegador (não são dados sensíveis de resposta anônima — são registros de
+gestão do RH/SST), sem mudança.
+
+Requer rodar sql/27-nr1-servidor.sql no projeto principal e implantar a
+nova Edge Function "nr1" (arquivo à parte).
+
+## v0.86.1 — NR1: aviso de privacidade e log de visualização
+- **Aviso de privacidade**: antes de responder, aparece um aviso explicando
+  a finalidade da coleta (avaliar condições de trabalho, nunca a pessoa) e
+  a garantia de anonimato. É preciso aceitar para continuar. O aceite fica
+  registrado (quem e quando) — separado da resposta em si, então não quebra
+  o anonimato, no mesmo princípio de "quem já respondeu" que já existia.
+- **Log de visualização do resultado**: toda vez que um owner/rh abre o
+  resultado consolidado de uma campanha, fica registrado quem viu e quando
+  — exigência de auditoria da norma. Fechar e reabrir gera um novo
+  registro; só reabrir sem fechar (nova renderização) não duplica. As
+  últimas 5 visualizações aparecem no rodapé do card de resultado.
+
+Sem mudança de banco.
+
+## v0.86.0 — NR1: público segmentado, salvar rascunho, fechamento automático
+- **Público segmentado**: ao criar uma campanha, escolha se ela vai para
+  todos os colaboradores, uma unidade, um setor, um cargo, ou uma lista
+  específica de pessoas — com a **quantidade de elegíveis mostrada em tempo
+  real** antes de publicar. A lista de campanhas mostra o público e quantos
+  são elegíveis; "Minhas pesquisas" só mostra campanhas para as quais a
+  pessoa é elegível. A adesão do painel executivo passou a considerar o
+  público de cada campanha, não mais o total de colaboradores da empresa.
+- **Salvar e continuar**: ao responder, o progresso é salvo automaticamente
+  no navegador da própria pessoa (nunca no servidor — não afeta o
+  anonimato). Se ela saltar fora, a lista mostra "(rascunho salvo)" e o
+  botão muda para "Continuar", retomando de onde parou. O rascunho é
+  apagado ao enviar a resposta.
+- **Fechamento automático**: campanhas ativas cuja data de fim já passou
+  são encerradas automaticamente ao abrir a tela, sem depender de alguém
+  lembrar — a lista sinaliza quando isso aconteceu.
+
+Sem mudança de banco.
+
+## v0.85.2 — Agregação hierárquica de grupos pequenos (NR1)
+Setores com menos respostas que o mínimo de anonimato deixaram de ser só
+ocultados: agora sobem para o nível de cima na Estrutura (ex: a Unidade) e
+se juntam com outros setores pequenos do mesmo pai. Se a soma atingir o
+mínimo, mostra o resultado agregado nesse nível ("Setor X (agregado dos
+setores menores)"); se ainda não atingir, sobe mais um nível, até "toda a
+empresa" como último recurso — em vez de descartar o dado, como o
+documento recomendava. Testado com um cenário de dois setores pequenos que
+se combinam corretamente.
+
+## v0.85.1 — Resultado da pesquisa ligado à matriz de risco
+Corrige a desconexão entre o resultado da pesquisa (média com cor) e o
+inventário de riscos (matriz probabilidade × severidade) — eram dois
+sistemas que não se falavam. Agora, toda dimensão com resultado abaixo do
+esperado (média < 3,5), tanto na visão "empresa toda" quanto por setor,
+ganha um botão **"+ Registrar risco"** que abre o formulário do inventário
+já com a descrição, a dimensão e o grupo preenchidos — e uma probabilidade
+sugerida conforme a gravidade da média (só sugestão; a probabilidade e a
+severidade continuam sendo definidas por julgamento humano do responsável
+técnico, nunca calculadas automaticamente pela pesquisa).
+
+## v0.85.0 — Módulo NR1 (Fases 3 e 4: risco, plano de ação e painel)
+- **Inventário de riscos**: registre um risco (descrição, dimensão
+  relacionada, grupo afetado, decisão) e defina probabilidade e severidade
+  (1 a 5 cada) — o sistema calcula o **nível** pela matriz de risco
+  (Baixo/Médio/Alto/Crítico). É julgamento humano do responsável técnico; o
+  sistema só organiza e calcula, não decide.
+- **Plano de ação**: cada risco pode ter várias ações (tipo, responsável,
+  prazo). Status calculado automaticamente — uma ação com prazo vencido e
+  não concluída aparece como "Atrasada". Ações concluídas ganham um botão
+  **"Verificar eficácia"**: registra se realmente funcionou (melhorou /
+  parcial / não melhorou) — concluir a tarefa não fecha o risco
+  automaticamente, como a norma exige.
+- **Painel executivo**: contagem de riscos por nível, ações atrasadas,
+  ações aguardando verificação de eficácia, e a adesão média das campanhas
+  publicadas.
+
+Com isso, o ciclo completo do NR1 está fechado: campanha → coleta anônima →
+resultado consolidado → risco → ação → verificação de eficácia → painel.
+Sem mudança de banco. Continua valendo: conteúdo e anonimato precisam de
+validação por SST antes de uso com cliente real.
+
+## v0.84.0 — Módulo NR1 (Fase 2: coleta anônima e consolidação)
+- **"Minhas pesquisas"**: todo colaborador (qualquer papel) vê as campanhas
+  ativas que ainda não respondeu, e responde direto no sistema — escala de
+  1 a 5 por afirmação. A resposta **não leva o nome de quem respondeu**, só
+  o setor/unidade (pra permitir agrupar sem identificar a pessoa), seguindo
+  o mesmo princípio de anonimato da Pesquisa de Clima.
+- **Resultado consolidado** (owner/rh): botão "Ver resultado" em cada
+  campanha publicada, mostrando a média por dimensão — para a empresa toda,
+  e também por setor. **Grupos com menos respostas que o mínimo definido
+  ficam ocultos** ("dados insuficientes"), protegendo o anonimato mesmo em
+  setores pequenos. Cores indicam o nível: vermelho (risco), laranja
+  (atenção), verde (adequado).
+
+Ainda faltam (próxima fase): registro formal de risco a partir do
+resultado, plano de ação e verificação de eficácia. Continua valendo o
+aviso: conteúdo e regras de anonimato precisam de validação por SST antes
+de uso com cliente real. Sem mudança de banco.
+
+## v0.83.0 — Módulo NR1 (Fase 1: fundação)
+Início do módulo de Riscos Psicossociais (NR1), no menu "Pessoas" (owner/rh):
+- **Responsável técnico (SST)**: cadastro simples (nome, contato, se é do
+  cliente ou serviço contratado do INETRIS). **Sem SST nomeado, nenhuma
+  campanha pode ser publicada** — só fica em rascunho.
+- **Dimensões e perguntas**: modelo genérico com 9 dimensões (demandas e
+  carga, autonomia, clareza de papel, apoio e liderança, reconhecimento,
+  relações e violência, mudanças e segurança, trabalho e vida, condições de
+  execução), com perguntas redigidas do zero pelo INETRIS — não é cópia de
+  nenhum instrumento comercial/protegido.
+- **Campanhas**: criar (nome, período, mínimo de respondentes por grupo —
+  padrão 5), publicar (trava sem SST) e encerrar. As perguntas ficam
+  "congeladas" no momento da publicação, então editar o modelo depois não
+  afeta campanhas já publicadas.
+
+⚠️ Fase 1 é só a fundação: a coleta anônima de respostas, a consolidação por
+grupo com a trava de anonimato, e o registro de risco/plano de ação ainda
+não existem — entram nas próximas fases. Este módulo ainda não deve ser
+usado com um cliente real: o conteúdo das perguntas e as regras de
+anonimato precisam de homologação por um profissional de SST antes disso
+(aviso também exibido na própria tela). Sem mudança de banco — vive no
+mesmo blob por empresa (dados_sistema), com compatibilidade automática para
+empresas já existentes.
+
+## v0.82.0 — Substituto de aprovador e escalonamento
+Resolve o risco de justificativas ficarem paradas quando o gestor está
+ausente:
+- Na Conferência de Ponto, uma seção **"Meu substituto"** onde o líder/RH
+  escolhe outro líder ou RH da empresa que também pode aprovar por ele.
+- Uma justificativa **pendente há 3 dias ou mais** é marcada como
+  **escalonada**: aparece destacada (fundo vermelho claro, selo "⚠ Atrasado
+  (Xd) — escalonado") na lista, e dispara um e-mail avisando o substituto do
+  gestor do colaborador (se definido) e o RH/Admin da empresa — best-effort,
+  não bloqueia a tela se o e-mail falhar.
+
+Requer rodar sql/26-substituto-aprovador.sql (principal) e
+sql-ponto-db/06-escalonamento.sql (ponto), e reimplantar a Edge Function
+"ponto".
+
+## v0.81.0 — Acesso sem e-mail (para quem não tem e-mail/celular corporativo)
+Na tela de Colaboradores, quem ainda não tem conta vinculada ganhou o botão
+"Criar acesso sem e-mail". O RH informa um login (matrícula) e o papel
+(colaborador/líder/RH); o sistema gera um identificador técnico interno (não
+é um e-mail de verdade — nunca é enviado a lugar nenhum) e uma senha
+provisória, mostrados **uma única vez** para o RH copiar e entregar à
+pessoa. No primeiro login com a senha provisória, o sistema obriga a criar
+uma senha própria antes de continuar. Reaproveita o mecanismo de convites já
+existente — a trigger de cadastro não foi alterada. Nova Edge Function
+"acesso-sem-email".
+
+Requer rodar sql/25-acesso-sem-email.sql no projeto principal e implantar a
+nova Edge Function "acesso-sem-email" (arquivo à parte).
+
+## v0.80.0 — Banco de horas e fechamento de competência
+Motor de ponto mais completo:
+- **Banco de horas**: card na tela de Ponto mostrando o saldo acumulado do
+  mês (positivo = fez mais horas, verde; negativo = a compensar, vermelho).
+  Calculado a partir do atraso/extra de cada dia com jornada, ignorando dias
+  abonados por justificativa aprovada.
+- **Fechamento de competência**: na Conferência de Ponto, o RH/Admin escolhe
+  um mês e fecha. Depois de fechada, novas justificativas (inclusive ajuste
+  de ponto) para datas daquele mês são bloqueadas, com aviso claro. Reabrir
+  é possível (só owner/rh), pedindo um motivo que fica registrado. A lista
+  mostra todas as competências fechadas/reabertas.
+
+Requer rodar sql-ponto-db/05-banco-horas-competencia.sql no banco de PONTO e
+reimplantar a Edge Function "ponto".
+
 ## v0.79.0 — Relatório semanal de ponto reflete os abonos
 O PDF do relatório semanal agora considera as justificativas aprovadas: um
 dia abonado (atestado, falta justificada, etc.) deixa de contar atraso ou

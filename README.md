@@ -115,3 +115,16 @@ Sem esse passo manual (que só quem tem acesso de administrador do
 repositório consegue fazer), o CI roda e avisa, mas não impede
 tecnicamente um código quebrado de ir pra `main` — é só esse último passo
 que fecha essa porta de vez.
+
+
+## Verificação automática (CI) e implantação das Edge Functions
+
+A cada `git push`, o GitHub roda sozinho os testes e verificações (lint, formatação, sintaxe, tipos das
+Edge Functions, SQL, tabelas/colunas x banco). Para rodar tudo no seu computador antes do push:
+
+```
+npm run verificar
+```
+
+As Edge Functions também podem ser implantadas no Supabase sem abrir o painel. Passo a passo (e o que
+é feito uma vez só): [docs/CI-E-IMPLANTACAO.md](docs/CI-E-IMPLANTACAO.md).

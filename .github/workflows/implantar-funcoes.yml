@@ -1,0 +1,122 @@
+# =========================================================================
+# Implantar Edge Functions no Supabase
+# -------------------------------------------------------------------------
+# Substitui o "colar o código no painel e clicar em Deploy". Só implanta as
+# funções que MUDARAM, e só depois que o CI (testes) passar.
+#
+# Dois jeitos de usar:
+#   1) Manual — Actions > "Implantar Edge Functions" > Run workflow. Por padrão é
+#      uma SIMULAÇÃO (mostra o que seria implantado, sem implantar). Marque
+#      "executar" pra valer.
+#   2) Automático em cada push — fica DESLIGADO até você criar a variável
+#      DEPLOY_AUTOMATICO = true (Settings > Secrets and variables > Actions >
+#      Variables). Ligue só depois de ver uma simulação correta.
+#
+# Precisa do secret SUPABASE_ACCESS_TOKEN (veja docs/CI-E-IMPLANTACAO.md).
+# O "Verify JWT" de cada função vem do supabase/config.toml.
+# =========================================================================
+name: Implantar Edge Functions
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'supabase/functions/**'
+      - 'supabase/config.toml'
+  workflow_dispatch:
+    inputs:
+      funcoes:
+        description: 'Quais funções (nomes separados por vírgula) ou "todas"'
+        required: true
+        default: 'todas'
+      executar:
+        description: 'Marque para implantar DE VERDADE. Desmarcado = só simula (mostra o que seria feito).'
+        type: boolean
+        default: false
+
+concurrency:
+  group: implantar-funcoes
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_PROJECT_REF: mgkmvrgfmuexgxkuslur
+
+jobs:
+  verificar:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
+  implantar:
+    name: Implantar
+    needs: verificar
+    # Manual: sempre roda (simulação ou real). Em push: só se DEPLOY_AUTOMATICO = true.
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.DEPLOY_AUTOMATICO == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Instalar o Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Descobrir o que implantar
+        id: lista
+        env:
+          EVENTO: ${{ github.event_name }}
+          PEDIDO: ${{ inputs.funcoes }}
+          BASE: ${{ github.event.before }}
+          HEAD: ${{ github.sha }}
+        run: |
+          if [ "$EVENTO" = "workflow_dispatch" ]; then
+            node scripts/funcoes-para-implantar.js --pedido "$PEDIDO" > lista.json
+          else
+            node scripts/funcoes-para-implantar.js --base "$BASE" --head "$HEAD" > lista.json
+          fi
+          cat lista.json
+          echo "quantidade=$(node -p "require('./lista.json').length")" >> "$GITHUB_OUTPUT"
+
+      - name: Resumo do que será implantado
+        run: |
+          {
+            echo "### Edge Functions"
+            echo ""
+            echo "| Função | Verify JWT |"
+            echo "|---|---|"
+            node -e "for (const f of require('./lista.json')) console.log('| ' + f.nome + ' | ' + (f.verifyJwt ? 'ligado' : 'DESLIGADO (pública)') + ' |')"
+            echo ""
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.executar }}" != "true" ]; then
+              echo "**SIMULAÇÃO** — nada foi implantado. Rode de novo marcando \"executar\" para implantar."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Instalar o Supabase CLI
+        if: ${{ steps.lista.outputs.quantidade != '0' && (github.event_name != 'workflow_dispatch' || inputs.executar == true) }}
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Implantar as funções
+        if: ${{ steps.lista.outputs.quantidade != '0' && (github.event_name != 'workflow_dispatch' || inputs.executar == true) }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_ACCESS_TOKEN:-}" ]; then
+            echo "::error::Falta o secret SUPABASE_ACCESS_TOKEN. Veja docs/CI-E-IMPLANTACAO.md (passo 1)."
+            exit 1
+          fi
+          node -e "for (const f of require('./lista.json')) console.log(f.nome + ' ' + f.verifyJwt)" | while read -r nome jwt; do
+            flag=""
+            if [ "$jwt" = "false" ]; then flag="--no-verify-jwt"; fi
+            echo "::group::Implantando $nome"
+            supabase functions deploy "$nome" --project-ref "$SUPABASE_PROJECT_REF" $flag
+            echo "::endgroup::"
+          done
