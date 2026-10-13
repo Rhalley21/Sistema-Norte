@@ -3,6 +3,87 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.112.0 — R&S: provas de conhecimento no processo seletivo
+Novo recurso: o Administrador e o RH montam **provas de múltipla escolha com nota automática**, aplicam a candidatos do
+funil e acompanham o resultado. O candidato faz a prova por um link, **sem login**, em **uma única tentativa**.
+
+**Para o RH** (menu Pessoas → *R&S — Provas*): editor de provas (2 a 6 alternativas por questão, uma correta, peso de 1 a
+10, 1 a 60 questões, 5 a 240 minutos, nota mínima), **3 modelos prontos** (Português, Matemática e Excel básicos, 10 questões
+cada, com o gabarito conferido por teste), duplicar/arquivar/excluir, e aba **Resultados** com filtros e detalhe questão a
+questão. No funil do R&S ganhou a coluna **Prova** e o botão **Aplicar prova** (envio do link por e-mail ou cópia do link).
+
+**Para o candidato** (`prova.html`): tela de instruções, relógio, respostas salvas automaticamente, recarregar sem perder
+nada (o relógio continua), confirmação antes de enviar, envio automático quando o tempo acaba. Funciona no celular. **Não
+mostra nota nem gabarito.**
+
+**Garantias (cada uma tem teste)**
+- O **gabarito nunca vai ao navegador do candidato**; a correção e o cronômetro são do servidor.
+- O código do link tem 256 bits e **só o hash fica no banco**. A página não usa Sentry/analytics e não envia o endereço adiante.
+- **Uma tentativa**: não reinicia o relógio, não corrige duas vezes (inclusive com requisições simultâneas), não aceita
+  respostas depois do tempo (há 60 s de folga de rede, marcada como "fora do prazo").
+- Cada aplicação guarda uma **cópia da prova**; editar a prova depois não muda a correção. Ordem das questões e alternativas
+  sorteada por candidato, com ids opacos.
+- Só Administrador/RH; toda consulta é filtrada pela empresa; abrir um resultado fica na **Auditoria**.
+- As tabelas têm RLS ligado **sem nenhuma política** (só a Edge Function acessa).
+- **A nota é apoio à decisão**: a tela nunca diz "reprovado" (mostra "atingiu / abaixo da nota mínima"). Aviso explícito de que
+  são provas de **conhecimento** — testes psicológicos são privativos de psicólogos.
+
+**Retenção e LGPD**: resultados ficam **24 meses**; a rotina diária expira links vencidos e apaga resultados antigos; o RH
+pode excluir antes. Política de Privacidade (novo item 2.7 e retenção) e Termos de Uso atualizados (HTML e Word). Um teste
+confere que os 24 meses são o mesmo número na função, na rotina, na Política e na documentação.
+
+**Para ativar** (docs/PROVAS-RS.md): rodar `sql/40-provas-rs.sql`; implantar a Edge Function `provas-rs` (**Verify JWT
+desligado**; o deploy automático já faz isso) e reimplantar `rotinas-agendadas`; subir o site. Opcional: secret `URL_SITE`.
+
+**Também**: 3 perguntas novas no FAQ; helper de testes `banco-falso` (banco simulado compartilhado, agora devolvendo cópias
+como um banco de verdade); `provas-rs` entra na lista de funções públicas do `config.toml`.
+
+**Testes**: 353 no total (89 novos). Validados plantando erros de propósito: 7 no servidor (vazar o gabarito, reiniciar o
+relógio, corrigir duas vezes, aceitar resposta tardia, gravar o código em texto, permitir duplicar, abrir a porta do RH a
+qualquer perfil) e 7 no navegador (gabarito de modelo errado, validador diferente do servidor, limite diferente, HTML sem
+escape, "reprovado" na tela, líder vendo provas, rastreador na página do candidato) — todos detectados. Achados no caminho,
+já corrigidos: uma consulta sem filtro de empresa no reenvio do link; testes de corrida que na verdade rodavam em
+sequência; IDs em `onclick` escapados de forma que não protegia.
+
+**Verificado em navegador de verdade** (Chromium, página real contra o código real da função com banco simulado): 27
+verificações — fluxo completo, recarregar no meio, envio automático no fim do tempo, links vencido/cancelado/inválido,
+celular a 390 px, enunciado com HTML malicioso, e que nenhuma resposta do servidor ao navegador contém o gabarito nem a nota.
+
+**NÃO testado**: a execução real no Supabase (tabelas, RLS, envio do e-mail do link). Faça o roteiro do PROVAS-RS.md com uma
+prova curta e um candidato seu antes de usar com candidatos de verdade.
+
+## v0.111.0 — Central de Ajuda só com FAQ e chamados (assistente de IA desligado)
+O assistente de IA exige uma chave de API paga (cobrança por uso). Decisão: a Central de Ajuda fica só com o que
+não custa nada e não envia texto de cliente a terceiros.
+
+**O que fica**: perguntas frequentes (FAQ), sugestões automáticas enquanto a pessoa escreve o chamado, abertura de
+chamados com resposta da equipe (e-mail de confirmação, aviso à equipe, lembrete automático de chamado parado há
+24h) e o canal de LGPD (a Política de Privacidade promete esse canal, por isso os chamados NÃO foram removidos).
+
+**O que fica desligado (e escondido)**: o chat com o assistente, a resposta automática por IA aos chamados e a pergunta
+do FAQ que explica o status "Respondido (IA)". Abrir um chamado agora vai direto para a equipe, e o e-mail de
+confirmação aponta para o FAQ (e não promete assistente).
+
+**Duas travas, as duas desligadas por padrão**:
+- no site: `ASSISTENTE_IA_VISIVEL = false` em `js/41-page-central-ajuda.js`;
+- no servidor: o secret `ASSISTENTE_AJUDA_ATIVO` (só o valor `true` liga) nas funções `assistente-ajuda` e
+  `chamado-automatico`. **Por quê**: a chave `ANTHROPIC_API_KEY` também é usada pela leitura de folha de ponto por foto;
+  sem esta trava, criar a chave para esse recurso ligaria o chat (e a cobrança) sem decisão sua.
+
+**Documentos legais ajustados** (HTML e Word): a Política de Privacidade e os Termos não citam mais o assistente nem a
+leitura de chamados por IA; a Anthropic continua citada apenas para a leitura de folha de ponto por foto. Um teste impede
+que site e documentos fiquem em desacordo (se um dia o assistente for religado, o teste cobra a atualização).
+
+**Para religar um dia**: docs/ASSISTENTE-IA.md (chave, 2 secrets, reimplantar, trocar o interruptor, restaurar os textos
+legais). O código do assistente permanece no projeto.
+
+**Para ativar esta versão**: subir o site (git push); reimplantar `assistente-ajuda` e `chamado-automatico` (a trava de
+servidor); baixar os dois Word atualizados. Sem SQL novo.
+
+**Testes**: 276 no total (12 novos). Cobrem os dois modos (desligado e ligado) com um app simulado — inclusive que abrir
+um chamado NÃO aciona a IA quando desligado e aciona quando ligado —, as travas do servidor, a coerência com os
+documentos legais e que a leitura de folha de ponto continua independente. Cinco regressões plantadas foram todas detectadas.
+
 ## v0.110.0 — Rotina diária: aviso de fim do teste grátis e encerramento automático das campanhas do NR1
 Dois itens da lista "deveria rodar sozinho" que ainda dependiam de alguém abrir uma tela. (Os outros dois
 da mesma lista — prazo do banco de talentos e rotina dos chamados — já estavam na v0.109.0; ambos só passam a

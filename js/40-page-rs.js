@@ -944,7 +944,7 @@ function renderPipelineCandidatosRS(vaga) {
       }
       ${
         candidatos.length
-          ? `<table style="margin-top:10px;"><thead><tr><th>Candidato</th><th>Contato</th><th>Origem</th><th>Etapa</th><th></th></tr></thead><tbody>
+          ? `<table style="margin-top:10px;"><thead><tr><th>Candidato</th><th>Contato</th><th>Origem</th><th>Etapa</th>${provaCabecalhoRS()}<th></th></tr></thead><tbody>
             ${candidatos
               .map(
                 (c) => `<tr style="${c.reprovado ? 'opacity:0.6;' : ''}">
@@ -958,7 +958,9 @@ function renderPipelineCandidatosRS(vaga) {
                     ? '<span class="pill pill-alavancar">Aprovado</span>'
                     : `<select onchange="moverEtapaCandidatoRS('${c.id}', this.value)" style="max-width:170px;">${ETAPAS_RS.map((e) => `<option value="${e.id}" ${e.id === c.etapa ? 'selected' : ''}>${e.nome}</option>`).join('')}</select>`
               }</td>
+              ${provaCelulaRS(c)}
               <td style="white-space:nowrap;">
+                ${provaBotaoRS(c)}
                 ${
                   c.reprovado
                     ? `<button class="btn btn-sm btn-ghost" onclick="reabrirCandidatoRS('${c.id}')">Reabrir</button>`
@@ -968,7 +970,7 @@ function renderPipelineCandidatosRS(vaga) {
                 }
               </td>
             </tr>
-            <tr style="${c.reprovado ? 'opacity:0.6;' : ''}"><td colspan="5" style="padding-top:0;">${renderPerfilCandidatoRS(c)}${renderScorecardRS(c.id)}</td></tr>`
+            <tr style="${c.reprovado ? 'opacity:0.6;' : ''}"><td colspan="${provasHabilitadasRS() ? 6 : 5}" style="padding-top:0;">${renderPerfilCandidatoRS(c)}${renderScorecardRS(c.id)}${provaPainelAplicarRS(c)}</td></tr>`
               )
               .join('')}
           </tbody></table>`

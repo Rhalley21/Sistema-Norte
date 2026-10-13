@@ -15,7 +15,9 @@
 //      depois (1 e 7 dias após o fim), e um resumo diário pra equipe acompanhar.
 //   5) Campanhas do NR1 vencidas — encerra no dia seguinte à data final e avisa o
 //      Administrador e o RH (antes só fechava quando alguém chamava a função).
-//   6) Limpeza do rate_limit_log (registros com mais de 35 dias).
+//   6) Provas do processo seletivo (R&S): link que venceu sem o candidato começar vira "expirada", e
+//      resultados com mais de 24 meses são apagados (prazo informado na Política de Privacidade).
+//   7) Limpeza do rate_limit_log (registros com mais de 35 dias).
 //
 // Também registra "quando rodou" pra o painel do Super Admin mostrar se a rotina
 // está de fato agendada. Se alguma tarefa falhar, a equipe recebe um e-mail.
@@ -48,6 +50,8 @@ const LINKS_TESTE = {
 
 // Mesmo número do texto do formulário de candidatura, da Política de Privacidade e da função "rs" — um teste confere.
 const BANCO_TALENTOS_MESES = 24;
+// Quanto tempo ficam os resultados das provas aplicadas a candidatos — o MESMO número da função provas-rs, da Política de Privacidade e da documentação.
+const PROVAS_RETENCAO_MESES = 24;
 // Lembretes: quantos dias antes do prazo (0 = no dia). Mesmo que o aviso na tela diz: "D-5, D-2 e D-0".
 const DIAS_LEMBRETE = [5, 2, 0];
 const DIAS_RETENCAO_LOG = 35; // cobre as janelas de 30 dias dos limites de uso
@@ -359,7 +363,17 @@ async function purgarBancoTalentos(admin: Banco, agora: number) {
   return { removidos: data ? data.length : 0 };
 }
 
-// 6) Limpeza do log de limites.
+// 6) Provas do processo seletivo: expira o link que venceu sem o candidato começar (quem JÁ começou segue o tempo
+// da própria prova) e apaga resultados antigos (retenção de PROVAS_RETENCAO_MESES meses, contados da aplicação).
+async function manterProvasRs(admin: Banco, agora: number) {
+  const { data: expiradas, error: e1 } = await admin.from('rs_provas_aplicacoes').update({ status: 'expirada' }).eq('status', 'enviada').lt('prazo_ate', new Date(agora).toISOString()).select('id');
+  if (e1) throw new Error(e1.message);
+  const { data: removidas, error: e2 } = await admin.from('rs_provas_aplicacoes').delete().lt('criado_em', mesesAtras(agora, PROVAS_RETENCAO_MESES)).select('id');
+  if (e2) throw new Error(e2.message);
+  return { expiradas: expiradas ? expiradas.length : 0, removidas: removidas ? removidas.length : 0 };
+}
+
+// 7) Limpeza do log de limites.
 async function limparLogs(admin: Banco, agora: number) {
   const { error } = await admin.from('rate_limit_log').delete().lt('criado_em', diasAtras(agora, DIAS_RETENCAO_LOG));
   if (error) throw new Error(error.message);
@@ -433,6 +447,7 @@ serve(async (req: Request) => {
     await tarefa('banco_talentos', () => purgarBancoTalentos(admin, agora));
     await tarefa('teste_gratis', () => avisosDoTeste(admin, enviarEmail, agora, LINKS_TESTE, EMAIL_EQUIPE));
     await tarefa('nr1_campanhas', () => encerrarCampanhasNr1(admin, enviarEmail, agora));
+    await tarefa('provas_rs', () => manterProvasRs(admin, agora));
     await tarefa('limpeza_logs', () => limparLogs(admin, agora));
 
     // Marca que a rotina rodou (o painel do Super Admin mostra isto).

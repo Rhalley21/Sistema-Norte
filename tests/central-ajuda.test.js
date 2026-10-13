@@ -45,7 +45,12 @@ test('faqSugestoes: palavra-chave exata basta; uma palavra só PARECIDA (1 ponto
 
 test('FAQ: toda pergunta é encontrada pela própria busca (as palavras-chave funcionam)', () => {
   faq.forEach((item) => {
-    assert.ok(perguntas(item.p).includes(item.p), `a pergunta não se acha sozinha: "${item.p}"`);
+    assert.ok(
+      plano(ctx.faqSugestoes(item.p, faq))
+        .map((i) => i.p)
+        .includes(item.p),
+      `a pergunta não se acha sozinha: "${item.p}"`
+    );
   });
 });
 

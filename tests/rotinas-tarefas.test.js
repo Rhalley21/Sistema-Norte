@@ -41,114 +41,7 @@ function tarefas() {
   return ctx;
 }
 
-// ---------- banco simulado (só o que as tarefas usam) ----------
-const cmp = (a, b) => {
-  const na = Date.parse(a);
-  const nb = Date.parse(b);
-  return !Number.isNaN(na) && !Number.isNaN(nb) ? na - nb : a < b ? -1 : a > b ? 1 : 0;
-};
-function criarBanco(tabelas) {
-  const rastro = [];
-  function from(nome) {
-    tabelas[nome] = tabelas[nome] || [];
-    const filtros = [];
-    let modo = 'select';
-    let valores = null;
-    let colunas = '*';
-    let contar = false;
-    let head = false;
-    const q = {
-      select(cols = '*', opts) {
-        colunas = cols;
-        if (opts && opts.count) {
-          contar = true;
-          head = !!opts.head;
-        }
-        return q;
-      },
-      insert(v) {
-        modo = 'insert';
-        valores = v;
-        return q;
-      },
-      update(v) {
-        modo = 'update';
-        valores = v;
-        return q;
-      },
-      delete() {
-        modo = 'delete';
-        return q;
-      },
-      eq: (c, v) => (filtros.push((r) => r[c] === v), q),
-      gte: (c, v) => (filtros.push((r) => r[c] != null && cmp(r[c], v) >= 0), q),
-      lt: (c, v) => (filtros.push((r) => r[c] != null && cmp(r[c], v) < 0), q),
-      in: (c, vs) => (filtros.push((r) => vs.includes(r[c])), q),
-      not: (c, op, v) => (
-        filtros.push((r) => !(op === 'is' && v === null && (r[c] === null || r[c] === undefined))),
-        q
-      ),
-      limit: () => q,
-      order: () => q,
-      maybeSingle: () => Promise.resolve({ data: executar().data?.[0] || null }),
-      then(res, rej) {
-        try {
-          res(executar());
-        } catch (e) {
-          rej
-            ? rej(e)
-            : (() => {
-                throw e;
-              })();
-        }
-      },
-    };
-    function projetar(r) {
-      if (!String(colunas).includes('payload->')) return r;
-      const saida = {};
-      for (const tok of colunas.split(',').map((t) => t.trim())) {
-        const m = /^(\w+):payload->(\w+)$/.exec(tok);
-        if (m) saida[m[1]] = r.payload ? r.payload[m[2]] : undefined;
-        else saida[tok] = r[tok];
-      }
-      return saida;
-    }
-    function executar() {
-      const alvo = tabelas[nome];
-      if (modo === 'insert') {
-        const novos = Array.isArray(valores) ? valores : [valores];
-        novos.forEach((v) => alvo.push({ ...v, criado_em: v.criado_em || tabelas.__agora }));
-        rastro.push({ tabela: nome, op: 'insert', valores: novos });
-        return { data: novos, error: null };
-      }
-      const casadas = alvo.filter((r) => filtros.every((f) => f(r)));
-      if (modo === 'update') {
-        casadas.forEach((r) => Object.assign(r, valores));
-        rastro.push({ tabela: nome, op: 'update', valores, linhas: casadas.length });
-        return { data: casadas.map(projetar), error: null };
-      }
-      if (modo === 'delete') {
-        tabelas[nome] = alvo.filter((r) => !casadas.includes(r));
-        rastro.push({ tabela: nome, op: 'delete', linhas: casadas.length });
-        return { data: casadas, error: null };
-      }
-      return contar
-        ? { count: casadas.length, data: head ? null : casadas.map(projetar), error: null }
-        : { data: casadas.map(projetar), error: null };
-    }
-    return q;
-  }
-  return { from, tabelas, rastro };
-}
-function emailsFalsos(falhar = () => false) {
-  const lista = [];
-  const enviar = async (para, assunto, corpoHtml) => {
-    if (falhar(para)) return false;
-    lista.push({ para, assunto, corpoHtml });
-    return true;
-  };
-  return { lista, enviar };
-}
+const { criarBanco, emailsFalsos } = require('./helpers/banco-falso.js'); // banco e e-mail simulados (compartilhados)
 
 const AGORA = Date.parse('2026-10-10T11:00:00Z'); // 08:00 de Brasília, 10/10/2026
 const LINKS = { planos: 'https://site/index.html#planos', whatsapp: 'https://wa.me/5589' };
@@ -639,4 +532,70 @@ test('uma tarefa que falha no banco lança erro (a rotina isola e avisa a equipe
     }),
   };
   await assert.rejects(c.purgarBancoTalentos(quebrado, AGORA), /banco fora do ar/);
+});
+
+// ======================= PROVAS DO PROCESSO SELETIVO =======================
+const TP = 'rs_provas_aplicacoes';
+test(
+  'provas: link que venceu SEM o candidato começar vira "expirada"; quem já começou, concluiu ou foi cancelado não muda',
+  opcoes,
+  async () => {
+    const c = tarefas();
+    const banco = criarBanco({
+      [TP]: [
+        { id: 'vencida', status: 'enviada', prazo_ate: ISO(AGORA - 1000), criado_em: ISO(AGORA - 86400000) },
+        { id: 'no-prazo', status: 'enviada', prazo_ate: ISO(AGORA + 86400000), criado_em: ISO(AGORA - 86400000) },
+        { id: 'comecou', status: 'iniciada', prazo_ate: ISO(AGORA - 5000), criado_em: ISO(AGORA - 86400000) }, // já começou: vale o tempo da prova, não o do link
+        { id: 'feita', status: 'concluida', prazo_ate: ISO(AGORA - 5000), criado_em: ISO(AGORA - 86400000) },
+        { id: 'cancelada', status: 'cancelada', prazo_ate: ISO(AGORA - 5000), criado_em: ISO(AGORA - 86400000) },
+      ],
+      __agora: ISO(AGORA),
+    });
+    const r = await c.manterProvasRs(banco, AGORA);
+    assert.deepEqual(plano(r), { expiradas: 1, removidas: 0 });
+    const st = Object.fromEntries(banco.tabelas[TP].map((x) => [x.id, x.status]));
+    assert.deepEqual(st, {
+      vencida: 'expirada',
+      'no-prazo': 'enviada',
+      comecou: 'iniciada',
+      feita: 'concluida',
+      cancelada: 'cancelada',
+    });
+    assert.deepEqual(
+      plano(await c.manterProvasRs(banco, AGORA)),
+      { expiradas: 0, removidas: 0 },
+      'rodar de novo não muda nada'
+    );
+  }
+);
+
+test(
+  'provas: resultados com mais de 24 meses são apagados (fronteira exata); os recentes ficam, de qualquer situação',
+  opcoes,
+  async () => {
+    const c = tarefas();
+    const banco = criarBanco({
+      [TP]: [
+        { id: 'velho', status: 'concluida', prazo_ate: ISO(AGORA), criado_em: '2024-10-10T10:59:59Z' }, // 1s além de 24 meses
+        { id: 'limite', status: 'concluida', prazo_ate: ISO(AGORA), criado_em: '2024-10-10T11:00:00Z' }, // exatamente 24 meses: ainda vale
+        { id: 'velho-cancelado', status: 'cancelada', prazo_ate: ISO(AGORA), criado_em: '2023-01-01T00:00:00Z' },
+        { id: 'novo', status: 'concluida', prazo_ate: ISO(AGORA), criado_em: '2026-01-01T00:00:00Z' },
+      ],
+      __agora: ISO(AGORA),
+    });
+    const r = await c.manterProvasRs(banco, AGORA);
+    assert.equal(r.removidas, 2);
+    assert.deepEqual(banco.tabelas[TP].map((x) => x.id).sort(), ['limite', 'novo']);
+  }
+);
+
+test('provas: o prazo de retenção (24 meses) é o MESMO na rotina, na função provas-rs, na Política de Privacidade e na documentação', () => {
+  const numero = (arq, re) => Number(re.exec(ler(arq))[1]);
+  assert.equal(numero('supabase/functions/rotinas-agendadas/index.ts', /const PROVAS_RETENCAO_MESES = (\d+)/), 24);
+  assert.equal(numero('supabase/functions/provas-rs/index.ts', /const PROVAS_RETENCAO_MESES = (\d+)/), 24);
+  assert.ok(
+    /prova[\s\S]{0,400}24 meses|24 meses[\s\S]{0,400}prova/i.test(ler('privacidade.html')),
+    'a Política de Privacidade precisa citar as provas e os 24 meses'
+  );
+  assert.ok(ler('docs/PROVAS-RS.md').includes('24 meses'));
 });

@@ -13,6 +13,15 @@
       seu chamado" com o protocolo. O Super Admin responde pelo painel.
    ========================================================= */
 
+/* ---------- Interruptor do ASSISTENTE DE IA ----------
+   DESLIGADO: a Central de Ajuda fica só com o FAQ e os chamados respondidos pela equipe — sem
+   nenhum custo de API e sem que texto de cliente saia do sistema. O chat e a resposta automática
+   nos chamados ficam escondidos (o código continua aqui, pronto pra religar).
+   Para religar: (1) trocar false por true aqui; (2) nas Edge Functions assistente-ajuda e
+   chamado-automatico, criar os secrets ANTHROPIC_API_KEY e ASSISTENTE_AJUDA_ATIVO=true.
+   Passo a passo: docs/ASSISTENTE-IA.md */
+const ASSISTENTE_IA_VISIVEL = false;
+
 /* ---------- FAQ (a mesma verdade da base do assistente) ----------
    p = pergunta, r = resposta, k = palavras-chave (sem acento) pras sugestões. */
 const FAQ_CENTRAL = [
@@ -85,6 +94,22 @@ const FAQ_CENTRAL = [
     p: 'O que significa "Respondido (IA)" no meu chamado?',
     r: 'Nosso assistente de inteligência artificial respondeu o seu chamado. Se resolveu, clique em "Resolveu"; se não, clique em "Ainda preciso de ajuda" e a nossa equipe assume. Sem retorno em 3 dias, o chamado é encerrado sozinho — e você pode abrir outro quando quiser. Assuntos de cobrança, cancelamento e dados pessoais sempre vão direto para a equipe.',
     k: ['respondido', 'chamado', 'automatica', 'automatico', 'resposta', 'encerrado', 'assistente', 'status'],
+    soComIA: true, // só aparece quando o assistente de IA está ligado
+  },
+  {
+    p: 'Como aplico uma prova a um candidato?',
+    r: 'No menu R&S — Provas (Administrador e RH), crie uma prova ou comece por um modelo pronto. Depois, no funil do R&S, abra o candidato e clique em "Aplicar prova": o link pode ir por e-mail ou você copia e envia. O candidato faz sem login, em uma única tentativa, e você acompanha o resultado na aba Resultados.',
+    k: ['prova', 'provas', 'aplicar', 'candidato', 'processo', 'seletivo', 'teste', 'link', 'avaliacao'],
+  },
+  {
+    p: 'O candidato vê a nota ou o gabarito da prova?',
+    r: 'Não. Ele só vê a confirmação de que a prova foi enviada. A nota, as respostas e o gabarito ficam visíveis apenas para o Administrador e o RH, em R&S — Provas → Resultados.',
+    k: ['candidato', 'nota', 'gabarito', 'prova', 'resultado', 'ver', 'enviada', 'respostas'],
+  },
+  {
+    p: 'O que significa a nota mínima da prova?',
+    r: 'É uma referência sua: a tela mostra se o candidato atingiu ou ficou abaixo dela. O sistema nunca reprova ninguém sozinho — a decisão é sempre do RH. As provas medem conhecimento; testes psicológicos são privativos de psicólogos e não devem ser montados ali. Os resultados ficam guardados por até 24 meses.',
+    k: ['nota', 'minima', 'prova', 'atingiu', 'reprova', 'reprovar', 'decisao', 'psicologico', 'resultado'],
   },
   {
     p: 'Meu ponto é em papel, posso usar o sistema?',
@@ -169,7 +194,12 @@ function faqNormalizar(texto) {
 // 1. Só sugere com pelo menos 2 pontos e, entre as candidatas, só as que
 // chegam a pelo menos metade da pontuação da melhor — melhor não sugerir
 // nada do que sugerir uma resposta que não tem a ver.
-function faqSugestoes(texto, faq = FAQ_CENTRAL, maximo = 3) {
+// O FAQ que o cliente vê: sem as perguntas que só fazem sentido com o assistente de IA ligado.
+function faqExibido() {
+  return FAQ_CENTRAL.filter((f) => ASSISTENTE_IA_VISIVEL || !f.soComIA);
+}
+
+function faqSugestoes(texto, faq = faqExibido(), maximo = 3) {
   const tokens = [
     ...new Set(
       faqNormalizar(texto)
@@ -312,15 +342,21 @@ async function enviarChamadoSuporte() {
           corpoHtml: `<p>Olá, ${escaparHtml(nome)}!</p>
             <p>Recebemos o seu chamado <b>"${escaparHtml(assunto)}"</b> e nossa equipe vai responder em breve — por e-mail e também na Central de Ajuda do sistema.</p>
             <p>Protocolo: <b>#${protocolo}</b></p>
-            <p>Enquanto isso, o assistente da Central de Ajuda pode resolver dúvidas rápidas de uso do sistema.</p>
+            ${ASSISTENTE_IA_VISIVEL ? '<p>Enquanto isso, o assistente da Central de Ajuda pode resolver dúvidas rápidas de uso do sistema.</p>' : '<p>Enquanto isso, veja as perguntas frequentes na Central de Ajuda — elas resolvem as dúvidas mais comuns de uso do sistema.</p>'}
             <p>Instituto INETRIS</p>`,
         },
       })
       .catch(() => {});
   }
   _novoChamadoAberto = false;
-  showToast(`Chamado #${protocolo} aberto! Estamos analisando — a resposta chega aqui e por e-mail.`);
+  showToast(
+    ASSISTENTE_IA_VISIVEL
+      ? `Chamado #${protocolo} aberto! Estamos analisando — a resposta chega aqui e por e-mail.`
+      : `Chamado #${protocolo} aberto! Nossa equipe responde em breve — por e-mail e aqui na Central de Ajuda.`
+  );
   await carregarChamadosEmpresa();
+  // Assistente de IA desligado: o chamado segue direto pra equipe.
+  if (!ASSISTENTE_IA_VISIVEL) return;
   // A IA tenta responder na hora; se não for assunto pra ela, a equipe é quem responde.
   const resultado = await processarChamadoAutomatico(criado?.id);
   if (resultado === 'ia') showToast('Respondemos o seu chamado automaticamente — veja abaixo e diga se resolveu.');
@@ -521,16 +557,21 @@ function pageCentralAjuda() {
     <div class="page-head">
       <div class="eyebrow">Suporte</div>
       <h1>Central de Ajuda</h1>
-      <p class="page-desc">Tire dúvidas com o assistente, veja as perguntas frequentes ou abra um chamado diretamente com o Instituto INETRIS.</p>
+      <p class="page-desc">${ASSISTENTE_IA_VISIVEL ? 'Tire dúvidas com o assistente, veja as perguntas frequentes ou abra um chamado diretamente com o Instituto INETRIS.' : 'Veja as perguntas frequentes ou abra um chamado diretamente com o Instituto INETRIS.'}</p>
       <p class="small-muted">Documentos: <a href="termos.html" target="_blank" rel="noopener">Termos de Uso</a> · <a href="privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a></p>
     </div>
 
-    ${renderAssistente()}
+    ${ASSISTENTE_IA_VISIVEL ? renderAssistente() : ''}
 
     <div class="card">
       <h3>Perguntas frequentes</h3>
-      ${FAQ_CENTRAL.map((f) => `<details style="margin-bottom:8px;"><summary style="cursor:pointer;font-weight:600;padding:8px 0;">${escaparHtml(f.p)}</summary><p class="small-muted" style="padding:4px 0 8px;">${escaparHtml(f.r)}</p></details>`).join('')}
-      <details><summary style="cursor:pointer;font-weight:600;padding:8px 0;">Não encontrei minha dúvida aqui, e agora?</summary><p class="small-muted" style="padding:4px 0 8px;">Pergunte ao assistente acima ou abra um chamado abaixo — nossa equipe responde diretamente por aqui e por e-mail.</p></details>
+      ${faqExibido()
+        .map(
+          (f) =>
+            `<details style="margin-bottom:8px;"><summary style="cursor:pointer;font-weight:600;padding:8px 0;">${escaparHtml(f.p)}</summary><p class="small-muted" style="padding:4px 0 8px;">${escaparHtml(f.r)}</p></details>`
+        )
+        .join('')}
+      <details><summary style="cursor:pointer;font-weight:600;padding:8px 0;">Não encontrei minha dúvida aqui, e agora?</summary><p class="small-muted" style="padding:4px 0 8px;">${ASSISTENTE_IA_VISIVEL ? 'Pergunte ao assistente acima ou abra um chamado abaixo' : 'Abra um chamado abaixo'} — nossa equipe responde diretamente por aqui e por e-mail.</p></details>
     </div>
 
     <div class="card">

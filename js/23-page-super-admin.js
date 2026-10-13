@@ -52,7 +52,7 @@ function rotinasStatusHtml() {
           ) +
           linha(
             'Rotina de chamados (de hora em hora)',
-            'Encerrar chamados sem retorno · lembrar a equipe · resumo diário',
+            'Lembrar a equipe de chamados parados (com o assistente de IA ligado: também encerra chamados sem retorno e envia o resumo diário)',
             r.chamados,
             3
           )

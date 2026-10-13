@@ -134,10 +134,17 @@ test('config.toml: toda Edge Function tem uma seção explícita (função nova 
   Object.keys(cfg).forEach((n) => assert.ok(TODAS.includes(n), `config.toml fala de uma função que não existe: ${n}`));
 });
 
-test('config.toml: só as 5 funções realmente públicas ficam com Verify JWT DESLIGADO', () => {
+test('config.toml: só as 6 funções realmente públicas ficam com Verify JWT DESLIGADO', () => {
   const cfg = impl.lerConfiguracao();
   const desligadas = TODAS.filter((n) => cfg[n].verifyJwt === false).sort();
-  assert.deepEqual(desligadas, ['chamado-automatico', 'login-bloqueio', 'rotinas-agendadas', 'rs', 'teste-gratis']);
+  assert.deepEqual(desligadas, [
+    'chamado-automatico',
+    'login-bloqueio',
+    'provas-rs',
+    'rotinas-agendadas',
+    'rs',
+    'teste-gratis',
+  ]);
 });
 
 test('toda função com Verify JWT desligado se protege sozinha (reCAPTCHA, limite, sessão ou segredo)', () => {

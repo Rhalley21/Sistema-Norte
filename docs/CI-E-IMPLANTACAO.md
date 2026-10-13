@@ -25,7 +25,7 @@ Este projeto tem dois "robôs" no GitHub (pasta `.github/workflows/`):
 
 **5. Faça uma simulação.** Aba **Actions → Implantar Edge Functions → Run workflow**. Deixe `funcoes = todas` e **deixe "executar" desmarcado**. No resumo da execução aparece a lista de funções e se o "Verify JWT" de cada uma ficará ligado ou desligado. Nada é implantado.
 
-**6. Compare com o painel do Supabase.** Para cada função, o "Verify JWT" do painel precisa ser o mesmo do arquivo `supabase/config.toml`. Atenção especial às 5 públicas, que precisam ficar **desligadas**: `teste-gratis`, `login-bloqueio`, `rs`, `chamado-automatico` e `rotinas-agendadas`. Se alguma divergir do que você quer, mude no `config.toml` **antes** do próximo passo.
+**6. Compare com o painel do Supabase.** Para cada função, o "Verify JWT" do painel precisa ser o mesmo do arquivo `supabase/config.toml`. Atenção especial às 6 públicas, que precisam ficar **desligadas**: `teste-gratis`, `login-bloqueio`, `rs`, `chamado-automatico`, `rotinas-agendadas` e `provas-rs`. Se alguma divergir do que você quer, mude no `config.toml` **antes** do próximo passo.
 
 **7. Implante uma função de verdade, de teste.** Run workflow de novo, com `funcoes = login-bloqueio` e **"executar" marcado**. Confira no painel do Supabase que ela foi atualizada e teste o login.
 
@@ -49,13 +49,14 @@ Ficam no Supabase (**Edge Functions → a função → Secrets**), não no GitHu
 | Função | Secrets que você configura |
 |---|---|
 | `acesso-sem-email` | nenhum |
-| `assistente-ajuda` | `ANTHROPIC_API_KEY` · opcional: `ANTHROPIC_MODEL_AJUDA` |
-| `chamado-automatico` | `CRON_SECRET` · opcional: `EMAIL_EQUIPE` |
+| `assistente-ajuda` | `ASSISTENTE_AJUDA_ATIVO` (só `true` liga o assistente — padrão desligado) · `ANTHROPIC_API_KEY` · opcional: `ANTHROPIC_MODEL_AJUDA` |
+| `chamado-automatico` | `CRON_SECRET` · opcional: `EMAIL_EQUIPE`, `ASSISTENTE_AJUDA_ATIVO` (só `true` liga a resposta automática por IA — padrão desligado) |
 | `enviar-email` | `RESEND_API_KEY` |
 | `folha-ponto` | `ANTHROPIC_API_KEY` · opcional: `ANTHROPIC_MODEL` |
 | `login-bloqueio` | nenhum |
 | `nr1` | nenhum |
 | `ponto` | `PONTO_SUPABASE_URL` · `PONTO_SUPABASE_SERVICE_ROLE_KEY` |
+| `provas-rs` | opcional: `URL_SITE` (endereço de reserva do link da prova) |
 | `rotinas-agendadas` | `CRON_SECRET` · opcional: `EMAIL_EQUIPE`, `URL_SITE` |
 | `rs` | `RECAPTCHA_SECRET_KEY` |
 | `teste-gratis` | `RECAPTCHA_SECRET_KEY` |

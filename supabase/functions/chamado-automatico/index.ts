@@ -200,6 +200,8 @@ serve(async (req: Request) => {
     // ---------- processar: a IA tenta responder ----------
     if (action === 'processar') {
       if (chamado.status !== 'aberto' || chamado.resposta) return jsonResponse({ ok: true, resultado: 'ja_tratado' });
+      // Resposta automática por IA desligada (padrão): o chamado fica pra equipe. Só liga com ASSISTENTE_AJUDA_ATIVO=true.
+      if (Deno.env.get('ASSISTENTE_AJUDA_ATIVO') !== 'true') return jsonResponse({ ok: true, resultado: 'humano', motivo: 'ia_desativada' });
       if (exigeAtendimentoHumano(chamado.assunto, chamado.mensagem)) return jsonResponse({ ok: true, resultado: 'humano', motivo: 'assunto_sensivel' });
 
       // Reserva a tentativa de forma atômica: nunca duas respostas automáticas pro mesmo chamado.

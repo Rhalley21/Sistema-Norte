@@ -736,7 +736,20 @@
     "processarChamadoAutomatico": "writable",
     "rotinaStatus": "writable",
     "rotinasStatusHtml": "writable",
-    "_superAdminRotinas": "writable"
+    "_superAdminRotinas": "writable",
+    "ASSISTENTE_IA_VISIVEL": "writable",
+    "faqExibido": "writable",
+    "pageProvasRS": "writable",
+    "provaCabecalhoRS": "writable",
+    "provaCelulaRS": "writable",
+    "provaBotaoRS": "writable",
+    "provaPainelAplicarRS": "writable",
+    "provasHabilitadasRS": "writable",
+    "PROVA_LIMITES": "writable",
+    "PROVAS_MODELOS": "writable",
+    "provaIrParaResultado": "writable",
+    "carregarAplicacoesProvas": "writable",
+    "carregarProvas": "writable"
   },
   "rules": {
     "no-unused-vars": "off",

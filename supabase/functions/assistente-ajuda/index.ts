@@ -133,6 +133,7 @@ Menu Pesquisa de Clima / eNPS: mede a percepção da equipe com respostas anôni
 # RECRUTAMENTO E SELEÇÃO (R&S)
 Menu R&S — Recrutamento (Administrador, RH e Líder): requisição de vaga, aprovação, publicação de uma página pública de candidatura (com link para divulgar), pipeline de candidatos com etapas, scorecard de entrevista e banco de talentos (só para candidatos que autorizaram). O candidato envia currículo em PDF. A idade mínima é 18 anos (16 em vagas de Jovem Aprendiz). O sistema não pede idade exata nem gênero ao candidato.
 - Banco de talentos: menu "R&S — Banco de talentos" (só Administrador e RH). Mostra os candidatos que autorizaram ficar disponíveis para futuras vagas, com busca e filtros (formação, disponibilidade, moto, notebook), perfil e currículo. Cada pessoa aparece uma vez, fica por até 24 meses a partir da autorização mais recente e depois sai sozinha. O RH pode remover alguém a qualquer momento (inclusive a pedido do candidato). A abertura de currículos e as remoções ficam na Auditoria.
+- Provas de conhecimento: menu \"R&S — Provas\" (só Administrador e RH). Permite montar provas de múltipla escolha com nota automática (há 3 modelos prontos: Português, Matemática e Excel) e aplicá-las a candidatos pelo botão \"Aplicar prova\" no funil do R&S. O candidato faz a prova por um link, sem login, em uma única tentativa, e não vê a nota nem o gabarito. A nota é apoio à decisão (o sistema nunca reprova sozinho); não são testes psicológicos. Resultados ficam guardados por até 24 meses.
 
 # PONTO (módulo opcional)
 - O módulo Ponto é ligado por empresa pelo Instituto INETRIS. Se o menu "Ponto" não aparece, o módulo não está ativo na empresa: abrir um chamado pedindo a ativação.
@@ -214,6 +215,11 @@ serve(async (req: Request) => {
     const { data: perfil, error: erroPerfil } = await principal.from('perfis').select('id, empresa_id').eq('id', user.id).single();
     if (erroPerfil || !perfil) return jsonResponse({ error: 'Perfil não encontrado.' }, 403);
 
+    // Interruptor próprio: a chave ANTHROPIC_API_KEY também serve a outros recursos (ex.: leitura de folha de ponto
+    // por foto) — ter a chave NÃO liga o assistente. Só liga com ASSISTENTE_AJUDA_ATIVO=true (padrão: desligado).
+    if (Deno.env.get('ASSISTENTE_AJUDA_ATIVO') !== 'true') {
+      return jsonResponse({ error: 'O assistente de ajuda está desativado. Veja as perguntas frequentes ou abra um chamado — nossa equipe responde.', desativado: true }, 503);
+    }
     if (!ANTHROPIC_API_KEY) {
       return jsonResponse({ error: 'O assistente ainda não foi configurado no servidor. Abra um chamado e nossa equipe responde.' }, 503);
     }
