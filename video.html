@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- O endereço desta página leva o código secreto do pedido de vídeo: nada de enviá-lo adiante (sem Referer),
+         nada de buscadores, e SEM Sentry/analytics (eles registrariam o endereço com o código). -->
+    <meta name="referrer" content="no-referrer" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Vídeo de apresentação — processo seletivo</title>
+    <!-- ============================================================
+     Página PÚBLICA do vídeo de apresentação do candidato — NÃO faz parte do app logado.
+     O candidato entra por um link com código único (sem login), grava o vídeo pela própria página ou escolhe
+     um arquivo, confere e envia. O vídeo vai DIRETO para o armazenamento privado (a função "video-rs" só
+     autoriza o envio e depois confere o que chegou). Máximo de 2 minutos e 40 MB.
+     Acesse como: video.html?t=<código do link>
+     ============================================================ -->
+    <style>
+      :root {
+        --gold: #b8894b;
+        --ink: #1f2430;
+        --ink-dim: #5b6472;
+        --ink-faint: #8a92a0;
+        --line: #e4e7ec;
+        --surface: #ffffff;
+        --bg: #f6f7f9;
+        --azul: #2563eb;
+        --iniciar: #dc2626;
+        --alavancar: #16a34a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: -apple-system, 'Inter', Arial, sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+      }
+      .wrap {
+        max-width: 640px;
+        margin: 0 auto;
+        padding: 24px 16px 60px;
+      }
+      .topo {
+        margin-bottom: 18px;
+        font-size: 18px;
+        font-weight: 700;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 26px 22px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 6px;
+      }
+      .empresa {
+        color: var(--ink-dim);
+        font-size: 14px;
+        margin-bottom: 16px;
+      }
+      p,
+      li {
+        font-size: 14px;
+        line-height: 1.55;
+        color: var(--ink-dim);
+      }
+      .instrucoes {
+        white-space: pre-wrap;
+        background: #f8fafc;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin: 0 0 16px;
+        color: var(--ink);
+      }
+      ul.regras {
+        margin: 0 0 18px;
+        padding-left: 20px;
+      }
+      ul.regras li {
+        margin-bottom: 6px;
+      }
+      .aviso {
+        background: #fdf6ec;
+        border: 1px solid var(--gold);
+        border-radius: 8px;
+        padding: 12px 14px;
+        font-size: 12.5px;
+        color: var(--ink-dim);
+        line-height: 1.5;
+        margin-bottom: 18px;
+      }
+      .btn {
+        border: 0;
+        border-radius: 10px;
+        padding: 12px 20px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        background: var(--azul);
+        color: #fff;
+        margin: 0 8px 8px 0;
+      }
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .btn.sec {
+        background: #fff;
+        color: var(--ink);
+        border: 1px solid var(--line);
+      }
+      .btn.verde {
+        background: var(--alavancar);
+      }
+      .btn.vermelho {
+        background: var(--iniciar);
+      }
+      .btn:focus-visible {
+        outline: 3px solid #93c5fd;
+        outline-offset: 2px;
+      }
+      video {
+        width: 100%;
+        max-height: 60vh;
+        background: #000;
+        border-radius: 10px;
+        display: block;
+        margin-bottom: 12px;
+      }
+      .relogio {
+        font-variant-numeric: tabular-nums;
+        font-size: 20px;
+        font-weight: 700;
+        margin: 0 0 10px;
+      }
+      .relogio.urgente {
+        color: var(--iniciar);
+      }
+      .estado {
+        font-size: 13px;
+        color: var(--ink-dim);
+        min-height: 18px;
+        margin: 6px 0 10px;
+      }
+      .estado.erro {
+        color: var(--iniciar);
+      }
+      .centro {
+        text-align: center;
+      }
+      .icone {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        margin: 0 auto 14px;
+        background: #eaf7ef;
+        color: var(--alavancar);
+      }
+      .icone.cinza {
+        background: #f1f3f6;
+        color: var(--ink-dim);
+      }
+      .rodape {
+        text-align: center;
+        margin-top: 20px;
+        font-size: 12px;
+        color: var(--ink-faint);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="topo">INETRIS</div>
+      <div class="card" id="app" aria-live="polite">Carregando…</div>
+      <div class="rodape">
+        Seus dados são tratados conforme a Lei Geral de Proteção de Dados (LGPD) —
+        <a href="privacidade.html" target="_blank" rel="noopener noreferrer">Política de Privacidade</a>
+      </div>
+    </div>
+
+    <!-- Única biblioteca externa: o envio direto ao armazenamento usa o supabase-js. Versão FIXA (nunca "latest"). -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+    <script>
+      // ---- Configuração (mesmos valores públicos que as outras páginas públicas usam) ----
+      const SUPABASE_URL = 'https://mgkmvrgfmuexgxkuslur.supabase.co';
+      const SUPABASE_ANON_KEY = 'sb_publishable_uOz0hehVdqv_7Q2LBzVbzg_J6ZH40fh';
+      const BUCKET = 'videos-candidatos';
+
+      // ---- Regras do vídeo (testadas) --------------------------------------------------------
+      // Os MESMOS limites da função video-rs e do armazenamento (um teste confere que não saem de sincronia).
+      const LIMITE_SEGUNDOS = 120; // 2 minutos
+      const LIMITE_BYTES = 40 * 1024 * 1024; // 40 MB
+      const MIN_BYTES = 10 * 1024;
+      const FORMATOS = { 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov' };
+      const BITS_VIDEO = 1000000; // gravação em ~1 Mbps: 2 minutos ficam em torno de 15 MB
+      const BITS_AUDIO = 64000;
+
+      function mimeBase(m) {
+        return String(m || '')
+          .split(';')[0]
+          .trim()
+          .toLowerCase();
+      }
+      // O melhor formato de gravação que este navegador sabe fazer ('' = não sabe gravar).
+      function escolherFormatoGravacao(suporta) {
+        const opcoes = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'];
+        return opcoes.find((t) => suporta(t)) || '';
+      }
+      function tamanhoTexto(bytes) {
+        return bytes >= 1048576
+          ? `${(bytes / 1048576).toFixed(1).replace('.', ',')} MB`
+          : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+      }
+      function tempoTexto(seg) {
+        const s = Math.max(0, Math.round(seg));
+        return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+      }
+      // Confere o arquivo escolhido (formato e tamanho) antes de ler a duração.
+      function validarArquivoEscolhido(arq) {
+        const tipo = mimeBase(arq && arq.tipo);
+        if (!FORMATOS[tipo])
+          return {
+            ok: false,
+            erro: 'Formato não aceito. Use MP4, WebM ou MOV — ou grave o vídeo pela própria página.',
+          };
+        const tamanho = Number(arq.tamanho);
+        if (!Number.isInteger(tamanho) || tamanho < MIN_BYTES)
+          return { ok: false, erro: 'O arquivo parece vazio ou inválido.' };
+        if (tamanho > LIMITE_BYTES)
+          return {
+            ok: false,
+            erro: `O arquivo tem ${tamanhoTexto(tamanho)} e o máximo é ${tamanhoTexto(LIMITE_BYTES)}. Grave o vídeo pela própria página (fica bem menor) ou comprima o arquivo.`,
+          };
+        return { ok: true, mime: tipo };
+      }
+      // Confere a duração lida do vídeo (0,5 s de folga: arredondamentos).
+      function validarDuracao(segundos) {
+        const d = Number(segundos);
+        if (!Number.isFinite(d) || d <= 0)
+          return {
+            ok: false,
+            erro: 'Não consegui ler a duração deste vídeo. Grave pela própria página ou escolha outro arquivo.',
+          };
+        if (d > LIMITE_SEGUNDOS + 0.5)
+          return {
+            ok: false,
+            erro: `Este vídeo tem ${tempoTexto(d)} e o máximo é ${tempoTexto(LIMITE_SEGUNDOS)} (2 minutos). Corte o vídeo ou grave outro.`,
+          };
+        return { ok: true, segundos: Math.round(d) };
+      }
+      // Quantos segundos faltam numa gravação que começou em "inicio" (para o relógio e para parar sozinho aos 2 minutos).
+      function segundosRestantes(inicioMs, agoraMs) {
+        return Math.max(0, Math.ceil(LIMITE_SEGUNDOS - (agoraMs - inicioMs) / 1000));
+      }
+      // ---- fim: regras do vídeo --------------------------------------------------------------
+
+      // Todo texto que vem do servidor (nome da empresa, orientações) passa por aqui antes de virar HTML.
+      function esc(s) {
+        return String(s == null ? '' : s).replace(
+          /[&<>"']/g,
+          (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+        );
+      }
+
+      const TOKEN = new URLSearchParams(location.search).get('t') || '';
+      const app = document.getElementById('app');
+      let dados = null; // o que o servidor mandou (empresa, orientações, limites)
+      let escolhido = null; // { blob, mime, segundos }
+      let urlPrevia = null;
+      let fluxo = null; // câmera / gravador em andamento
+      let ocupado = false;
+
+      async function chamar(action, extra) {
+        let resp;
+        try {
+          resp = await fetch(`${SUPABASE_URL}/functions/v1/video-rs`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+              apikey: SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({ action, token: TOKEN, ...(extra || {}) }),
+          });
+        } catch (e) {
+          return { ok: false, status: 0, data: { error: 'Sem conexão com a internet.' } };
+        }
+        const data = await resp.json().catch(() => ({}));
+        return { ok: resp.ok, status: resp.status, data };
+      }
+
+      function mensagem(icone, classe, titulo, texto) {
+        app.innerHTML = `<div class="centro"><div class="icone ${classe}">${icone}</div><h1>${esc(titulo)}</h1><p>${esc(texto)}</p></div>`;
+      }
+      function dizer(texto, erro) {
+        const el = document.getElementById('estado');
+        if (!el) return;
+        el.className = `estado ${erro ? 'erro' : ''}`;
+        el.textContent = texto;
+      }
+      function soltarCamera() {
+        if (fluxo && fluxo.stream) fluxo.stream.getTracks().forEach((t) => t.stop());
+        if (fluxo && fluxo.relogio) clearInterval(fluxo.relogio);
+        fluxo = null;
+      }
+      function soltarPrevia() {
+        if (urlPrevia) URL.revokeObjectURL(urlPrevia);
+        urlPrevia = null;
+      }
+
+      // ---------- telas ----------
+      function telaIntro() {
+        soltarCamera();
+        soltarPrevia();
+        escolhido = null;
+        window.onbeforeunload = null;
+        const podeGravar = !!(
+          window.MediaRecorder &&
+          navigator.mediaDevices &&
+          navigator.mediaDevices.getUserMedia &&
+          escolherFormatoGravacao((t) => MediaRecorder.isTypeSupported(t))
+        );
+        const mb = Math.round(LIMITE_BYTES / 1048576);
+        app.innerHTML = `
+          <h1>Vídeo de apresentação</h1>
+          <div class="empresa">Processo seletivo — ${esc(dados.empresa)}</div>
+          <div class="instrucoes">${esc(dados.instrucoes || 'Apresente-se em até 2 minutos: quem você é, sua experiência e por que quer esta vaga.')}</div>
+          <ul class="regras">
+            <li>O vídeo pode ter até <b>2 minutos</b>.</li>
+            <li>Você pode <b>gravar agora</b>, pela câmera deste aparelho, ou <b>escolher um arquivo</b> de até ${mb} MB (MP4, WebM ou MOV).</li>
+            <li>Antes de enviar você assiste ao vídeo e pode gravar de novo. Depois de enviado, o vídeo <b>não pode ser trocado</b>.</li>
+            <li>Procure um lugar com boa luz, som limpo e boa conexão.</li>
+          </ul>
+          <div class="aviso">O vídeo (sua imagem e sua voz) será visto apenas pela equipe de recrutamento de <b>${esc(dados.empresa)}</b>, usado só neste processo seletivo, e guardado por até <b>${esc(dados.limites.retencaoMeses)} meses</b>. Evite falar de assuntos que não se relacionam com a vaga (como religião, política ou saúde). A decisão final é sempre tomada por pessoas. Você pode pedir à empresa a exclusão do vídeo a qualquer momento.</div>
+          ${podeGravar ? '<button class="btn" id="btnGravar">Gravar agora</button>' : ''}
+          <label class="btn sec" style="display:inline-block;" for="arquivo">Escolher um arquivo</label>
+          <input type="file" id="arquivo" accept="video/mp4,video/webm,video/quicktime,video/*" style="display:none" />
+          <div class="estado" id="estado">${podeGravar ? '' : 'Este navegador não consegue gravar vídeo: escolha um arquivo.'}</div>`;
+        if (podeGravar) document.getElementById('btnGravar').onclick = iniciarGravacao;
+        document.getElementById('arquivo').onchange = escolherArquivo;
+      }
+
+      async function iniciarGravacao() {
+        const estado = document.getElementById('estado');
+        estado.className = 'estado';
+        estado.textContent = 'Abrindo a câmera…';
+        let stream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 } },
+            audio: true,
+          });
+        } catch (e) {
+          dizer('Não consegui usar a câmera e o microfone. Permita o acesso no navegador ou escolha um arquivo.', true);
+          return;
+        }
+        const tipo = escolherFormatoGravacao((t) => MediaRecorder.isTypeSupported(t));
+        const gravador = new MediaRecorder(stream, {
+          mimeType: tipo,
+          videoBitsPerSecond: BITS_VIDEO,
+          audioBitsPerSecond: BITS_AUDIO,
+        });
+        const pedacos = [];
+        gravador.ondataavailable = (ev) => ev.data && ev.data.size && pedacos.push(ev.data);
+        fluxo = { stream, gravador, inicio: 0, relogio: null };
+        app.innerHTML = `
+          <h1>Gravando…</h1>
+          <video id="ao_vivo" muted playsinline autoplay></video>
+          <div class="relogio" id="relogio">${tempoTexto(LIMITE_SEGUNDOS)}</div>
+          <button class="btn vermelho" id="btnParar">Parar gravação</button>
+          <div class="estado" id="estado">A gravação para sozinha aos 2 minutos.</div>`;
+        document.getElementById('ao_vivo').srcObject = stream;
+        window.onbeforeunload = () => 'Sua gravação está em andamento.';
+        const terminar = () => {
+          if (!fluxo || fluxo.encerrando) return;
+          fluxo.encerrando = true;
+          clearInterval(fluxo.relogio);
+          gravador.stop();
+        };
+        gravador.onstop = () => {
+          const duracao = (Date.now() - fluxo.inicio) / 1000;
+          const blob = new Blob(pedacos, { type: mimeBase(gravador.mimeType) || mimeBase(tipo) });
+          soltarCamera();
+          window.onbeforeunload = null;
+          preparar(blob, mimeBase(blob.type), Math.min(duracao, LIMITE_SEGUNDOS), true);
+        };
+        document.getElementById('btnParar').onclick = terminar;
+        fluxo.inicio = Date.now();
+        gravador.start(1000);
+        fluxo.relogio = setInterval(() => {
+          const falta = segundosRestantes(fluxo.inicio, Date.now());
+          const r = document.getElementById('relogio');
+          if (r) {
+            r.textContent = tempoTexto(falta);
+            r.className = `relogio ${falta <= 15 ? 'urgente' : ''}`;
+          }
+          if (falta <= 0) terminar();
+        }, 250);
+      }
+
+      // Escolheu um arquivo: confere formato, tamanho e duração ANTES de mostrar.
+      function escolherArquivo(ev) {
+        const arq = ev.target.files && ev.target.files[0];
+        if (!arq) return;
+        const v = validarArquivoEscolhido({ tipo: arq.type, tamanho: arq.size });
+        if (!v.ok) return dizer(v.erro, true);
+        dizer('Lendo o vídeo…');
+        const url = URL.createObjectURL(arq);
+        const el = document.createElement('video');
+        el.preload = 'metadata';
+        el.onloadedmetadata = () => {
+          URL.revokeObjectURL(url);
+          const d = validarDuracao(el.duration);
+          if (!d.ok) return dizer(d.erro, true);
+          preparar(arq, v.mime, d.segundos, false);
+        };
+        el.onerror = () => {
+          URL.revokeObjectURL(url);
+          dizer('Não consegui abrir este vídeo. Grave pela própria página ou escolha outro arquivo.', true);
+        };
+        el.src = url;
+      }
+
+      // Mostra o vídeo pra o candidato conferir antes de enviar.
+      function preparar(blob, mime, segundos, gravado) {
+        const v = validarArquivoEscolhido({ tipo: mime, tamanho: blob.size });
+        if (!v.ok) {
+          telaIntro();
+          return dizer(v.erro, true);
+        }
+        escolhido = { blob, mime: v.mime, segundos };
+        soltarPrevia();
+        urlPrevia = URL.createObjectURL(blob);
+        app.innerHTML = `
+          <h1>Confira seu vídeo</h1>
+          <video id="previa" controls playsinline src="${esc(urlPrevia)}"></video>
+          <p>Duração: <b>${esc(tempoTexto(segundos))}</b> · Tamanho: <b>${esc(tamanhoTexto(blob.size))}</b></p>
+          <button class="btn verde" id="btnEnviar">Enviar vídeo</button>
+          <button class="btn sec" id="btnRefazer">${gravado ? 'Gravar de novo' : 'Escolher outro'}</button>
+          <div class="estado" id="estado">Depois de enviado, o vídeo não pode ser trocado.</div>`;
+        document.getElementById('btnEnviar').onclick = enviar;
+        document.getElementById('btnRefazer').onclick = telaIntro;
+      }
+
+      async function enviar() {
+        if (ocupado || !escolhido) return;
+        ocupado = true;
+        const btn = document.getElementById('btnEnviar');
+        btn.disabled = true;
+        window.onbeforeunload = () => 'Seu vídeo está sendo enviado.';
+        try {
+          dizer('Preparando o envio…');
+          const prep = await chamar('candidato_video_preparar', { mime: escolhido.mime, tamanho: escolhido.blob.size });
+          if (!prep.ok) throw new Error(prep.data.error || 'Não foi possível preparar o envio.');
+          dizer('Enviando o vídeo… não feche esta página.');
+          const cliente = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          const up = await cliente.storage
+            .from(BUCKET)
+            .uploadToSignedUrl(prep.data.caminho, prep.data.token, escolhido.blob, { contentType: prep.data.mime });
+          if (up.error) throw new Error('O envio falhou. Verifique sua conexão e tente de novo.');
+          dizer('Conferindo o vídeo…');
+          const conf = await chamar('candidato_video_confirmar', { duracao_s: escolhido.segundos });
+          if (!conf.ok) throw new Error(conf.data.error || 'Não foi possível confirmar o envio.');
+          window.onbeforeunload = null;
+          soltarPrevia();
+          mensagem(
+            '✓',
+            '',
+            'Vídeo enviado!',
+            'Obrigado por participar. A equipe da empresa vai assistir ao seu vídeo e entrará em contato sobre os próximos passos. Você já pode fechar esta página.'
+          );
+        } catch (e) {
+          dizer(`${e.message} Seu vídeo continua aqui — você pode tentar de novo.`, true);
+          btn.disabled = false;
+        }
+        ocupado = false;
+      }
+
+      // ---------- começo ----------
+      (async function () {
+        if (!/^[A-Za-z0-9_-]{43}$/.test(TOKEN))
+          return mensagem(
+            '?',
+            'cinza',
+            'Link inválido',
+            'Este link está incompleto. Abra o link exatamente como recebido por e-mail ou peça um novo link à empresa.'
+          );
+        const r = await chamar('candidato_video_abrir');
+        if (!r.ok) {
+          if (r.status === 404)
+            return mensagem('?', 'cinza', 'Link inválido ou expirado', 'Peça um novo link a quem convidou você.');
+          if (r.status === 429)
+            return mensagem('⏳', 'cinza', 'Muitas tentativas', 'Aguarde alguns minutos e abra o link de novo.');
+          return mensagem(
+            '⚠',
+            'cinza',
+            'Não foi possível abrir a página',
+            r.data.error || 'Verifique sua conexão e recarregue a página.'
+          );
+        }
+        dados = r.data;
+        if (dados.estado === 'enviado')
+          return mensagem(
+            '✓',
+            '',
+            'Vídeo já enviado',
+            'Seu vídeo já foi enviado. Obrigado! Não é preciso fazer mais nada.'
+          );
+        if (dados.estado === 'expirado')
+          return mensagem(
+            '⏳',
+            'cinza',
+            'O prazo deste pedido terminou',
+            'O link não está mais válido. Entre em contato com a empresa para pedir um novo link.'
+          );
+        if (dados.estado === 'cancelado')
+          return mensagem(
+            '✕',
+            'cinza',
+            'Este pedido foi cancelado',
+            'Entre em contato com a empresa se você achar que foi um engano.'
+          );
+        telaIntro();
+      })();
+    </script>
+  </body>
+</html>

@@ -24,7 +24,7 @@ verify_jwt = false
 [functions.chamado-automatico] # ações do usuário conferem a sessão por dentro; a rotina exige o CRON_SECRET
 verify_jwt = false
 
-[functions.provas-rs]           # provas do processo seletivo: porta do candidato sem login (código secreto + limite por IP); porta do RH confere login, papel e empresa
+[functions.video-rs]            # vídeo do candidato: porta do candidato sem login (código secreto + limite por IP); porta do RH confere login, papel e empresa
 verify_jwt = false
 
 [functions.rotinas-agendadas]  # chamada pelo agendador (CRON_SECRET); a ação "status" é do Super Admin logado

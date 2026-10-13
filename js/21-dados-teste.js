@@ -418,7 +418,7 @@ async function gerarDadosTeste() {
     };
     state.rs.requisicoes.push(requisicaoTeste);
     const candidatosDemo = [
-      { nome: 'Juliana Ferreira', etapa: 'entrevista' },
+      { nome: 'Juliana Ferreira', etapa: 'entrevista_fit' },
       { nome: 'Marcos Vinícius', etapa: 'triagem' },
       { nome: 'Patrícia Gomes', etapa: 'aprovado' },
       { nome: 'Rafael Teixeira', etapa: 'nova' },

@@ -52,8 +52,8 @@ function renderRoute() {
       return pageFolhaPapel();
     case 'rs_talentos':
       return pageBancoTalentos();
-    case 'rs_provas':
-      return pageProvasRS();
+    case 'rs_processo':
+      return pageProcessoSeletivoRS();
     case 'clima':
       return pageClima();
     case 'nr1':

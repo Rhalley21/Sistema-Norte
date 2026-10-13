@@ -140,10 +140,10 @@ test('config.toml: só as 6 funções realmente públicas ficam com Verify JWT D
   assert.deepEqual(desligadas, [
     'chamado-automatico',
     'login-bloqueio',
-    'provas-rs',
     'rotinas-agendadas',
     'rs',
     'teste-gratis',
+    'video-rs',
   ]);
 });
 

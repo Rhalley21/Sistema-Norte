@@ -3,6 +3,141 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.116.0 — Vídeo de apresentação do candidato (máximo 2 minutos)
+Nova etapa funcional do processo seletivo: o candidato grava (ou escolhe) um vídeo de **no máximo 2 minutos** e envia por um
+link pessoal, **sem login**. Só o Administrador e o RH assistem. Guardado por **6 meses**.
+
+**Candidato** (`video.html`): **gravar pela própria página** (câmera do aparelho, ~1 Mbps: 2 minutos ficam em torno de
+15 MB, e a gravação **para sozinha aos 2 minutos**) ou **escolher um arquivo** (MP4, WebM ou MOV de até 40 MB). A página
+confere formato, tamanho e duração **antes** de enviar, mostra a prévia (dá para gravar de novo) e avisa que o vídeo será
+visto só pela equipe de recrutamento e guardado por 6 meses. Funciona no celular. Sem Sentry, sem analytics, sem Referer.
+
+**RH** (painel no funil da vaga): **mover o candidato para a etapa "Vídeo de apresentação"** já cria o pedido e envia o link
+por e-mail, com as orientações da vaga (ou da empresa). O painel mostra a situação (aguardando, enviado, prazo vencido,
+cancelado) e tem **Assistir** (link temporário de 10 minutos, registrado na Auditoria), **Reenviar link**, **Cancelar
+pedido** e **Excluir vídeo** (apaga o arquivo de vez, inclusive a pedido do candidato).
+
+**Garantias (cada uma tem teste)**
+- **Os limites da página e da função são os mesmos** (2 min, 40 MB, formatos); o limite de **40 MB e os formatos são impostos
+  pelo próprio armazenamento**. A duração é conferida no navegador do candidato (o servidor não "assiste" o vídeo): a trava de
+  verdade é o tamanho; o RH vê um aviso se a duração informada passar de 2 minutos.
+- O servidor **confere o tipo real do arquivo** pelos primeiros bytes: imagem, PDF, vazio, grande demais ou de formato
+  diferente do declarado é **apagado** e recusado.
+- O vídeo vai **direto do aparelho para o armazenamento privado**; a função só autoriza o envio de **um** caminho e depois
+  confere. O código do link tem 256 bits e **só o hash fica no banco**; uma única entrega por pedido (duas confirmações ao
+  mesmo tempo marcam "enviado" uma vez só). O caminho interno do arquivo nunca vai ao navegador.
+- **Retenção de 6 meses:** a rotina diária apaga o **arquivo e depois o registro** (se não conseguir apagar o arquivo, o
+  registro fica e ela tenta de novo no dia seguinte) e expira pedidos vencidos. Política de Privacidade (HTML e Word)
+  atualizada. A Auditoria só guarda IDs (nunca nome, e-mail ou link).
+
+**Ativar — NESTA ORDEM** (docs/VIDEO-RS.md): (1) rodar `sql/42-videos-rs.sql`; (2) implantar a função `video-rs` com **Verify JWT
+desligado** e **reimplantar a `rotinas-agendadas`** (ela passa a mexer na tabela nova, então o SQL vem antes); (3) subir o
+site; (4) **fazer o teste real** do guia. Sem o passo 1 antes do 2, a rotina diária acusa falha.
+
+**NÃO testado com o Supabase de verdade**: o envio direto ao armazenamento (link de envio assinado) e o limite de tamanho do
+armazenamento — só com um armazenamento simulado e com a câmera simulada do Chromium (28 verificações no navegador). **Faça o
+teste real do guia antes de usar com candidatos.** O plano gratuito do Supabase tem pouco espaço: cada vídeo ocupa 15 a 40 MB.
+
+**Testes**: 411 no total (os de vídeo: servidor, página, painel do RH e rotina), com 22 regressões plantadas e detectadas.
+
+## v0.115.0 — A prova prática é criada em cada vaga
+A prova prática deixa de ser um texto geral da empresa: **cada vaga define a sua**, porque o que se pede a um vendedor não é
+o que se pede a um analista financeiro.
+
+**Na vaga** (funil da vaga em R&S → "Orientações e prova prática desta vaga"):
+- **enunciado** (até 2000 caracteres: a tarefa, o que entregar e como entregar), **prazo de entrega** (1 a 30 dias, mostrado
+  como data no e-mail), até 3 **links** (https) e até 6 **critérios de avaliação** com peso (1 a 10);
+- **"Referência desta vaga"**: as responsabilidades do cargo e as habilidades desejadas aparecem ao lado do formulário, para
+  criar uma prova coerente com a vaga;
+- os **critérios são só do RH e nunca vão no e-mail do candidato** (um teste garante); servirão para avaliar cada entrega
+  com o mesmo critério na tela de registro dos resultados (próxima parte).
+
+**O candidato recebe o enunciado DA VAGA em que está** (testado: duas vagas, dois e-mails diferentes). A prova prática
+**nunca usa o texto geral da empresa**: o painel da empresa (R&S — Processo seletivo) não tem mais a prova prática e avisa
+que ela é criada em cada vaga. Vaga que usa a etapa e não definiu o enunciado aparece como **pendente** (no funil e na tela
+do Processo seletivo, com uma coluna nova) e, ao **mover um candidato** para a prova prática, o sistema **pergunta** antes —
+o e-mail sairia sem a tarefa.
+
+**As outras etapas também aceitam orientações por vaga**, que valem no lugar das da empresa; sem as da vaga, valem as da empresa.
+
+**Ativar**: só subir o site (sem SQL nem função nova). **Testes**: 26 novos (344 no total), com regressões plantadas e detectadas.
+
+## v0.114.0 — Provas de conhecimento retiradas; entra a tela "R&S — Processo seletivo"
+**Retirado por inteiro** o recurso de provas automáticas da v0.112.0: o menu "R&S — Provas", a coluna e o botão
+"Aplicar prova" no funil, a página pública do candidato (`prova.html`), a Edge Function `provas-rs`, a tarefa das provas na
+rotina diária, as 3 perguntas do FAQ, os trechos da Política de Privacidade e dos Termos (HTML e Word) e a documentação.
+As etapas **Teste lógico**, **Prova teórica** e **Prova prática** continuam no processo como etapas de registro (o RH aplica
+a prova pelo meio que preferir, inclusive um link externo indicado nas orientações). Os e-mails dessas etapas deixaram de
+prometer "link da prova". Um teste impede que restos do recurso (arquivos, função, tabelas, rotas) voltem por engano.
+
+**Nova tela "R&S — Processo seletivo"** (menu Pessoas, no lugar das provas; Administrador e RH):
+- as **etapas na ordem da empresa** (3 a 13; nova candidatura, proposta e aprovado sem número), com o **tipo**, se manda
+  e-mail ao candidato, se tem orientações configuradas e **quantos candidatos estão em cada etapa agora** (reprovados não contam);
+- o painel de **orientações e links por etapa** (onde fazer o teste DISC etc.), que antes ficava num cartão em R&S — o cartão
+  em R&S agora só leva a esta tela;
+- **etapas por vaga**: quais etapas cada vaga em andamento usa e quantos candidatos ativos tem (as etapas se alteram na
+  própria vaga, em R&S → "Etapas do processo desta vaga");
+- aviso sobre as etapas 1 e 2 (são da vaga), DISC/GALT (feitos fora do sistema) e redes sociais (só o que se relaciona com a vaga).
+Candidatos do funil antigo são migrados antes de contar, então nenhum fica "invisível".
+
+**Para desativar no Supabase — NESTA ORDEM** (a ordem importa):
+1. **Reimplante a função `rotinas-agendadas`** com o código novo (ela ainda tem a tarefa das provas e, sem as tabelas, essa
+   tarefa falharia e mandaria e-mail de erro à equipe todos os dias).
+2. Se você já rodou o `40-provas-rs.sql`: rode o **`41-remover-provas.sql`** — **apaga as tabelas das provas e todos os
+   resultados**. Se nunca aplicou prova a ninguém, não há o que perder.
+3. Em Edge Functions, **apague a função `provas-rs`**.
+4. Suba o site (`git push`). Sem o passo 1 feito antes do 2, a rotina diária vai acusar falha.
+
+**Testes**: 318 no total; 10 regressões plantadas na tela nova e na retirada, todas detectadas.
+
+## v0.113.1 — R&S: orientações e links por etapa (onde fazer o teste DISC/GALT)
+Cada empresa cola, por etapa, as **orientações** e até **3 links** (por exemplo, onde fazer o teste DISC e o GALT em um
+site externo, o endereço da entrevista, as instruções da prova prática). Isso vai no e-mail que o candidato recebe quando
+entra na etapa. Fica em **R&S → Orientações e links das etapas → Configurar** (Administrador e RH).
+
+- **Os links não estão no código**: cada empresa escolhe os seus (um teste impede que um link de terceiro seja escrito no código).
+- **Só https://** — são recusados http, `javascript:`, espaços, aspas, endereço sem domínio e o truque `usuario@endereco`.
+- Texto e rótulos entram escapados no e-mail; o e-mail avisa que os links levam a **sites externos, com política de
+  privacidade própria**. A Política de Privacidade (HTML e Word) também cita as etapas feitas em sites de terceiros.
+- Os textos de DISC/GALT, vídeo e prova prática dizem "as orientações estão logo abaixo" quando há orientações (e continuam
+  "em breve" quando não há). Valem para e-mails enviados daqui para frente.
+- 1 pergunta nova no FAQ.
+
+**Atenção**: o candidato ainda não devolve o resultado pelo sistema — escreva nas orientações para onde ele deve enviar. Não
+foi possível abrir os endereços dos testes a partir do ambiente de desenvolvimento: confira o conteúdo e a política de
+privacidade de cada site antes de indicar.
+
+**Ativar**: só subir o site (sem SQL nem função nova). **Testes**: 8 novos (380 no total), 7 regressões plantadas e detectadas.
+
+## v0.113.0 — R&S: etapas do processo seletivo da empresa (parte 1 de 3)
+O funil de candidatos passa a seguir as etapas definidas pela empresa, e **cada vaga escolhe quais usa**.
+
+**Etapas** (nesta ordem): triagem dos currículos · teste DISC e GALT · vídeo de apresentação · verificação nas redes
+sociais · checagem de informações do currículo · entrevista de fit cultural · teste lógico · prova teórica · prova prática ·
+entrevista final · escolha do candidato — além de nova candidatura, proposta e aprovado (fixas). As etapas 1 (perfil da
+vaga) e 2 (divulgação) já existiam na requisição de vaga e na página pública.
+
+**Por vaga**: ao criar a vaga vêm todas marcadas; dá para mudar depois ("Etapas do processo desta vaga") ou copiar de outra
+vaga. O seletor de etapa do candidato mostra só as da vaga (e a etapa em que ele já está). Vagas antigas usam todas.
+
+**Candidatos que já estavam no funil** são movidos sozinhos para a etapa equivalente, com uma linha no histórico (Contato
+inicial→Triagem, Avaliação→DISC/GALT, Entrevista→Entrevista de fit, Finalista→Escolha). A migração é idempotente.
+
+**E-mails**: cada etapa visível ao candidato tem e-mail próprio; as etapas **internas** (redes sociais e checagem do
+currículo) **nunca mandam e-mail** (um teste garante). As etapas de prova avisam que o link chega em e-mail separado.
+
+**Transparência (LGPD)**: a página de candidatura e a Política de Privacidade (HTML e Word) avisam que o currículo e perfis
+profissionais públicos podem ser verificados, e que os registros das etapas ficam só com Administrador e RH. Peça ao
+advogado que revise, principalmente as etapas de redes sociais e checagem.
+
+**NÃO inclui ainda** (próximas partes): (1) registro do resultado de cada etapa — hoje o funil move o candidato, mas o
+resultado do DISC/GALT, das redes sociais, da checagem e da prova prática ainda não tem onde ser registrado; (2) vídeo de
+apresentação enviado pelo candidato (6 meses de guarda; atenção aos limites do plano gratuito do Supabase); (3) aplicar a
+prova automaticamente ao entrar nas etapas de prova. Detalhes em docs/PROCESSO-SELETIVO.md.
+
+**Ativar**: só subir o site (nenhum SQL nem função nova). **Testes**: 19 novos (372 no total), com 6 regressões plantadas
+e detectadas.
+
 ## v0.112.0 — R&S: provas de conhecimento no processo seletivo
 Novo recurso: o Administrador e o RH montam **provas de múltipla escolha com nota automática**, aplicam a candidatos do
 funil e acompanham o resultado. O candidato faz a prova por um link, **sem login**, em **uma única tentativa**.

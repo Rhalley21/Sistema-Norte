@@ -97,19 +97,39 @@ const FAQ_CENTRAL = [
     soComIA: true, // só aparece quando o assistente de IA está ligado
   },
   {
-    p: 'Como aplico uma prova a um candidato?',
-    r: 'No menu R&S — Provas (Administrador e RH), crie uma prova ou comece por um modelo pronto. Depois, no funil do R&S, abra o candidato e clique em "Aplicar prova": o link pode ir por e-mail ou você copia e envia. O candidato faz sem login, em uma única tentativa, e você acompanha o resultado na aba Resultados.',
-    k: ['prova', 'provas', 'aplicar', 'candidato', 'processo', 'seletivo', 'teste', 'link', 'avaliacao'],
+    p: 'Quais são as etapas do processo seletivo e como escolho as de cada vaga?',
+    r: 'O funil do R&S tem: triagem dos currículos, teste DISC e GALT, vídeo de apresentação, verificação nas redes sociais, checagem de informações do currículo, entrevista de fit cultural, teste lógico, prova teórica, prova prática, entrevista final e escolha do candidato — além de nova candidatura, proposta e aprovado, que valem para toda vaga. Ao criar a vaga (ou depois, em "Etapas do processo desta vaga") você marca as que ela usa.',
+    k: ['etapas', 'processo', 'seletivo', 'vaga', 'funil', 'escolher', 'marcar', 'triagem', 'entrevista', 'prova'],
   },
   {
-    p: 'O candidato vê a nota ou o gabarito da prova?',
-    r: 'Não. Ele só vê a confirmação de que a prova foi enviada. A nota, as respostas e o gabarito ficam visíveis apenas para o Administrador e o RH, em R&S — Provas → Resultados.',
-    k: ['candidato', 'nota', 'gabarito', 'prova', 'resultado', 'ver', 'enviada', 'respostas'],
+    p: 'O candidato recebe e-mail em todas as etapas do processo seletivo?',
+    r: 'Quase todas. As etapas de verificação interna (redes sociais e checagem do currículo) não mandam e-mail ao candidato. Nas etapas em que você configurou orientações e links (em R&S — Processo seletivo), o e-mail traz essas orientações.',
+    k: ['candidato', 'recebe', 'email', 'mail', 'etapas', 'redes', 'sociais', 'checagem', 'prova', 'avisa'],
   },
   {
-    p: 'O que significa a nota mínima da prova?',
-    r: 'É uma referência sua: a tela mostra se o candidato atingiu ou ficou abaixo dela. O sistema nunca reprova ninguém sozinho — a decisão é sempre do RH. As provas medem conhecimento; testes psicológicos são privativos de psicólogos e não devem ser montados ali. Os resultados ficam guardados por até 24 meses.',
-    k: ['nota', 'minima', 'prova', 'atingiu', 'reprova', 'reprovar', 'decisao', 'psicologico', 'resultado'],
+    p: 'Onde vejo e ajusto as etapas do processo seletivo?',
+    r: 'No menu R&S — Processo seletivo (Administrador e RH). Lá você vê as etapas na ordem, quantos candidatos estão em cada uma, as orientações e links que o candidato recebe e quais etapas cada vaga usa. Para mudar as etapas de uma vaga, abra a vaga em R&S, em "Etapas do processo desta vaga".',
+    k: ['processo', 'seletivo', 'etapas', 'ver', 'ajustar', 'menu', 'vaga', 'candidatos', 'funil'],
+  },
+  {
+    p: 'Como coloco o link do teste DISC (ou outras orientações) para o candidato?',
+    r: 'Em R&S, no menu R&S — Processo seletivo, na área "Orientações e links das etapas". Para cada etapa você escreve as orientações e cola até 3 links (só endereços que começam com https://). Isso vai no e-mail do candidato quando ele entra na etapa. Se o teste é feito em um site externo, confira a política de privacidade desse site antes de indicar.',
+    k: ['link', 'teste', 'disc', 'orientacoes', 'candidato', 'etapa', 'configurar', 'email', 'instrucoes'],
+  },
+  {
+    p: 'A prova prática é igual para todas as vagas?',
+    r: 'Não. A prova prática é criada em cada vaga: no funil da vaga, abra "Orientações e prova prática desta vaga" e escreva o enunciado (a tarefa e como entregar), o prazo de entrega, links de apoio e os critérios de avaliação (estes só você vê). O candidato recebe o enunciado da vaga em que está quando entra na etapa.',
+    k: ['prova', 'pratica', 'vaga', 'enunciado', 'criar', 'criterios', 'prazo', 'candidato', 'igual', 'todas'],
+  },
+  {
+    p: 'Como o candidato envia o vídeo de apresentação?',
+    r: 'Ao mover o candidato para a etapa "Vídeo de apresentação", o sistema envia a ele um link por e-mail (ou gera um link para você copiar). Pelo link, sem login, ele grava o vídeo pela própria página ou escolhe um arquivo, de no máximo 2 minutos, e envia. No funil, o painel do candidato mostra a situação e o botão "Assistir".',
+    k: ['video', 'apresentacao', 'candidato', 'enviar', 'envia', 'gravar', 'link', 'etapa', 'minutos'],
+  },
+  {
+    p: 'Por quanto tempo ficam guardados os vídeos dos candidatos?',
+    r: 'Por até 6 meses a partir do envio; depois a rotina diária apaga o arquivo sozinha. Você pode excluir antes, a qualquer momento (por exemplo, a pedido do candidato), no painel do vídeo no funil. Só o Administrador e o RH assistem, e cada vez que alguém assiste fica na Auditoria.',
+    k: ['video', 'videos', 'guardados', 'tempo', 'meses', 'apagar', 'excluir', 'candidato', 'assistir', 'auditoria'],
   },
   {
     p: 'Meu ponto é em papel, posso usar o sistema?',

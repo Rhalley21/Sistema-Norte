@@ -41,7 +41,8 @@ function tarefas() {
   return ctx;
 }
 
-const { criarBanco, emailsFalsos } = require('./helpers/banco-falso.js'); // banco e e-mail simulados (compartilhados)
+const { criarBanco, emailsFalsos } = require('./helpers/banco-falso.js');
+const { criarArmazenamento } = require('./helpers/armazenamento-falso.js'); // banco e e-mail simulados (compartilhados)
 
 const AGORA = Date.parse('2026-10-10T11:00:00Z'); // 08:00 de Brasília, 10/10/2026
 const LINKS = { planos: 'https://site/index.html#planos', whatsapp: 'https://wa.me/5589' };
@@ -534,68 +535,161 @@ test('uma tarefa que falha no banco lança erro (a rotina isola e avisa a equipe
   await assert.rejects(c.purgarBancoTalentos(quebrado, AGORA), /banco fora do ar/);
 });
 
-// ======================= PROVAS DO PROCESSO SELETIVO =======================
-const TP = 'rs_provas_aplicacoes';
-test(
-  'provas: link que venceu SEM o candidato começar vira "expirada"; quem já começou, concluiu ou foi cancelado não muda',
-  opcoes,
-  async () => {
-    const c = tarefas();
-    const banco = criarBanco({
-      [TP]: [
-        { id: 'vencida', status: 'enviada', prazo_ate: ISO(AGORA - 1000), criado_em: ISO(AGORA - 86400000) },
-        { id: 'no-prazo', status: 'enviada', prazo_ate: ISO(AGORA + 86400000), criado_em: ISO(AGORA - 86400000) },
-        { id: 'comecou', status: 'iniciada', prazo_ate: ISO(AGORA - 5000), criado_em: ISO(AGORA - 86400000) }, // já começou: vale o tempo da prova, não o do link
-        { id: 'feita', status: 'concluida', prazo_ate: ISO(AGORA - 5000), criado_em: ISO(AGORA - 86400000) },
-        { id: 'cancelada', status: 'cancelada', prazo_ate: ISO(AGORA - 5000), criado_em: ISO(AGORA - 86400000) },
-      ],
-      __agora: ISO(AGORA),
-    });
-    const r = await c.manterProvasRs(banco, AGORA);
-    assert.deepEqual(plano(r), { expiradas: 1, removidas: 0 });
-    const st = Object.fromEntries(banco.tabelas[TP].map((x) => [x.id, x.status]));
-    assert.deepEqual(st, {
-      vencida: 'expirada',
-      'no-prazo': 'enviada',
-      comecou: 'iniciada',
-      feita: 'concluida',
-      cancelada: 'cancelada',
-    });
-    assert.deepEqual(
-      plano(await c.manterProvasRs(banco, AGORA)),
-      { expiradas: 0, removidas: 0 },
-      'rodar de novo não muda nada'
-    );
-  }
-);
+// ======================= VÍDEOS DOS CANDIDATOS =======================
+const TV = 'rs_videos';
+const BUCKET_V = 'videos-candidatos';
+function cenarioVideos(linhas) {
+  const banco = criarBanco({ [TV]: linhas, __agora: ISO(AGORA) });
+  const arm = criarArmazenamento();
+  return { banco, arm, admin: { from: (n) => banco.from(n), storage: arm } };
+}
 
-test(
-  'provas: resultados com mais de 24 meses são apagados (fronteira exata); os recentes ficam, de qualquer situação',
-  opcoes,
-  async () => {
-    const c = tarefas();
-    const banco = criarBanco({
-      [TP]: [
-        { id: 'velho', status: 'concluida', prazo_ate: ISO(AGORA), criado_em: '2024-10-10T10:59:59Z' }, // 1s além de 24 meses
-        { id: 'limite', status: 'concluida', prazo_ate: ISO(AGORA), criado_em: '2024-10-10T11:00:00Z' }, // exatamente 24 meses: ainda vale
-        { id: 'velho-cancelado', status: 'cancelada', prazo_ate: ISO(AGORA), criado_em: '2023-01-01T00:00:00Z' },
-        { id: 'novo', status: 'concluida', prazo_ate: ISO(AGORA), criado_em: '2026-01-01T00:00:00Z' },
-      ],
-      __agora: ISO(AGORA),
-    });
-    const r = await c.manterProvasRs(banco, AGORA);
-    assert.equal(r.removidas, 2);
-    assert.deepEqual(banco.tabelas[TP].map((x) => x.id).sort(), ['limite', 'novo']);
-  }
-);
+test('vídeos: pedido vencido sem envio vira "expirado"; enviado, cancelado e dentro do prazo não mudam', async () => {
+  const c = tarefas();
+  const { banco, admin } = cenarioVideos([
+    {
+      id: 'vencido',
+      empresa_id: 'e1',
+      status: 'solicitado',
+      prazo_ate: ISO(AGORA - 1000),
+      criado_em: ISO(AGORA - 86400000),
+    },
+    {
+      id: 'no-prazo',
+      empresa_id: 'e1',
+      status: 'solicitado',
+      prazo_ate: ISO(AGORA + 86400000),
+      criado_em: ISO(AGORA - 86400000),
+    },
+    {
+      id: 'feito',
+      empresa_id: 'e1',
+      status: 'enviado',
+      prazo_ate: ISO(AGORA - 5000),
+      enviado_em: ISO(AGORA - 86400000),
+      criado_em: ISO(AGORA - 86400000),
+    },
+    {
+      id: 'cancelado',
+      empresa_id: 'e1',
+      status: 'cancelado',
+      prazo_ate: ISO(AGORA - 5000),
+      criado_em: ISO(AGORA - 86400000),
+    },
+  ]);
+  const r = await c.manterVideosRs(admin, AGORA);
+  assert.deepEqual(plano(r), { expirados: 1, removidos: 0, arquivosRemovidos: 0 });
+  assert.deepEqual(Object.fromEntries(banco.tabelas[TV].map((x) => [x.id, x.status])), {
+    vencido: 'expirado',
+    'no-prazo': 'solicitado',
+    feito: 'enviado',
+    cancelado: 'cancelado',
+  });
+});
 
-test('provas: o prazo de retenção (24 meses) é o MESMO na rotina, na função provas-rs, na Política de Privacidade e na documentação', () => {
-  const numero = (arq, re) => Number(re.exec(ler(arq))[1]);
-  assert.equal(numero('supabase/functions/rotinas-agendadas/index.ts', /const PROVAS_RETENCAO_MESES = (\d+)/), 24);
-  assert.equal(numero('supabase/functions/provas-rs/index.ts', /const PROVAS_RETENCAO_MESES = (\d+)/), 24);
-  assert.ok(
-    /prova[\s\S]{0,400}24 meses|24 meses[\s\S]{0,400}prova/i.test(ler('privacidade.html')),
-    'a Política de Privacidade precisa citar as provas e os 24 meses'
+test('vídeos: depois de 6 meses o ARQUIVO e o registro são apagados (fronteira exata); os recentes ficam intactos', async () => {
+  const c = tarefas();
+  const { banco, arm, admin } = cenarioVideos([
+    {
+      id: 'velho',
+      empresa_id: 'e1',
+      status: 'enviado',
+      video_path: 'e1/velho/video.mp4',
+      enviado_em: '2026-04-10T10:59:59Z',
+      criado_em: '2026-04-01T00:00:00Z',
+      prazo_ate: ISO(AGORA),
+    }, // 1s além de 6 meses
+    {
+      id: 'limite',
+      empresa_id: 'e1',
+      status: 'enviado',
+      video_path: 'e1/limite/video.mp4',
+      enviado_em: '2026-04-10T12:00:00Z',
+      criado_em: '2026-04-01T00:00:00Z',
+      prazo_ate: ISO(AGORA),
+    }, // exatamente 6 meses: ainda vale
+    {
+      id: 'novo',
+      empresa_id: 'e1',
+      status: 'enviado',
+      video_path: 'e1/novo/video.webm',
+      enviado_em: '2026-09-01T00:00:00Z',
+      criado_em: '2026-08-30T00:00:00Z',
+      prazo_ate: ISO(AGORA),
+    },
+  ]);
+  for (const caminho of ['e1/velho/video.mp4', 'e1/limite/video.mp4', 'e1/novo/video.webm'])
+    arm.simularEnvio(BUCKET_V, caminho, new Uint8Array(20), 'video/mp4');
+  const r = await c.manterVideosRs(admin, AGORA);
+  assert.deepEqual(plano(r), { expirados: 0, removidos: 1, arquivosRemovidos: 1 });
+  assert.deepEqual(banco.tabelas[TV].map((x) => x.id).sort(), ['limite', 'novo']);
+  assert.deepEqual(
+    [...arm.arquivos.keys()].sort(),
+    [`${BUCKET_V}/e1/limite/video.mp4`, `${BUCKET_V}/e1/novo/video.webm`].sort()
   );
-  assert.ok(ler('docs/PROVAS-RS.md').includes('24 meses'));
+});
+
+test('vídeos: pedidos que nunca receberam vídeo também saem depois de 6 meses (contados do pedido); sobras de tentativas são apagadas junto', async () => {
+  const c = tarefas();
+  const { banco, arm, admin } = cenarioVideos([
+    {
+      id: 'abandonado',
+      empresa_id: 'e1',
+      status: 'expirado',
+      video_path: null,
+      criado_em: '2026-03-01T00:00:00Z',
+      prazo_ate: '2026-03-08T00:00:00Z',
+    },
+    {
+      id: 'recente',
+      empresa_id: 'e1',
+      status: 'expirado',
+      video_path: null,
+      criado_em: '2026-09-01T00:00:00Z',
+      prazo_ate: '2026-09-08T00:00:00Z',
+    },
+  ]);
+  arm.simularEnvio(BUCKET_V, 'e1/abandonado/video.webm', new Uint8Array(20), 'video/webm'); // sobra de uma tentativa que não foi confirmada
+  const r = await c.manterVideosRs(admin, AGORA);
+  assert.equal(r.removidos, 1);
+  assert.equal(r.arquivosRemovidos, 1);
+  assert.equal(arm.arquivos.size, 0);
+  assert.deepEqual(
+    banco.tabelas[TV].map((x) => x.id),
+    ['recente']
+  );
+});
+
+test('vídeos: se não conseguir apagar o arquivo, o registro FICA (a rotina tenta de novo amanhã) e a falha é avisada', async () => {
+  const c = tarefas();
+  const { banco, arm, admin } = cenarioVideos([
+    {
+      id: 'velho',
+      empresa_id: 'e1',
+      status: 'enviado',
+      video_path: 'e1/velho/video.mp4',
+      enviado_em: '2026-01-01T00:00:00Z',
+      criado_em: '2026-01-01T00:00:00Z',
+      prazo_ate: ISO(AGORA),
+    },
+  ]);
+  arm.simularEnvio(BUCKET_V, 'e1/velho/video.mp4', new Uint8Array(20), 'video/mp4');
+  const original = arm.from;
+  arm.from = (b) => ({
+    ...original(b),
+    remove: async () => ({ data: null, error: { message: 'storage fora do ar' } }),
+  });
+  await assert.rejects(c.manterVideosRs(admin, AGORA), /storage fora do ar/);
+  assert.equal(banco.tabelas[TV].length, 1, 'sem o arquivo apagado, o registro não pode sumir');
+});
+
+test('vídeos: o prazo de retenção (6 meses) é o MESMO na rotina, na função video-rs, na Política de Privacidade e na documentação', () => {
+  const numero = (arq, re) => Number(re.exec(ler(arq))[1]);
+  assert.equal(numero('supabase/functions/rotinas-agendadas/index.ts', /const VIDEO_RETENCAO_MESES = (\d+)/), 6);
+  assert.equal(numero('supabase/functions/video-rs/index.ts', /const VIDEO_RETENCAO_MESES = (\d+)/), 6);
+  assert.ok(
+    /vídeo[\s\S]{0,400}6\s+meses|6\s+meses[\s\S]{0,400}vídeo/i.test(ler('privacidade.html')),
+    'a Política de Privacidade precisa citar o vídeo e os 6 meses'
+  );
+  assert.ok(ler('docs/VIDEO-RS.md').includes('6 meses'));
 });

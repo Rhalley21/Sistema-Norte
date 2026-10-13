@@ -10,26 +10,18 @@
    sem alterar o desenho original do cargo (RN da especificação).
    ========================================================= */
 
-const ETAPAS_RS = [
-  { id: 'nova', nome: 'Nova candidatura' },
-  { id: 'triagem', nome: 'Triagem' },
-  { id: 'contato_inicial', nome: 'Contato inicial' },
-  { id: 'avaliacao', nome: 'Avaliação' },
-  { id: 'entrevista', nome: 'Entrevista' },
-  { id: 'finalista', nome: 'Finalista' },
-  { id: 'proposta', nome: 'Proposta' },
-  { id: 'aprovado', nome: 'Aprovado' },
-];
 const MOTIVOS_VAGA_RS = ['Substituição', 'Aumento de quadro', 'Temporária', 'Estágio', 'Banco de talentos', 'Outro'];
 
 function garantirRS() {
   if (!state.rs) state.rs = { requisicoes: [], candidatos: [] };
   if (!state.rs.requisicoes) state.rs.requisicoes = [];
   if (!state.rs.candidatos) state.rs.candidatos = [];
+  if (!state.rs.configEtapas) state.rs.configEtapas = {};
+  migrarEtapasLegadasRS(state.rs.candidatos, typeof meuPerfilId !== 'undefined' ? meuPerfilId : null);
 }
 
 function _rsEtapaNome(id) {
-  return ETAPAS_RS.find((e) => e.id === id)?.nome || id;
+  return etapaNomeRS(id);
 }
 function _rsStatusRequisicaoPill(r) {
   if (r.status === 'reprovada') return { label: 'Reprovada', classe: 'pill-iniciar' };
@@ -73,6 +65,7 @@ function criarRequisicaoRS() {
     motivo,
     prazo,
     confidencial,
+    etapasAtivas: etapasMarcadasRS([...document.querySelectorAll('.rs-req-etapa:checked')].map((el) => el.value)),
     missaoHerdada: d.missao || '',
     responsabilidadesHerdadas: d.responsabilidades || [],
     gestorSolicitanteId: meuPerfilId,
@@ -277,6 +270,46 @@ const RS_EMAIL_POR_ETAPA = {
     corpo: (nome, vaga) =>
       `<p>Olá, ${nome}!</p><p><b>Parabéns!</b> Você foi aprovado(a) para a vaga <b>${vaga}</b>. Nossa equipe entrará em contato com os próximos passos para sua contratação.</p>`,
   },
+  disc_galt: {
+    assunto: 'Próxima etapa: avaliação de perfil',
+    corpo: (nome, vaga, orientacoes) =>
+      `<p>Olá, ${nome}!</p><p>Você avançou para a próxima etapa do processo seletivo da vaga <b>${vaga}</b>: uma avaliação de perfil e raciocínio. ${orientacoes ? 'As orientações estão logo abaixo.' : 'Nossa equipe enviará as orientações em breve.'}</p>`,
+  },
+  video: {
+    assunto: 'Próxima etapa: vídeo de apresentação',
+    corpo: (nome, vaga, orientacoes) =>
+      `<p>Olá, ${nome}!</p><p>Você avançou para a etapa de <b>vídeo de apresentação</b> da vaga <b>${vaga}</b>. ${orientacoes ? 'As orientações estão logo abaixo.' : 'Nossa equipe enviará as instruções para o envio do seu vídeo em breve.'}</p>`,
+  },
+  entrevista_fit: {
+    assunto: 'Você avançou para a entrevista!',
+    corpo: (nome, vaga) =>
+      `<p>Olá, ${nome}!</p><p>Você avançou para a <b>entrevista de alinhamento com a cultura da empresa</b> na vaga <b>${vaga}</b>. Em breve alguém da nossa equipe vai combinar o horário com você.</p>`,
+  },
+  teste_logico: {
+    assunto: 'Próxima etapa: teste lógico',
+    corpo: (nome, vaga, orientacoes) =>
+      `<p>Olá, ${nome}!</p><p>Você avançou para o <b>teste lógico</b> da vaga <b>${vaga}</b>. ${orientacoes ? 'As orientações estão logo abaixo.' : 'Nossa equipe enviará as orientações em breve.'}</p>`,
+  },
+  prova_teorica: {
+    assunto: 'Próxima etapa: prova teórica',
+    corpo: (nome, vaga, orientacoes) =>
+      `<p>Olá, ${nome}!</p><p>Você avançou para a <b>prova teórica</b> da vaga <b>${vaga}</b>. ${orientacoes ? 'As orientações estão logo abaixo.' : 'Nossa equipe enviará as orientações em breve.'}</p>`,
+  },
+  prova_pratica: {
+    assunto: 'Próxima etapa: prova prática',
+    corpo: (nome, vaga, orientacoes) =>
+      `<p>Olá, ${nome}!</p><p>Você avançou para a <b>prova prática</b> da vaga <b>${vaga}</b>. ${orientacoes ? 'As orientações estão logo abaixo.' : 'Nossa equipe enviará as orientações em breve.'}</p>`,
+  },
+  entrevista_final: {
+    assunto: 'Você avançou para a entrevista final!',
+    corpo: (nome, vaga) =>
+      `<p>Olá, ${nome}!</p><p>Você avançou para a <b>entrevista final</b> na vaga <b>${vaga}</b>. Em breve alguém da nossa equipe vai combinar o horário com você.</p>`,
+  },
+  escolha: {
+    assunto: 'Você está entre os finalistas!',
+    corpo: (nome, vaga) =>
+      `<p>Olá, ${nome}!</p><p>Ótima notícia — você está entre os <b>finalistas</b> para a vaga <b>${vaga}</b>. Estamos concluindo a avaliação e retornaremos em breve.</p>`,
+  },
   reprovado: {
     assunto: 'Sobre sua candidatura',
     corpo: (nome, vaga) =>
@@ -289,6 +322,7 @@ async function enviarEmailEtapaRS(candidato, etapa) {
   if (!tpl || !candidato.email) return;
   const vaga = state.rs.requisicoes.find((r) => r.id === candidato.vagaId);
   const nomeVaga = vaga ? state.cargos.find((c) => c.id === vaga.cargoId)?.nome || vaga.codigo : 'nossa vaga';
+  const cfgEtapa = configEfetivaEtapaRS(vaga, etapa); // orientações da vaga (ou, na falta, as da empresa)
   try {
     await sb.functions.invoke('enviar-email', {
       // O nome do candidato vem do formulário público: sem escape, dava pra mandar HTML
@@ -296,7 +330,9 @@ async function enviarEmailEtapaRS(candidato, etapa) {
       body: {
         destinatario: candidato.email,
         assunto: tpl.assunto,
-        corpoHtml: tpl.corpo(escaparHtml(candidato.nome), escaparHtml(nomeVaga)),
+        corpoHtml:
+          tpl.corpo(escaparHtml(candidato.nome), escaparHtml(nomeVaga), temOrientacoesEtapaRS(cfgEtapa, etapa)) +
+          blocoConfigEtapaHtml(cfgEtapa, etapa),
       },
     });
   } catch (e) {
@@ -357,6 +393,19 @@ function moverEtapaCandidatoRS(candidatoId, novaEtapa) {
   if (!cand) return;
   const anterior = cand.etapa;
   if (anterior === novaEtapa) return;
+  // A prova prática é criada POR VAGA: avisa antes de mandar um candidato pra ela se esta vaga ainda não definiu a sua.
+  if (novaEtapa === 'prova_pratica') {
+    const vagaDoCandidato = state.rs.requisicoes.find((r) => r.id === cand.vagaId);
+    if (
+      !provaPraticaDefinidaRS(vagaDoCandidato) &&
+      !confirm(
+        'Esta vaga ainda não tem a prova prática definida (enunciado, prazo e critérios). O candidato receberá o e-mail da etapa sem a tarefa.\n\nMover mesmo assim?'
+      )
+    ) {
+      render(); // volta o seletor para a etapa em que o candidato estava
+      return;
+    }
+  }
   cand.etapa = novaEtapa;
   cand.historico.push({
     de: anterior,
@@ -365,8 +414,13 @@ function moverEtapaCandidatoRS(candidatoId, novaEtapa) {
     em: new Date().toISOString(),
     observacao: '',
   });
-  enviarEmailEtapaRS(cand, novaEtapa);
-  showToast(`Etapa atualizada — e-mail enviado a ${cand.nome}.`);
+  if (novaEtapa === 'video' && rsVideoHabilitado()) {
+    // Entrar na etapa de vídeo já cria o pedido e manda o link (com as orientações da vaga): não manda também o aviso genérico.
+    pedirVideoRS(cand.id, { automatico: true });
+  } else {
+    enviarEmailEtapaRS(cand, novaEtapa);
+    showToast(`Etapa atualizada — e-mail enviado a ${cand.nome}.`);
+  }
   render();
 }
 
@@ -679,6 +733,8 @@ function pageRS() {
 
     ${renderIndicadoresRS()}
 
+    ${rsConfigEtapasCardHtml()}
+
     ${souGestor ? `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;"><div><h3 style="margin:0;">Banco de talentos</h3><p class="small-muted" style="margin:4px 0 0;">Candidatos que autorizaram ficar disponíveis para futuras vagas.</p></div><button class="btn btn-ghost btn-sm" onclick="goto('rs_talentos')">Abrir banco de talentos →</button></div></div>` : ''}
 
     <div class="card">
@@ -720,6 +776,9 @@ function pageRS() {
           </div>
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin:8px 0;"><input id="rs_req_confidencial" type="checkbox"> Vaga confidencial (não exibir nome do cargo/empresa externamente)</label>
 
+          <h4 style="font-size:13px;margin:16px 0 8px;border-top:1px solid var(--line);padding-top:12px;">Etapas do processo seletivo desta vaga</h4>
+          <p class="small-muted" style="margin:0 0 8px;">"Nova candidatura", "Proposta" e "Aprovado" valem para toda vaga. Desmarque as etapas que esta vaga não usa (dá para mudar depois).</p>
+          ${etapasCheckboxesHtml(null, 'rs-req-etapa')}
           <h4 style="font-size:13px;margin:16px 0 8px;border-top:1px solid var(--line);padding-top:12px;">Perfil desejado para a vaga</h4>
           <div class="grid3">
             <div class="field"><label>Nível de maturidade</label>
@@ -904,6 +963,8 @@ function renderPipelineCandidatosRS(vaga) {
 
   return `
     <div class="card" style="background:var(--surface-2);margin-top:8px;">
+      ${etapasVagaEditorHtml(vaga)}
+      ${etapasVagaOrientacoesHtml(vaga)}
       ${
         pendentes.length
           ? `<div class="notice info" style="margin-bottom:12px;">📥 <b>${pendentes.length} candidatura(s) nova(s)</b> recebida(s) pela página pública, aguardando importar pro pipeline:
@@ -944,7 +1005,7 @@ function renderPipelineCandidatosRS(vaga) {
       }
       ${
         candidatos.length
-          ? `<table style="margin-top:10px;"><thead><tr><th>Candidato</th><th>Contato</th><th>Origem</th><th>Etapa</th>${provaCabecalhoRS()}<th></th></tr></thead><tbody>
+          ? `<table style="margin-top:10px;"><thead><tr><th>Candidato</th><th>Contato</th><th>Origem</th><th>Etapa</th><th></th></tr></thead><tbody>
             ${candidatos
               .map(
                 (c) => `<tr style="${c.reprovado ? 'opacity:0.6;' : ''}">
@@ -956,11 +1017,14 @@ function renderPipelineCandidatosRS(vaga) {
                   ? '<span class="pill pill-iniciar">Reprovado/desistiu</span>'
                   : c.etapa === 'aprovado'
                     ? '<span class="pill pill-alavancar">Aprovado</span>'
-                    : `<select onchange="moverEtapaCandidatoRS('${c.id}', this.value)" style="max-width:170px;">${ETAPAS_RS.map((e) => `<option value="${e.id}" ${e.id === c.etapa ? 'selected' : ''}>${e.nome}</option>`).join('')}</select>`
+                    : `<select onchange="moverEtapaCandidatoRS('${c.id}', this.value)" style="max-width:170px;">${etapasParaSelecaoRS(
+                        vaga,
+                        c
+                      )
+                        .map((e) => `<option value="${e.id}" ${e.id === c.etapa ? 'selected' : ''}>${e.nome}</option>`)
+                        .join('')}</select>`
               }</td>
-              ${provaCelulaRS(c)}
               <td style="white-space:nowrap;">
-                ${provaBotaoRS(c)}
                 ${
                   c.reprovado
                     ? `<button class="btn btn-sm btn-ghost" onclick="reabrirCandidatoRS('${c.id}')">Reabrir</button>`
@@ -970,7 +1034,7 @@ function renderPipelineCandidatosRS(vaga) {
                 }
               </td>
             </tr>
-            <tr style="${c.reprovado ? 'opacity:0.6;' : ''}"><td colspan="${provasHabilitadasRS() ? 6 : 5}" style="padding-top:0;">${renderPerfilCandidatoRS(c)}${renderScorecardRS(c.id)}${provaPainelAplicarRS(c)}</td></tr>`
+            <tr style="${c.reprovado ? 'opacity:0.6;' : ''}"><td colspan="5" style="padding-top:0;">${renderPerfilCandidatoRS(c)}${renderScorecardRS(c.id)}${videoPainelRS(c, vaga)}</td></tr>`
               )
               .join('')}
           </tbody></table>`

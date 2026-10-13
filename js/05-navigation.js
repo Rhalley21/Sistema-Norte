@@ -30,7 +30,7 @@ const STEPS_BASE = [
     apenasSePontoHabilitado: true,
   }, // RH/Admin conferem as batidas com as fotos
   { id: 'rs_talentos', label: 'R&S — Banco de talentos', group: 'Pessoas', papeis: ['owner', 'rh'] }, // candidatos que autorizaram ficar no banco
-  { id: 'rs_provas', label: 'R&S — Provas', group: 'Pessoas', papeis: ['owner', 'rh'] }, // provas de conhecimento aplicadas aos candidatos
+  { id: 'rs_processo', label: 'R&S — Processo seletivo', group: 'Pessoas', papeis: ['owner', 'rh'] }, // etapas do processo seletivo e orientações aos candidatos
   {
     id: 'folha_papel',
     label: 'Folha de Ponto (papel)',
@@ -104,7 +104,7 @@ function stepUnlocked(id) {
       return true;
     case 'rs_talentos':
       return true;
-    case 'rs_provas':
+    case 'rs_processo':
       return true;
     case 'ciclos':
       return state.colaboradores.length > 0;
