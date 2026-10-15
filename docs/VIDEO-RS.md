@@ -4,7 +4,7 @@ Etapa **Vídeo de apresentação** do processo seletivo: o candidato grava (ou e
 
 ## Como usar (RH)
 
-1. A vaga precisa usar a etapa **Vídeo de apresentação** (em R&S → a vaga → "Etapas do processo desta vaga").
+1. A vaga precisa usar a etapa **Vídeo de apresentação** (em R&S — Processo seletivo → a vaga → "Etapas do processo desta vaga").
 2. **Mover o candidato para a etapa "Vídeo de apresentação"** já cria o pedido e **envia o link por e-mail**, com as orientações da vaga (ou da empresa) — veja "Orientações e links das etapas" em R&S — Processo seletivo. Se o candidato não tem e-mail, o sistema gera o link para você copiar.
 3. No funil, o painel **Vídeo de apresentação** do candidato mostra a situação: _aguardando o candidato_, _vídeo enviado_, _prazo vencido_ ou _cancelado_.
 4. **Assistir** abre o vídeo por um link temporário de **10 minutos**; cada abertura fica na **Auditoria**.

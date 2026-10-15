@@ -3,6 +3,29 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.117.0 — Recrutamento = cadastro de pessoas; Processo seletivo = tudo da vaga
+Reorganização para ficar simples: cada tela tem **uma** função.
+
+- **R&S — Recrutamento** (só Administrador e RH) passa a ser o **cadastro de pessoas**: guarda os dados e mostra a situação.
+  Cada pessoa aparece **uma vez só** (os registros de várias vagas são juntados pelo e-mail ou telefone), com todos os
+  processos dela. Tem **+ Pessoa**, **Editar**, **Excluir** (pedido de exclusão do candidato; bloqueado se houver vídeo enviado),
+  busca, filtro de situação e **Levar para a vaga…**, que coloca a pessoa no processo de uma vaga aprovada e aberta (quem
+  era só cadastrada entra pelo mesmo registro; quem já passou por outro processo ganha um registro novo e o histórico anterior
+  fica intacto; quem já está em processo ou foi contratado não pode ser levado). Mostra "No banco" para quem está no banco de talentos.
+- **R&S — Processo seletivo** (Administrador, RH e líder) passa a ter **tudo do processo**: o **passo a passo** na ordem da
+  empresa (1 a 13, com quem faz cada etapa, o que acontece e quantos candidatos estão em cada uma), as **vagas** (nova
+  requisição, aprovar, publicar, encerrar) com o **funil** de cada uma, e as orientações e links das etapas (só Administrador e
+  RH). Saíram a tabela "etapas por vaga" e o cartão-ponteiro.
+- **Candidatura pelo link da vaga** continua entrando **direto no processo daquela vaga** (e aparece também no Recrutamento).
+- **Banco de talentos** continua só com quem marcou a autorização no formulário (entra sozinho); não dá para levar quem não autorizou.
+- **Saiu o "+ Candidato" de dentro da vaga:** todo cadastro novo é feito só no Recrutamento. Os indicadores contam só quem está num processo.
+- O **líder** continua pedindo vagas (a tela das vagas agora fica no Processo seletivo).
+
+**Ativar**: só subir o site (sem SQL nem função nova). **Dados existentes:** nada é perdido — todos os candidatos que já estavam
+em vagas aparecem no Recrutamento, agrupados por pessoa.
+
+**Testes**: 40 novos/reescritos (cadastro e Processo seletivo), com 14 regressões plantadas e detectadas.
+
 ## v0.116.0 — Vídeo de apresentação do candidato (máximo 2 minutos)
 Nova etapa funcional do processo seletivo: o candidato grava (ou escolhe) um vídeo de **no máximo 2 minutos** e envia por um
 link pessoal, **sem login**. Só o Administrador e o RH assistem. Guardado por **6 meses**.

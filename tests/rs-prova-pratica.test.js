@@ -394,21 +394,24 @@ test('salvar o painel da empresa NÃO cria nem apaga configuração da prova pr�
   assert.ok(!('prova_pratica' in plano(rodar(c, 'state.rs.configEtapas'))) || true);
 });
 
-test('tela do Processo seletivo: a linha da prova prática diz "definida em cada vaga" e cada vaga mostra sua situação', () => {
+test('tela do Processo seletivo: a vaga que usa a prova prática e não a definiu mostra o aviso "pendente" dentro do funil da vaga', () => {
   const c = ctx();
   comVagas(c);
+  rodar(
+    c,
+    "meuPapelReal = 'rh'; state.estrutura = []; _rsRequisicaoExpandida = 'v3'; _rsCandidaturasPendentes = { v3: [] }; state.rs.requisicoes[2].status = 'aprovada'; state.rs.requisicoes[2].publicada = true;"
+  );
   const html = rodar(c, 'pageProcessoSeletivoRS()');
-  const linha = /<tr>\s*<td>[^<]*<\/td>\s*<td><b>Prova prática<\/b><\/td>([\s\S]*?)<\/tr>/.exec(html)[1];
-  assert.ok(linha.includes('definida em cada vaga'));
-  const tabelaVagas = html.slice(html.indexOf('Etapas por vaga'));
-  assert.ok(tabelaVagas.includes('<th>Prova prática</th>'));
-  const celula = (cod) => new RegExp(`${cod}[\\s\\S]*?<\\/tr>`).exec(tabelaVagas)[0];
-  assert.ok(celula('REQ-001').includes('pill-alavancar">definida'));
-  assert.ok(celula('REQ-002').includes('pill-alavancar">definida'));
-  assert.ok(celula('REQ-003').includes('pill-desenvolver">pendente'));
-  assert.ok(celula('REQ-004').includes('não usa'));
+  assert.ok(html.includes('prova prática ainda não definida'));
+  rodar(
+    c,
+    "_rsRequisicaoExpandida = 'v1'; _rsCandidaturasPendentes = { v1: [] }; state.rs.requisicoes[0].status = 'aprovada'; state.rs.requisicoes[0].publicada = true;"
+  );
+  assert.ok(
+    !rodar(c, 'pageProcessoSeletivoRS()').includes('prova prática ainda não definida'),
+    'a vaga que definiu a prova prática não mostra o aviso'
+  );
 });
-
 // ======================= integração e documentação =======================
 test('integração: o funil mostra o formulário da vaga, o e-mail usa a configuração efetiva e mover pergunta quando não há prova', () => {
   const rs = ler('js/40-page-rs.js');

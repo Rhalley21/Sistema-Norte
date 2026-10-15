@@ -358,14 +358,6 @@ function linksDescartadosRS(bruto) {
 
 /* ---------- Tela do Processo seletivo: orientações da EMPRESA ---------- */
 
-// Cartão curto na tela de R&S: leva à tela do Processo seletivo, onde as orientações são configuradas.
-function rsConfigEtapasCardHtml() {
-  if (!['owner', 'rh'].includes(meuPapelReal)) return '';
-  return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-      <div><h3 style="margin:0;">Processo seletivo</h3><p class="small-muted" style="margin:4px 0 0;">As etapas do processo, as orientações e links que o candidato recebe (ex.: onde fazer o teste DISC) e as etapas de cada vaga.</p></div>
-      <button class="btn btn-ghost btn-sm" onclick="goto('rs_processo')">Abrir processo seletivo →</button></div></div>`;
-}
-
 function rsConfigEtapasPainelHtml() {
   const cfgs = (state.rs && state.rs.configEtapas) || {};
   return `<div>

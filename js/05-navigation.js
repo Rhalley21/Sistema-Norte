@@ -29,8 +29,9 @@ const STEPS_BASE = [
     papeis: ['owner', 'rh'],
     apenasSePontoHabilitado: true,
   }, // RH/Admin conferem as batidas com as fotos
+  { id: 'rs', label: 'R&S — Recrutamento', group: 'Pessoas', papeis: ['owner', 'rh'] }, // cadastro de pessoas: guarda os dados e leva a pessoa para um processo seletivo
+  { id: 'rs_processo', label: 'R&S — Processo seletivo', group: 'Pessoas', papeis: ['owner', 'rh', 'lider'] }, // as vagas, as etapas e o funil de cada vaga
   { id: 'rs_talentos', label: 'R&S — Banco de talentos', group: 'Pessoas', papeis: ['owner', 'rh'] }, // candidatos que autorizaram ficar no banco
-  { id: 'rs_processo', label: 'R&S — Processo seletivo', group: 'Pessoas', papeis: ['owner', 'rh'] }, // etapas do processo seletivo e orientações aos candidatos
   {
     id: 'folha_papel',
     label: 'Folha de Ponto (papel)',
@@ -40,7 +41,6 @@ const STEPS_BASE = [
   }, // RH fotografa a folha de ponto escrita à mão; o sistema lê, o RH confere e confirma
   { id: 'clima', label: 'Pesquisa de Clima / eNPS', group: 'Pessoas' },
   { id: 'nr1', label: 'NR1 — Riscos Psicossociais', group: 'Pessoas' }, // todo mundo responde a própria pesquisa; owner/rh veem a gestão dentro da página
-  { id: 'rs', label: 'R&S — Recrutamento', group: 'Pessoas', papeis: ['owner', 'rh', 'lider'] }, // requisição, aprovação e pipeline de candidatos
   { id: 'sucessao', label: 'Mapa de Sucessão', group: 'Pessoas', papeis: ['owner', 'rh'] },
   { id: 'ciclos', label: 'Ciclos de Avaliação', group: 'Ciclo NORTE' },
   { id: 'diagnostico', label: 'Diagnóstico & PDI', group: 'Ciclo NORTE' },

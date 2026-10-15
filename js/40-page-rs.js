@@ -218,12 +218,6 @@ async function encerrarVagaRS(id) {
 }
 
 /* ---------- Candidatos e pipeline ---------- */
-let _rsNovoCandidatoAberto = null; // id da vaga com o formulário de novo candidato aberto
-
-function abrirNovoCandidatoRS(vagaId) {
-  _rsNovoCandidatoAberto = vagaId;
-  render();
-}
 
 // Templates de e-mail por etapa — o candidato é avisado a cada mudança,
 // pra nunca ficar "no vácuo" sobre o processo. Best-effort: se o envio
@@ -338,54 +332,6 @@ async function enviarEmailEtapaRS(candidato, etapa) {
   } catch (e) {
     console.warn('Falha ao enviar e-mail de atualização de candidatura (não bloqueia o pipeline)', e);
   }
-}
-
-function criarCandidatoRS(vagaId) {
-  const nome = document.getElementById('rs_cand_nome').value.trim();
-  const email = document.getElementById('rs_cand_email').value.trim();
-  const telefone = document.getElementById('rs_cand_telefone').value.trim();
-  const origem = document.getElementById('rs_cand_origem').value.trim();
-  const curriculo = document.getElementById('rs_cand_curriculo').value.trim();
-  if (!nome) {
-    showToast('Informe o nome do candidato.');
-    return;
-  }
-  // Duplicidade por e-mail/telefone na mesma vaga — não apaga histórico, só avisa.
-  const jaExiste = state.rs.candidatos.find(
-    (c) => c.vagaId === vagaId && ((email && c.email === email) || (telefone && c.telefone === telefone))
-  );
-  if (
-    jaExiste &&
-    !confirm(`Já existe um candidato com esse contato nesta vaga (${jaExiste.nome}). Cadastrar mesmo assim?`)
-  ) {
-    return;
-  }
-  const novoCandidato = {
-    id: uid(),
-    vagaId,
-    nome,
-    email,
-    telefone,
-    origem: origem || 'Cadastro manual',
-    curriculo,
-    etapa: 'nova',
-    reprovado: false,
-    historico: [
-      {
-        de: null,
-        para: 'nova',
-        autorId: meuPerfilId,
-        em: new Date().toISOString(),
-        observacao: 'Candidatura cadastrada',
-      },
-    ],
-    ...novoCarimbo(),
-  };
-  state.rs.candidatos.push(novoCandidato);
-  enviarEmailEtapaRS(novoCandidato, 'nova');
-  _rsNovoCandidatoAberto = null;
-  showToast('Candidato cadastrado. E-mail de confirmação enviado.');
-  render();
 }
 
 function moverEtapaCandidatoRS(candidatoId, novaEtapa) {
@@ -682,7 +628,7 @@ function renderIndicadoresRS() {
   const aceitaram = passaramPorProposta.filter((c) => c.etapa === 'aprovado' && !c.reprovado).length;
   const taxaAceite = passaramPorProposta.length ? Math.round((aceitaram / passaramPorProposta.length) * 100) : null;
 
-  const totalCandidatos = state.rs.candidatos.length;
+  const totalCandidatos = state.rs.candidatos.filter((c) => c.vagaId).length;
   const totalVagasPublicadas = state.rs.requisicoes.filter((r) => r.publicada).length;
   const candidatosPorVaga = totalVagasPublicadas
     ? Math.round((totalCandidatos / totalVagasPublicadas) * 10) / 10
@@ -718,25 +664,14 @@ function renderIndicadoresRS() {
     </div>`;
 }
 
-function pageRS() {
+// As VAGAS (criar a requisição, aprovar, publicar o link, encerrar) e o funil de candidatos de cada uma.
+// Este bloco aparece na tela "R&S — Processo seletivo"; o cadastro de pessoas fica em "R&S — Recrutamento" (js/47).
+function rsRequisicoesCardHtml() {
   garantirRS();
   const souGestor = ['owner', 'rh'].includes(meuPapelReal);
   const cargosPublicados = state.cargos.filter((c) => c.desenho?.aprovado && !c.descontinuado);
 
   return `
-    <div class="page-head">
-      <div class="eyebrow">Pessoas</div>
-      <h1>R&S — Recrutamento e Seleção</h1>
-      <p class="page-desc">Do pedido de vaga até a contratação. A vaga herda os dados do cargo, sem alterar o desenho original.</p>
-      <div class="notice info" style="margin-top:10px;">✅ Requisição com aprovação, pipeline de candidatos, página pública de candidatura, e-mails automáticos por etapa, scorecard de entrevista e indicadores de recrutamento — módulo completo.</div>
-    </div>
-
-    ${renderIndicadoresRS()}
-
-    ${rsConfigEtapasCardHtml()}
-
-    ${souGestor ? `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;"><div><h3 style="margin:0;">Banco de talentos</h3><p class="small-muted" style="margin:4px 0 0;">Candidatos que autorizaram ficar disponíveis para futuras vagas.</p></div><button class="btn btn-ghost btn-sm" onclick="goto('rs_talentos')">Abrir banco de talentos →</button></div></div>` : ''}
-
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
         <h3 style="margin:0;">Requisições de vaga</h3>
@@ -983,26 +918,8 @@ function renderPipelineCandidatosRS(vaga) {
       }
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
         <h3 style="margin:0;font-size:14px;">Candidatos — ${escaparHtml(vaga.codigo)}</h3>
-        <button class="btn btn-sm btn-primary" onclick="abrirNovoCandidatoRS('${vaga.id}')">+ Candidato</button>
+        <span class="small-muted">Para colocar alguém nesta vaga, leve a pessoa do <a href="#" onclick="goto('rs');return false;">cadastro (Recrutamento)</a>.</span>
       </div>
-      ${
-        _rsNovoCandidatoAberto === vaga.id
-          ? `
-        <div class="card" style="margin-top:10px;">
-          <div class="grid2">
-            <div class="field"><label>Nome</label><input id="rs_cand_nome" type="text"></div>
-            <div class="field"><label>E-mail</label><input id="rs_cand_email" type="email"></div>
-          </div>
-          <div class="grid2">
-            <div class="field"><label>Telefone</label><input id="rs_cand_telefone" type="tel"></div>
-            <div class="field"><label>Origem</label><input id="rs_cand_origem" type="text" placeholder="Indicação, LinkedIn, etc."></div>
-          </div>
-          <div class="field"><label>Currículo / resumo <small>(cole o texto ou um link)</small></label><textarea id="rs_cand_curriculo"></textarea></div>
-          <button class="btn btn-primary btn-sm" onclick="criarCandidatoRS('${vaga.id}')">Cadastrar</button>
-          <button class="btn btn-ghost btn-sm" onclick="_rsNovoCandidatoAberto=null;render();">Cancelar</button>
-        </div>`
-          : ''
-      }
       ${
         candidatos.length
           ? `<table style="margin-top:10px;"><thead><tr><th>Candidato</th><th>Contato</th><th>Origem</th><th>Etapa</th><th></th></tr></thead><tbody>
@@ -1038,7 +955,7 @@ function renderPipelineCandidatosRS(vaga) {
               )
               .join('')}
           </tbody></table>`
-          : '<div class="empty" style="margin-top:10px;">Nenhum candidato cadastrado ainda.</div>'
+          : '<div class="empty" style="margin-top:10px;">Nenhum candidato nesta vaga ainda. Quem se candidata pelo link aparece acima; ou leve pessoas do Recrutamento.</div>'
       }
     </div>`;
 }

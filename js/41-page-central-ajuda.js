@@ -108,7 +108,7 @@ const FAQ_CENTRAL = [
   },
   {
     p: 'Onde vejo e ajusto as etapas do processo seletivo?',
-    r: 'No menu R&S — Processo seletivo (Administrador e RH). Lá você vê as etapas na ordem, quantos candidatos estão em cada uma, as orientações e links que o candidato recebe e quais etapas cada vaga usa. Para mudar as etapas de uma vaga, abra a vaga em R&S, em "Etapas do processo desta vaga".',
+    r: 'No menu R&S — Processo seletivo (Administrador e RH). Lá você vê as etapas na ordem, quantos candidatos estão em cada uma, as orientações e links que o candidato recebe e quais etapas cada vaga usa. Para mudar as etapas de uma vaga, abra a vaga em R&S — Processo seletivo, em "Etapas do processo desta vaga".',
     k: ['processo', 'seletivo', 'etapas', 'ver', 'ajustar', 'menu', 'vaga', 'candidatos', 'funil'],
   },
   {
@@ -130,6 +130,16 @@ const FAQ_CENTRAL = [
     p: 'Por quanto tempo ficam guardados os vídeos dos candidatos?',
     r: 'Por até 6 meses a partir do envio; depois a rotina diária apaga o arquivo sozinha. Você pode excluir antes, a qualquer momento (por exemplo, a pedido do candidato), no painel do vídeo no funil. Só o Administrador e o RH assistem, e cada vez que alguém assiste fica na Auditoria.',
     k: ['video', 'videos', 'guardados', 'tempo', 'meses', 'apagar', 'excluir', 'candidato', 'assistir', 'auditoria'],
+  },
+  {
+    p: 'Qual a diferença entre Recrutamento e Processo seletivo?',
+    r: 'O Recrutamento é o cadastro das pessoas: guarda os dados de cada uma (nome, contato, currículo) e mostra em que situação ela está. O Processo seletivo é onde a vaga acontece: você cria a vaga, divulga o link e move os candidatos pelas etapas até a contratação. Quem se candidata pelo link da vaga entra direto no processo daquela vaga e também aparece no Recrutamento.',
+    k: ['diferenca', 'recrutamento', 'processo', 'seletivo', 'cadastro', 'pessoas', 'vaga', 'candidato', 'menu'],
+  },
+  {
+    p: 'Como levo uma pessoa do cadastro para uma vaga?',
+    r: 'Em R&S — Recrutamento, ache a pessoa, escolha a vaga em "Levar para a vaga…" e clique em Levar. Só aparecem vagas aprovadas e abertas. Quem já está em um processo não pode ser levada para outro até concluir ou ser reprovada.',
+    k: ['levar', 'pessoa', 'cadastro', 'vaga', 'colocar', 'candidato', 'recrutamento', 'processo', 'seletivo'],
   },
   {
     p: 'Meu ponto é em papel, posso usar o sistema?',

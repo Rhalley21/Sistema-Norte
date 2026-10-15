@@ -1,7 +1,7 @@
 // =========================================================================
-// Tela "R&S — Processo seletivo" (no lugar das provas): as etapas na ordem da empresa, quantos candidatos
-// estão em cada uma, as orientações de cada etapa e as etapas de cada vaga. Também garante que o recurso
-// de provas automáticas foi RETIRADO por inteiro e não volta por engano.
+// Tela "R&S — Processo seletivo": o passo a passo na ordem da empresa (com quem faz e quantos candidatos estão
+// em cada etapa), as vagas com o funil de cada uma e as orientações das etapas. Também garante que o recurso
+// de provas automáticas continua RETIRADO e que o cadastro de pessoas saiu de dentro da vaga.
 // =========================================================================
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -22,6 +22,7 @@ function ctx(papel = 'rh') {
     'js/44-page-processo-seletivo.js',
     'js/45-rs-etapas.js',
     'js/46-rs-video.js',
+    'js/47-rs-cadastro.js',
   ]);
   c.meuPapelReal = papel;
   c.showToast = () => {};
@@ -30,31 +31,21 @@ function ctx(papel = 'rh') {
   return c;
 }
 const rodar = (c, codigo) => vm.runInContext(codigo, c);
+function paginaCom(c, rs, cargos = []) {
+  rodar(c, `state.rs = ${JSON.stringify(rs)}; state.cargos = ${JSON.stringify(cargos)}; state.estrutura = [];`);
+  return rodar(c, 'pageProcessoSeletivoRS()');
+}
 
 // ======================= funções puras =======================
-test('tipo de cada etapa em linguagem do RH', () => {
-  const c = ctx();
-  const t = (id) => rodar(c, `etapaTipoRotuloRS(ETAPAS_RS.find((e) => e.id === '${id}'))`);
-  assert.equal(t('nova'), 'Fixa em toda vaga');
-  assert.equal(t('proposta'), 'Fixa em toda vaga');
-  assert.equal(t('redes_sociais'), 'Verificação interna');
-  assert.equal(t('checagem_curriculo'), 'Verificação interna');
-  assert.equal(t('disc_galt'), 'Registro de resultado');
-  assert.equal(t('prova_pratica'), 'Registro de resultado');
-  assert.equal(t('entrevista_final'), 'Entrevista');
-  assert.equal(t('video'), 'Vídeo de apresentação');
-  assert.equal(t('triagem'), 'Etapa do funil');
-  assert.equal(t('escolha'), 'Etapa do funil');
-});
-
-test('contagem por etapa: conta quem está lá AGORA e ignora reprovados e desistentes', () => {
+test('contagem por etapa: conta quem está lá AGORA; ignora reprovados e quem só está cadastrado (sem vaga)', () => {
   const c = ctx();
   const cands = [
-    { etapa: 'triagem' },
-    { etapa: 'triagem' },
-    { etapa: 'triagem', reprovado: true },
-    { etapa: 'video' },
-    { etapa: 'aprovado', reprovado: false },
+    { vagaId: 'v1', etapa: 'triagem' },
+    { vagaId: 'v1', etapa: 'triagem' },
+    { vagaId: 'v1', etapa: 'triagem', reprovado: true },
+    { vagaId: 'v2', etapa: 'video' },
+    { vagaId: null, etapa: null }, // só cadastrada no Recrutamento
+    { vagaId: 'v3', etapa: 'aprovado', reprovado: false },
   ];
   assert.deepEqual(plano(rodar(c, `contagemPorEtapaRS(${JSON.stringify(cands)})`)), {
     triagem: 2,
@@ -65,132 +56,148 @@ test('contagem por etapa: conta quem está lá AGORA e ignora reprovados e desis
   assert.deepEqual(plano(rodar(c, 'contagemPorEtapaRS(null)')), {});
 });
 
-test('resumo por vaga: ignora vaga encerrada, mostra só as etapas opcionais usadas e conta candidatos ativos', () => {
+test('o passo a passo segue EXATAMENTE a lista da empresa: 1 e 2 são da vaga, 3 a 13 do candidato, e proposta/aprovado fecham', () => {
   const c = ctx();
-  const rs = {
-    requisicoes: [
-      { id: 'v1', cargoId: 'c1', codigo: 'REQ-001' },
-      { id: 'v2', cargoId: 'c2', codigo: 'REQ-002', etapasAtivas: ['triagem', 'entrevista_final'] },
-      { id: 'v3', cargoId: 'c1', codigo: 'REQ-003', encerrada: true },
-      { id: 'v4', cargoId: 'inexistente', codigo: 'REQ-004', etapasAtivas: [] },
-    ],
-    candidatos: [
-      { vagaId: 'v1' },
-      { vagaId: 'v1', reprovado: true },
-      { vagaId: 'v2' },
-      { vagaId: 'v2' },
-      { vagaId: 'v3' },
-    ],
-  };
-  const r = plano(
-    rodar(
-      c,
-      `resumoVagasProcessoRS(${JSON.stringify(rs)}, [{ id: 'c1', nome: 'Analista' }, { id: 'c2', nome: 'Vendedor' }])`
-    )
-  );
+  const passos = plano(rodar(c, 'passosDoProcessoRS({}, { pendentes: 0, publicadas: 0 })'));
   assert.deepEqual(
-    r.map((v) => v.id),
-    ['v1', 'v2', 'v4']
+    passos.map((p) => [p.num, p.nome]),
+    [
+      ['1', 'Construção do perfil da vaga'],
+      ['2', 'Divulgação da vaga'],
+      ['', 'Nova candidatura'],
+      ['3', 'Triagem dos currículos'],
+      ['4', 'Teste DISC e GALT'],
+      ['5', 'Vídeo de apresentação'],
+      ['6', 'Verificação nas redes sociais'],
+      ['7', 'Checagem de informações do currículo'],
+      ['8', 'Entrevista de fit cultural'],
+      ['9', 'Teste lógico'],
+      ['10', 'Prova teórica'],
+      ['11', 'Prova prática'],
+      ['12', 'Entrevista final'],
+      ['13', 'Escolha do candidato'],
+      ['→', 'Proposta'],
+      ['→', 'Aprovado'],
+    ]
   );
-  assert.equal(r[0].usaTodas, true);
-  assert.equal(r[0].candidatos, 1, 'o reprovado não conta');
-  assert.equal(r[0].nome, 'Analista');
-  assert.equal(r[1].usaTodas, false);
-  assert.deepEqual(r[1].etapas, ['Triagem dos currículos', 'Entrevista final']);
-  assert.equal(r[1].candidatos, 2);
-  assert.equal(r[2].nome, 'REQ-004', 'sem cargo, mostra o código');
-  assert.deepEqual(r[2].etapas, []);
+});
+
+test('cada passo diz quem faz e o que acontece (em linguagem simples); as etapas internas são "Só você"', () => {
+  const c = ctx();
+  const passos = plano(rodar(c, 'passosDoProcessoRS({}, null)'));
+  passos.forEach((p) => assert.ok(p.quem && p.texto.length > 15, `${p.nome}: sem explicação`));
+  const por = (nome) => passos.find((p) => p.nome === nome);
+  assert.equal(por('Verificação nas redes sociais').quem, 'Só você');
+  assert.equal(por('Checagem de informações do currículo').quem, 'Só você');
+  assert.match(por('Verificação nas redes sociais').texto, /não recebe e-mail/);
+  assert.equal(por('Vídeo de apresentação').quem, 'Candidato e você');
+  assert.match(por('Vídeo de apresentação').texto, /2 minutos/);
+  assert.match(por('Prova prática').texto, /criada para a vaga/);
+  const ids = plano(rodar(c, 'ETAPAS_RS')).map((e) => e.id);
+  const ajuda = plano(rodar(c, 'ETAPA_AJUDA_RS'));
+  ids.forEach((id) => assert.ok(ajuda[id], `etapa ${id} sem texto de ajuda`));
+});
+
+test('os números do passo a passo trazem a contagem de candidatos e o resumo das vagas', () => {
+  const c = ctx();
+  const passos = plano(rodar(c, 'passosDoProcessoRS({ triagem: 4, video: 2 }, { pendentes: 3, publicadas: 5 })'));
+  const total = (nome) => passos.find((p) => p.nome === nome).total;
+  assert.equal(total('Triagem dos currículos'), '4');
+  assert.equal(total('Vídeo de apresentação'), '2');
+  assert.equal(total('Entrevista final'), '0');
+  assert.equal(total('Construção do perfil da vaga'), '3 aguardando aprovação');
+  assert.equal(total('Divulgação da vaga'), '5 publicada(s)');
 });
 
 // ======================= a tela =======================
-function paginaCom(c, rs, cargos = []) {
-  rodar(c, `state.rs = ${JSON.stringify(rs)}; state.cargos = ${JSON.stringify(cargos)};`);
-  return rodar(c, 'pageProcessoSeletivoRS()');
-}
-
-test('só Administrador e RH acessam a tela; líder, colaborador e sem papel veem o aviso', () => {
-  for (const papel of ['lider', 'colaborador', null]) {
-    const html = paginaCom(ctx(papel), { requisicoes: [], candidatos: [] });
-    assert.ok(html.includes('Só o Administrador e o RH'), String(papel));
-    assert.ok(!html.includes('Etapas do processo'));
-  }
-  for (const papel of ['owner', 'rh'])
+test('acesso: Administrador, RH e líder entram (o líder pede vagas); colaborador e sem papel veem o aviso', () => {
+  for (const papel of ['owner', 'rh', 'lider'])
     assert.ok(paginaCom(ctx(papel), { requisicoes: [], candidatos: [] }).includes('R&S — Processo seletivo'), papel);
+  for (const papel of ['colaborador', null])
+    assert.ok(
+      paginaCom(ctx(papel), { requisicoes: [], candidatos: [] }).includes('Você não tem acesso'),
+      String(papel)
+    );
 });
 
-test('a tabela de etapas segue EXATAMENTE a numeração e a ordem da lista da empresa (3 a 13), com fixas sem número', () => {
+test('a tela mostra o passo a passo, quantos candidatos há em cada etapa e a explicação simples de como usar', () => {
   const c = ctx();
-  const html = paginaCom(c, { requisicoes: [], candidatos: [] });
-  const tabela = html.slice(
-    html.indexOf('<h3>Etapas do processo</h3>'),
-    html.indexOf('Orientações e links das etapas')
-  );
-  const linhas = [...tabela.matchAll(/<tr>\s*<td>([^<]+)<\/td>\s*<td><b>([^<]+)<\/b><\/td>/g)].map((m) => [m[1], m[2]]);
-  assert.deepEqual(linhas, [
-    ['—', 'Nova candidatura'],
-    ['3', 'Triagem dos currículos'],
-    ['4', 'Teste DISC e GALT'],
-    ['5', 'Vídeo de apresentação'],
-    ['6', 'Verificação nas redes sociais'],
-    ['7', 'Checagem de informações do currículo'],
-    ['8', 'Entrevista de fit cultural'],
-    ['9', 'Teste lógico'],
-    ['10', 'Prova teórica'],
-    ['11', 'Prova prática'],
-    ['12', 'Entrevista final'],
-    ['13', 'Escolha do candidato'],
-    ['—', 'Proposta'],
-    ['—', 'Aprovado'],
-  ]);
-});
-
-test('a tela mostra quantos candidatos há em cada etapa, quais etapas têm orientações e que as internas não mandam e-mail', () => {
-  const c = ctx();
-  const rs = {
+  const html = paginaCom(c, {
     requisicoes: [],
-    candidatos: [{ etapa: 'triagem' }, { etapa: 'triagem' }, { etapa: 'video' }, { etapa: 'triagem', reprovado: true }],
-    configEtapas: { disc_galt: { instrucoes: 'Faça os testes', links: [] } },
-  };
-  const html = paginaCom(c, rs);
-  const linha = (nome) =>
-    new RegExp(`<tr>\\s*<td>[^<]*</td>\\s*<td><b>${nome}</b></td>([\\s\\S]*?)</tr>`).exec(html)[1];
+    candidatos: [
+      { vagaId: 'v1', etapa: 'triagem' },
+      { vagaId: 'v1', etapa: 'triagem' },
+      { vagaId: 'v1', etapa: 'video' },
+      { vagaId: 'v1', etapa: 'triagem', reprovado: true },
+      { vagaId: null, etapa: null },
+    ],
+  });
+  assert.ok(html.includes('O passo a passo') && html.includes('Como usar'));
+  const linha = (nome) => new RegExp(`<td><b>${nome}</b></td>([\\s\\S]*?)</tr>`).exec(html)[1];
   assert.ok(/<b>2<\/b>/.test(linha('Triagem dos currículos')), 'triagem tem 2 (o reprovado não conta)');
   assert.ok(/<b>1<\/b>/.test(linha('Vídeo de apresentação')));
   assert.ok(/<b>0<\/b>/.test(linha('Entrevista final')));
-  assert.ok(linha('Teste DISC e GALT').includes('configuradas'));
-  assert.ok(linha('Vídeo de apresentação').includes('sem orientações'));
-  const redes = linha('Verificação nas redes sociais');
-  assert.ok(redes.includes('Verificação interna') && />não</.test(redes), 'etapa interna: sem e-mail');
+  assert.ok(
+    html.includes('Levar') && html.includes('R&S — Recrutamento'),
+    'explica que as pessoas se levam do Recrutamento'
+  );
+  assert.ok(html.includes('DISC e o GALT') && html.includes('redes sociais'));
 });
 
-test('a tela traz o painel de orientações, o aviso sobre as etapas 1 e 2 / DISC e GALT / redes sociais, e as etapas por vaga', () => {
-  const c = ctx();
+test('as vagas ficam NESTA tela (criar, aprovar, publicar); o funil de uma vaga aberta mostra o aviso de que pessoas vêm do Recrutamento', () => {
+  const c = ctx('rh');
   const html = paginaCom(
     c,
     {
       requisicoes: [
-        { id: 'v1', cargoId: 'c1', codigo: 'REQ-001' },
-        { id: 'v2', cargoId: 'c1', codigo: 'REQ-002', etapasAtivas: ['triagem'] },
+        {
+          id: 'v1',
+          codigo: 'REQ-001',
+          cargoId: 'c1',
+          quantidade: 1,
+          status: 'aprovada',
+          publicada: true,
+          vagaPublicaId: 'p1',
+        },
       ],
-      candidatos: [{ vagaId: 'v1', etapa: 'nova' }],
+      candidatos: [],
     },
-    [{ id: 'c1', nome: 'Analista' }]
+    [{ id: 'c1', nome: 'Vendedor' }]
   );
-  assert.ok(html.includes('Salvar orientações') && (html.match(/<details/g) || []).length === 8);
-  assert.ok(html.includes('1 (perfil da vaga)') && html.includes('DISC e o GALT') && html.includes('redes sociais'));
+  assert.ok(html.includes('Requisições de vaga') && html.includes('Nova requisição') && html.includes('REQ-001'));
+  rodar(c, "_rsRequisicaoExpandida = 'v1'; _rsCandidaturasPendentes = { v1: [] };");
+  const aberto = rodar(c, 'pageProcessoSeletivoRS()');
+  assert.ok(aberto.includes('Candidatos — REQ-001') && aberto.includes('cadastro (Recrutamento)'));
   assert.ok(
-    html.includes('Etapas por vaga') && html.includes('Todas as etapas') && html.includes('Triagem dos currículos')
+    !aberto.includes('+ Candidato') && !aberto.includes('rs_cand_nome'),
+    'o cadastro de pessoa não fica mais dentro da vaga'
   );
-  assert.ok(html.includes("goto('rs')"));
-  assert.ok(paginaCom(ctx(), { requisicoes: [], candidatos: [] }).includes('Nenhuma vaga em andamento'));
 });
 
-test('nomes de cargo e vaga com HTML aparecem como texto (sem injeção)', () => {
+test('orientações das etapas e indicadores: só Administrador e RH; o líder vê as vagas mas não a configuração', () => {
+  for (const papel of ['owner', 'rh']) {
+    const html = paginaCom(ctx(papel), { requisicoes: [], candidatos: [] });
+    assert.ok(
+      html.includes('Orientações e links que o candidato recebe') && html.includes('rsce_disc_galt_ins'),
+      papel
+    );
+    assert.equal(
+      (html.match(/<details/g) || []).length,
+      1 + 8,
+      'o bloco recolhível + uma etapa de cada das 8 com texto da empresa'
+    );
+  }
+  const lider = paginaCom(ctx('lider'), { requisicoes: [], candidatos: [] });
+  assert.ok(!lider.includes('rsce_') && !lider.includes('Orientações e links que o candidato recebe'));
+  assert.ok(lider.includes('Requisições de vaga'));
+});
+
+test('nomes de cargo e de vaga com HTML aparecem como texto (sem injeção)', () => {
   const c = ctx();
   const html = paginaCom(
     c,
     {
-      requisicoes: [{ id: 'v1', cargoId: 'c1', codigo: 'REQ-<img src=x>' }],
+      requisicoes: [{ id: 'v1', codigo: 'REQ-<img src=x>', cargoId: 'c1', quantidade: 1, status: 'aprovada' }],
       candidatos: [],
       configEtapas: { video: { instrucoes: '<script>alert(1)</script>', links: [] } },
     },
@@ -201,24 +208,34 @@ test('nomes de cargo e vaga com HTML aparecem como texto (sem injeção)', () =>
 
 test('a tela migra candidatos do funil antigo antes de contar (nada fica "invisível" numa etapa que não existe mais)', () => {
   const c = ctx();
-  const html = paginaCom(c, { requisicoes: [], candidatos: [{ etapa: 'finalista', historico: [] }] });
+  const html = paginaCom(c, { requisicoes: [], candidatos: [{ vagaId: 'v1', etapa: 'finalista', historico: [] }] });
   assert.ok(/<td><b>Escolha do candidato<\/b><\/td>[\s\S]*?<b>1<\/b>/.test(html));
 });
 
 // ======================= integração =======================
-test('menu, rota e página: "R&S — Processo seletivo" no lugar das provas', () => {
-  assert.ok(
-    /id: 'rs_processo', label: 'R&S — Processo seletivo', group: 'Pessoas', papeis: \['owner', 'rh'\]/.test(
-      ler('js/05-navigation.js')
-    )
-  );
-  assert.ok(ler('js/05-navigation.js').includes("case 'rs_processo':"));
-  assert.ok(
-    ler('js/07-router-dashboard.js').includes("case 'rs_processo':") &&
-      ler('js/07-router-dashboard.js').includes('pageProcessoSeletivoRS()')
-  );
-  assert.ok(ler('app.html').includes('js/44-page-processo-seletivo.js'));
-  assert.ok(!ler('js/05-navigation.js').includes('rs_provas'));
+test('menu: Recrutamento (Administrador e RH), Processo seletivo (também líder) e Banco de talentos, nessa ordem; rotas e scripts', () => {
+  const nav = ler('js/05-navigation.js');
+  const ordem = [
+    ...nav.matchAll(/id: '(rs|rs_processo|rs_talentos)', label: '([^']+)', group: 'Pessoas', papeis: (\[[^\]]*\])/g),
+  ].map((m) => [m[1], m[2], m[3]]);
+  assert.deepEqual(ordem, [
+    ['rs', 'R&S — Recrutamento', "['owner', 'rh']"],
+    ['rs_processo', 'R&S — Processo seletivo', "['owner', 'rh', 'lider']"],
+    ['rs_talentos', 'R&S — Banco de talentos', "['owner', 'rh']"],
+  ]);
+  const router = ler('js/07-router-dashboard.js');
+  assert.ok(router.includes("case 'rs_processo':") && router.includes('pageProcessoSeletivoRS()'));
+  assert.ok(/case 'rs':\s*return pageRS\(\);/.test(router));
+  const app = ler('app.html');
+  assert.ok(app.includes('js/44-page-processo-seletivo.js') && app.includes('js/47-rs-cadastro.js'));
+  assert.ok(!nav.includes('rs_provas'));
+});
+
+test('o cadastro de pessoa saiu de dentro da vaga: as funções antigas não existem mais; só o Recrutamento cadastra', () => {
+  const rs = ler('js/40-page-rs.js');
+  for (const f of ['abrirNovoCandidatoRS', 'criarCandidatoRS', '_rsNovoCandidatoAberto', 'rs_cand_nome', '+ Candidato'])
+    assert.ok(!rs.includes(f), `js/40 ainda tem ${f}`);
+  assert.ok(ler('js/47-rs-cadastro.js').includes('function criarPessoaRS()'));
 });
 
 // ======================= o recurso de provas saiu por inteiro =======================

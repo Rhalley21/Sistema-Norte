@@ -1,4 +1,31 @@
-# Etapas do processo seletivo (R&S)
+# Recrutamento e Processo seletivo (R&S)
+
+## A diferença, em uma frase
+
+- **Recrutamento** responde "**quem são as pessoas?**": é o **cadastro** (o fichário). Guarda os dados de cada pessoa e mostra em que situação ela está.
+- **Processo seletivo** responde "**o que acontece com cada pessoa em uma vaga?**": é o **caminho** de uma vaga, da criação à contratação.
+
+Uma imagem simples: o Recrutamento é a **pasta com as fichas**; o Processo seletivo é a **estrada de uma vaga**. Você pega uma ficha da pasta e a coloca na estrada.
+
+## R&S — Recrutamento (cadastro de pessoas) — só Administrador e RH
+
+- Lista **cada pessoa uma vez só**, mesmo que ela tenha se candidatado a várias vagas (os registros são juntados pelo e-mail ou, sem e-mail, pelo telefone), com **todos os processos** dela e a situação: _só cadastrada_, _em processo_, _reprovada/desistiu_ ou _contratada_.
+- **+ Pessoa** cadastra os dados (nome, e-mail, telefone, origem, currículo). **Editar** muda os dados em todos os registros da pessoa; **Excluir** apaga a pessoa inteira (é o caminho do pedido de exclusão do candidato — se ela tiver vídeo enviado, exclua o vídeo antes).
+- **Levar para a vaga…** coloca a pessoa no processo seletivo de uma vaga **aprovada e aberta**, na etapa "Nova candidatura" (ela recebe o e-mail da etapa). Quem já está em um processo não pode ser levada para outro até concluir ou ser reprovada. Quem já passou por outra vaga ganha um registro novo: **o histórico do processo anterior fica intacto**.
+- **Banco de talentos:** entra sozinho quem marcou a autorização no formulário da vaga. No Recrutamento a pessoa só aparece com a marca "No banco". Quem não autorizou não pode ser levado para lá.
+- **Quem se candidata pelo link da vaga** entra direto no processo daquela vaga (em "candidaturas novas", para você importar) e também aparece no Recrutamento.
+
+## R&S — Processo seletivo — Administrador, RH e líder
+
+Tudo o que acontece com uma vaga, em uma tela só:
+
+1. **O passo a passo** (a tabela das etapas abaixo, com quem faz cada uma e quantos candidatos estão nela).
+2. **As vagas:** **Nova requisição** (construção do perfil da vaga) → **Enviar para aprovação** → **Aprovar** → **Publicar** (divulgação, com o link para copiar) → o **funil da vaga** (mover de etapa, avaliar, reprovar, vídeo, prova prática, contratar) → **Encerrar**. O líder pede vagas e acompanha; quem aprova é o Administrador ou o RH.
+3. **Orientações e links** que o candidato recebe em cada etapa (só Administrador e RH).
+
+O cadastro de uma pessoa **não** é feito dentro da vaga: para colocar alguém no funil, leve a pessoa do Recrutamento.
+
+# Etapas do processo seletivo
 
 Tudo isto fica no menu **Pessoas → R&S — Processo seletivo** (Administrador e RH): as etapas na ordem, quantos candidatos estão em cada uma, as orientações e links de cada etapa e as etapas de cada vaga. O funil de candidatos de cada vaga continua em **R&S**.
 
@@ -53,7 +80,7 @@ _Nova candidatura_, _Triagem_, _Proposta_ e _Aprovado_ continuam como eram. Repr
 
 ## Prova prática: criada em cada vaga
 
-A prova prática **não tem texto geral da empresa**: o que se pede a um vendedor não é o que se pede a um analista financeiro. Cada vaga que usa a etapa define a sua, no funil da vaga, em **R&S → a vaga → Orientações e prova prática desta vaga**:
+A prova prática **não tem texto geral da empresa**: o que se pede a um vendedor não é o que se pede a um analista financeiro. Cada vaga que usa a etapa define a sua, no funil da vaga, em **R&S — Processo seletivo → a vaga → Orientações e prova prática desta vaga**:
 
 - **Enunciado** (até 2000 caracteres): a tarefa que o candidato deve fazer, o que entregar e **como entregar** (por exemplo, "envie o arquivo para rh@suaempresa.com.br").
 - **Prazo de entrega** (de 1 a 30 dias): o e-mail mostra a data limite, contada a partir do dia em que o candidato entra na etapa.

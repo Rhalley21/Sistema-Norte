@@ -419,7 +419,7 @@ test('orientações só existem nas etapas que mandam e-mail ao candidato: as in
 test('integração: o e-mail da etapa e a tela de R&S usam a configuração; os links NÃO estão escritos no código; a Política cita sites de terceiros', () => {
   const rs = ler('js/40-page-rs.js');
   assert.ok(/blocoConfigEtapaHtml\(\s*cfgEtapa,\s*etapa/.test(rs) && /temOrientacoesEtapaRS\(/.test(rs));
-  assert.ok(rs.includes('rsConfigEtapasCardHtml()') && rs.includes('state.rs.configEtapas = {}'));
+  assert.ok(rs.includes('state.rs.configEtapas = {}'));
   for (const arq of ['js/40-page-rs.js', 'js/45-rs-etapas.js', 'js/46-rs-video.js', 'js/21-dados-teste.js'])
     assert.ok(!/pactorh|personalidades\.mobi/.test(ler(arq)), `${arq}: link de terceiro escrito no código`);
   assert.ok(/Algumas\s+etapas\s+podem\s+ser\s+realizadas\s+em\s+sites\s+de\s+terceiros/.test(ler('privacidade.html')));
@@ -498,13 +498,4 @@ test('o conteúdo digitado na configuração aparece escapado quando a tela reab
   );
   const html = rodar(c, 'rsConfigEtapasPainelHtml()');
   assert.ok(!html.includes('<img src=x') && !html.includes('"><script>'));
-});
-
-test('cartão em R&S: só Administrador e RH, e leva ao menu "R&S — Processo seletivo"', () => {
-  const c = ctx();
-  rodar(c, "meuPapelReal = 'lider';");
-  assert.equal(rodar(c, 'rsConfigEtapasCardHtml()'), '');
-  rodar(c, "meuPapelReal = 'owner';");
-  const html = rodar(c, 'rsConfigEtapasCardHtml()');
-  assert.ok(html.includes("goto('rs_processo')") && html.includes('Processo seletivo'));
 });
