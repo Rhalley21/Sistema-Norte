@@ -103,12 +103,12 @@ const FAQ_CENTRAL = [
   },
   {
     p: 'O candidato recebe e-mail em todas as etapas do processo seletivo?',
-    r: 'Quase todas. As etapas de verificação interna (redes sociais e checagem do currículo) não mandam e-mail ao candidato. Nas etapas em que você configurou orientações e links (em R&S — Processo seletivo), o e-mail traz essas orientações.',
+    r: 'Quase todas. As etapas de verificação interna (redes sociais e checagem do currículo) não mandam e-mail ao candidato. Todo e-mail de etapa traz o passo a passo de como fazer aquela etapa, seguido das orientações e links que você configurou. Nas etapas em que você configurou orientações e links (em R&S — Processo seletivo), o e-mail traz essas orientações.',
     k: ['candidato', 'recebe', 'email', 'mail', 'etapas', 'redes', 'sociais', 'checagem', 'prova', 'avisa'],
   },
   {
     p: 'Onde vejo e ajusto as etapas do processo seletivo?',
-    r: 'No menu R&S — Processo seletivo (Administrador e RH). Lá você vê as etapas na ordem, quantos candidatos estão em cada uma, as orientações e links que o candidato recebe e quais etapas cada vaga usa. Para mudar as etapas de uma vaga, abra a vaga em R&S — Processo seletivo, em "Etapas do processo desta vaga".',
+    r: 'No menu R&S — Processo seletivo (Administrador e RH). Lá cada vaga é um quadro de 4 fases. O passo a passo (as etapas na ordem e quantos candidatos estão em cada uma) fica em "Como funciona", e as orientações e links que o candidato recebe ficam na última seção. Para mudar as etapas de uma vaga, abra o quadro dela e use "Configurar esta vaga".',
     k: ['processo', 'seletivo', 'etapas', 'ver', 'ajustar', 'menu', 'vaga', 'candidatos', 'funil'],
   },
   {
@@ -118,17 +118,17 @@ const FAQ_CENTRAL = [
   },
   {
     p: 'A prova prática é igual para todas as vagas?',
-    r: 'Não. A prova prática é criada em cada vaga: no funil da vaga, abra "Orientações e prova prática desta vaga" e escreva o enunciado (a tarefa e como entregar), o prazo de entrega, links de apoio e os critérios de avaliação (estes só você vê). O candidato recebe o enunciado da vaga em que está quando entra na etapa.',
+    r: 'Não. A prova prática é criada em cada vaga: no quadro da vaga, abra "Configurar esta vaga" e, nele, "Orientações e prova prática desta vaga" e escreva o enunciado (a tarefa e como entregar), o prazo de entrega, links de apoio e os critérios de avaliação (estes só você vê). O candidato recebe o enunciado da vaga em que está quando entra na etapa.',
     k: ['prova', 'pratica', 'vaga', 'enunciado', 'criar', 'criterios', 'prazo', 'candidato', 'igual', 'todas'],
   },
   {
     p: 'Como o candidato envia o vídeo de apresentação?',
-    r: 'Ao mover o candidato para a etapa "Vídeo de apresentação", o sistema envia a ele um link por e-mail (ou gera um link para você copiar). Pelo link, sem login, ele grava o vídeo pela própria página ou escolhe um arquivo, de no máximo 2 minutos, e envia. No funil, o painel do candidato mostra a situação e o botão "Assistir".',
+    r: 'Ao mover o candidato para a etapa "Vídeo de apresentação", o sistema envia a ele um link por e-mail (ou gera um link para você copiar). Pelo link, sem login, ele grava o vídeo pela própria página ou escolhe um arquivo, de no máximo 2 minutos, e envia. Na ficha do candidato (clique no nome dele no quadro da vaga) você vê a situação e o botão "Assistir".',
     k: ['video', 'apresentacao', 'candidato', 'enviar', 'envia', 'gravar', 'link', 'etapa', 'minutos'],
   },
   {
     p: 'Por quanto tempo ficam guardados os vídeos dos candidatos?',
-    r: 'Por até 6 meses a partir do envio; depois a rotina diária apaga o arquivo sozinha. Você pode excluir antes, a qualquer momento (por exemplo, a pedido do candidato), no painel do vídeo no funil. Só o Administrador e o RH assistem, e cada vez que alguém assiste fica na Auditoria.',
+    r: 'Por até 6 meses a partir do envio; depois a rotina diária apaga o arquivo sozinha. Você pode excluir antes, a qualquer momento (por exemplo, a pedido do candidato), na ficha do candidato, no painel do vídeo. Só o Administrador e o RH assistem, e cada vez que alguém assiste fica na Auditoria.',
     k: ['video', 'videos', 'guardados', 'tempo', 'meses', 'apagar', 'excluir', 'candidato', 'assistir', 'auditoria'],
   },
   {
@@ -140,6 +140,31 @@ const FAQ_CENTRAL = [
     p: 'Como levo uma pessoa do cadastro para uma vaga?',
     r: 'Em R&S — Recrutamento, ache a pessoa, escolha a vaga em "Levar para a vaga…" e clique em Levar. Só aparecem vagas aprovadas e abertas. Quem já está em um processo não pode ser levada para outro até concluir ou ser reprovada.',
     k: ['levar', 'pessoa', 'cadastro', 'vaga', 'colocar', 'candidato', 'recrutamento', 'processo', 'seletivo'],
+  },
+  {
+    p: 'Como movo um candidato para a próxima etapa?',
+    r: 'Em R&S — Processo seletivo, o quadro da vaga mostra cada candidato em um cartão. Clique em "Avançar" para levá-lo à próxima etapa daquela vaga (as etapas que a vaga não usa são puladas) ou em "Reprovar". Clique no nome para abrir a ficha, com os dados, o histórico e a ação da etapa em que ele está.',
+    k: ['mover', 'avancar', 'candidato', 'proxima', 'etapa', 'quadro', 'ficha', 'reprovar', 'vaga'],
+  },
+  {
+    p: 'Como crio uma vaga mais rápido?',
+    r: 'Em R&S — Processo seletivo, clique em "+ Nova vaga". Preencha só o essencial (cargo, quantidade e prazo) e escolha um modelo de processo (Completo, Enxuto ou Operacional). O perfil, a remuneração e os requisitos ficam em "Mais detalhes", e as etapas podem ser ajustadas em "Ajustar as etapas deste processo".',
+    k: ['criar', 'vaga', 'nova', 'rapido', 'modelo', 'processo', 'requisicao', 'etapas', 'detalhes'],
+  },
+  {
+    p: 'O que o candidato recebe no e-mail quando eu mudo a etapa dele?',
+    r: 'Um e-mail com o aviso da etapa, o passo a passo de como fazer (padrão do sistema) e, logo abaixo, as orientações e links que você configurou para a vaga ou para a empresa. Para conferir antes, abra Orientações e links das etapas (ou Configurar esta vaga) e clique em "Ver o e-mail que o candidato recebe". Se a etapa depender de link (DISC/GALT, teste lógico ou prova teórica) e você ainda não configurou, o sistema avisa antes de mover.',
+    k: ['email', 'candidato', 'recebe', 'etapa', 'como', 'fazer', 'passo', 'orientacoes', 'links', 'previa', 'mudar'],
+  },
+  {
+    p: 'Como o candidato envia o resultado do teste ou da prova?',
+    r: 'Ao mover o candidato para uma etapa com teste ou entrega (DISC/GALT, teste lógico, prova teórica ou prova prática), o e-mail dele traz o link do teste (se você configurou) e o botão "Enviar meu resultado". Por ele, sem login, o candidato anexa até 3 arquivos (PDF, PNG, JPG ou WEBP, de até 5 MB) e/ou escreve um texto, e envia uma única vez.',
+    k: ['candidato', 'envia', 'enviar', 'resultado', 'teste', 'prova', 'arquivo', 'anexar', 'botao', 'disc'],
+  },
+  {
+    p: 'Onde vejo o resultado que o candidato enviou, e por quanto tempo fica guardado?',
+    r: 'Na ficha do candidato (clique no nome dele no quadro da vaga), no painel "Resultados enviados pelo candidato", clique em "Ver resultado": o texto e os arquivos abrem por links temporários de 10 minutos, e cada abertura fica na Auditoria. Os resultados ficam guardados por até 6 meses, e você pode excluir antes (por exemplo, a pedido do candidato).',
+    k: ['ver', 'resultado', 'candidato', 'enviou', 'guardado', 'tempo', 'meses', 'ficha', 'excluir', 'arquivos'],
   },
   {
     p: 'Meu ponto é em papel, posso usar o sistema?',

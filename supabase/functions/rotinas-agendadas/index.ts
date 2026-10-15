@@ -16,7 +16,8 @@
 //   5) Campanhas do NR1 vencidas — encerra no dia seguinte à data final e avisa o
 //      Administrador e o RH (antes só fechava quando alguém chamava a função).
 //   6) Vídeos dos candidatos: pedido vencido vira "expirado" e o arquivo + o registro são apagados depois de 6 meses.
-//   7) Limpeza do rate_limit_log (registros com mais de 35 dias).
+//   7) Resultados enviados pelos candidatos: pedido vencido vira "expirado" e os arquivos + o registro são apagados depois de 6 meses.
+//   8) Limpeza do rate_limit_log (registros com mais de 35 dias).
 //
 // Também registra "quando rodou" pra o painel do Super Admin mostrar se a rotina
 // está de fato agendada. Se alguma tarefa falhar, a equipe recebe um e-mail.
@@ -51,6 +52,8 @@ const LINKS_TESTE = {
 const BANCO_TALENTOS_MESES = 24;
 // Quanto tempo ficam os vídeos de apresentação dos candidatos — o MESMO número da função video-rs, da Política de Privacidade e da documentação.
 const VIDEO_RETENCAO_MESES = 6;
+// Quanto tempo ficam os resultados enviados pelos candidatos — o MESMO número da função entrega-rs, da Política de Privacidade e da documentação.
+const ENTREGA_RETENCAO_MESES = 6;
 // Lembretes: quantos dias antes do prazo (0 = no dia). Mesmo que o aviso na tela diz: "D-5, D-2 e D-0".
 const DIAS_LEMBRETE = [5, 2, 0];
 const DIAS_RETENCAO_LOG = 35; // cobre as janelas de 30 dias dos limites de uso
@@ -388,7 +391,32 @@ async function manterVideosRs(admin: Banco, agora: number) {
   return { expirados: expirados ? expirados.length : 0, removidos: velhos.length, arquivosRemovidos };
 }
 
-// 7) Limpeza do log de limites.
+// 7) Resultados dos candidatos (testes e provas): expira o pedido que venceu sem envio e apaga, depois de ENTREGA_RETENCAO_MESES meses,
+// os ARQUIVOS e o registro (nesta ordem: se apagar os arquivos falhar, o registro fica e a rotina tenta de novo amanhã).
+async function manterEntregasRs(admin: Banco, agora: number) {
+  const { data: expirados, error: e1 } = await admin.from('rs_entregas').update({ status: 'expirado' }).eq('status', 'solicitado').lt('prazo_ate', new Date(agora).toISOString()).select('id');
+  if (e1) throw new Error(e1.message);
+  const limite = mesesAtras(agora, ENTREGA_RETENCAO_MESES);
+  const { data: enviados, error: e2 } = await admin.from('rs_entregas').select('id, empresa_id').eq('status', 'enviado').lt('enviado_em', limite).limit(200);
+  const { data: outros, error: e3 } = await admin.from('rs_entregas').select('id, empresa_id').neq('status', 'enviado').lt('criado_em', limite).limit(200);
+  if (e2 || e3) throw new Error((e2 || e3).message);
+  const velhos = [...(enviados || []), ...(outros || [])];
+  let arquivosRemovidos = 0;
+  for (const v of velhos) {
+    const pasta = `${v.empresa_id}/${v.id}`;
+    const { data: itens } = await admin.storage.from('entregas-candidatos').list(pasta);
+    const caminhos = (itens || []).map((a: { name: string }) => `${pasta}/${a.name}`);
+    if (caminhos.length) {
+      const { error: erroRemocao } = await admin.storage.from('entregas-candidatos').remove(caminhos);
+      if (erroRemocao) throw new Error(`Não consegui apagar os arquivos do resultado ${v.id}: ${erroRemocao.message}`);
+      arquivosRemovidos += caminhos.length;
+    }
+    await admin.from('rs_entregas').delete().eq('id', v.id);
+  }
+  return { expirados: expirados ? expirados.length : 0, removidos: velhos.length, arquivosRemovidos };
+}
+
+// 8) Limpeza do log de limites.
 async function limparLogs(admin: Banco, agora: number) {
   const { error } = await admin.from('rate_limit_log').delete().lt('criado_em', diasAtras(agora, DIAS_RETENCAO_LOG));
   if (error) throw new Error(error.message);
@@ -463,6 +491,7 @@ serve(async (req: Request) => {
     await tarefa('teste_gratis', () => avisosDoTeste(admin, enviarEmail, agora, LINKS_TESTE, EMAIL_EQUIPE));
     await tarefa('nr1_campanhas', () => encerrarCampanhasNr1(admin, enviarEmail, agora));
     await tarefa('videos_rs', () => manterVideosRs(admin, agora));
+    await tarefa('entregas_rs', () => manterEntregasRs(admin, agora));
     await tarefa('limpeza_logs', () => limparLogs(admin, agora));
 
     // Marca que a rotina rodou (o painel do Super Admin mostra isto).

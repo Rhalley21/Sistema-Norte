@@ -175,7 +175,14 @@ test('página do vídeo: tem mensagem para link inválido, vencido, cancelado e 
 
 // ======================= o painel do RH =======================
 function ctx(papel = 'owner') {
-  const c = carregarArquivos(['js/02-core-helpers.js', 'js/40-page-rs.js', 'js/45-rs-etapas.js', 'js/46-rs-video.js']);
+  const c = carregarArquivos([
+    'js/02-core-helpers.js',
+    'js/40-page-rs.js',
+    'js/45-rs-etapas.js',
+    'js/46-rs-video.js',
+    'js/48-rs-quadro.js',
+    'js/49-rs-entrega.js',
+  ]);
   c.meuPapelReal = papel;
   c.meuPerfilId = 'perfil1';
   c.URL = URL;
@@ -519,11 +526,13 @@ test('quem não é Administrador/RH movendo para a etapa de vídeo NÃO cria ped
 // ======================= integração =======================
 test('integração: o funil mostra o painel do vídeo, o app carrega o arquivo e as ações existem na função', () => {
   const rs = ler('js/40-page-rs.js');
-  assert.ok(/videoPainelRS\(\s*c,\s*vaga\s*\)/.test(rs));
+  assert.ok(/videoPainelRS\(\s*c,\s*vaga\s*\)/.test(ler('js/48-rs-quadro.js', 'js/49-rs-entrega.js')));
   assert.ok(/novaEtapa === 'video' && rsVideoHabilitado\(\)/.test(rs));
-  assert.ok(ler('app.html').includes('js/46-rs-video.js'));
+  assert.ok(ler('app.html').includes('js/46-rs-video.js', 'js/48-rs-quadro.js', 'js/49-rs-entrega.js'));
   const fn = ler('supabase/functions/video-rs/index.ts');
-  const usadas = [...ler('js/46-rs-video.js').matchAll(/chamarVideoRS\('(video_\w+)'/g)].map((m) => m[1]);
+  const usadas = [
+    ...ler('js/46-rs-video.js', 'js/48-rs-quadro.js', 'js/49-rs-entrega.js').matchAll(/chamarVideoRS\('(video_\w+)'/g),
+  ].map((m) => m[1]);
   assert.ok(usadas.length >= 6);
   for (const a of new Set(usadas)) assert.ok(fn.includes(`action === '${a}'`), `a função não trata a ação ${a}`);
   const eslint = JSON.parse(ler('.eslintrc.json')).globals;

@@ -98,6 +98,10 @@ function pageProcessoSeletivoRS() {
   garantirRS();
   const gestor = ['owner', 'rh'].includes(meuPapelReal);
   const e = escaparHtml;
+  const aprovadas = state.rs.requisicoes.filter((r) => r.status === 'aprovada');
+  const vaga = vagaSelecionadaRS();
+  const nomeDe = (r) =>
+    `${r.codigo} — ${state.cargos.find((c) => c.id === r.cargoId)?.nome || 'vaga'}${r.encerrada ? ' (encerrada)' : ''}`;
   const contagem = contagemPorEtapaRS(state.rs.candidatos);
   const resumo = {
     pendentes: state.rs.requisicoes.filter((r) => r.status === 'pendente').length,
@@ -105,37 +109,53 @@ function pageProcessoSeletivoRS() {
   };
   const linhas = passosDoProcessoRS(contagem, resumo)
     .map(
-      (p) => `<tr>
-      <td><b>${e(p.num)}</b></td>
-      <td><b>${e(p.nome)}</b></td>
-      <td>${e(p.quem)}</td>
-      <td class="small-muted">${e(p.texto)}</td>
-      <td style="white-space:nowrap;"><b>${e(p.total)}</b>${p.etapaId ? '' : ''}</td>
-    </tr>`
+      (p) =>
+        `<tr><td><b>${e(p.num)}</b></td><td><b>${e(p.nome)}</b></td><td>${e(p.quem)}</td><td class="small-muted">${e(p.texto)}</td><td style="white-space:nowrap;"><b>${e(p.total)}</b></td></tr>`
     )
     .join('');
+  const vagasAbertas =
+    _psVagasAberto ||
+    _rsNovaRequisicaoAberta ||
+    _rsConfigurarPublicaAberta ||
+    !aprovadas.length ||
+    state.rs.requisicoes.some((r) => r.status === 'pendente');
 
   return `
     <div class="page-head">
       <div class="eyebrow">Pessoas</div>
       <h1>R&S — Processo seletivo</h1>
-      <p class="page-desc">Tudo o que acontece com uma vaga, da criação à contratação. As pessoas ficam guardadas no <b>Recrutamento</b>.</p>
-      <div class="notice info" style="margin-top:10px;">
-        <b>Como usar:</b> <b>(1)</b> crie a vaga e envie para aprovação; <b>(2)</b> depois de aprovada, publique e divulgue o link — quem se candidata entra direto na vaga; <b>(3)</b> abra a vaga e mova cada candidato pelas etapas.
-        Para colocar na vaga alguém que já está cadastrado, use <b>Levar</b> em R&S — Recrutamento.
-        O <b>DISC e o GALT</b> são feitos fora do sistema, pelos links que você indicar. Nas etapas de <b>redes sociais</b> e <b>checagem do currículo</b>, use só o que se relaciona com a vaga.
+      <p class="page-desc">Cada vaga é um quadro: avance os candidatos pelas fases e clique no nome para abrir a ficha. As pessoas ficam guardadas no <b>Recrutamento</b>.</p>
+    </div>
+
+    ${faixaPendenciasHtml(gestor)}
+
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0 4px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span class="small-muted">Vaga</span>
+        ${
+          aprovadas.length
+            ? `<select onchange="selecionarVagaRS(this.value)" style="max-width:320px;">${aprovadas.map((r) => `<option value="${e(r.id)}" ${vaga && vaga.id === r.id ? 'selected' : ''}>${e(nomeDe(r))}</option>`).join('')}</select>`
+            : '<span class="small-muted">nenhuma vaga aprovada ainda</span>'
+        }
       </div>
+      <button class="btn btn-primary btn-sm" onclick="iniciarNovaVagaRS()">+ Nova vaga</button>
     </div>
 
-    <div class="card">
-      <h3>O passo a passo</h3>
-      <table><thead><tr><th>#</th><th>Etapa</th><th>Quem faz</th><th>O que acontece</th><th>Agora</th></tr></thead><tbody>${linhas}</tbody></table>
-      <p class="small-muted" style="margin:8px 0 0;">Cada vaga escolhe quais etapas usa (as de "Nova candidatura", "Proposta" e "Aprovado" valem para toda vaga). A coluna "Agora" mostra quantos candidatos estão em cada etapa.</p>
-    </div>
+    ${vaga ? renderPipelineCandidatosRS(vaga) : '<div class="card"><div class="empty">Nenhuma vaga aprovada ainda. Clique em "+ Nova vaga", envie para aprovação e, depois de aprovada, ela vira um quadro aqui.</div></div>'}
 
-    ${gestor ? renderIndicadoresRS() : ''}
+    <div class="card"><details ${vagasAbertas ? 'open' : ''}>
+      <summary style="cursor:pointer;font-weight:600;">Vagas: criar, aprovar, publicar o link e encerrar</summary>
+      <div style="margin-top:10px;">${rsRequisicoesCardHtml()}</div>
+    </details></div>
 
-    ${rsRequisicoesCardHtml()}
+    <div class="card"><details>
+      <summary style="cursor:pointer;font-weight:600;">Como funciona: o passo a passo, da vaga à contratação</summary>
+      <div style="margin-top:10px;">
+        <table><thead><tr><th>#</th><th>Etapa</th><th>Quem faz</th><th>O que acontece</th><th>Agora</th></tr></thead><tbody>${linhas}</tbody></table>
+        <p class="small-muted" style="margin:8px 0 0;">Cada vaga escolhe quais etapas usa ("Nova candidatura", "Proposta" e "Aprovado" valem para toda vaga). O DISC e o GALT são feitos fora do sistema, pelos links que você indicar. Nas etapas de redes sociais e checagem do currículo, use só o que se relaciona com a vaga.</p>
+        ${gestor ? renderIndicadoresRS() : ''}
+      </div>
+    </details></div>
 
     ${
       gestor

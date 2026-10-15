@@ -33,7 +33,7 @@ function _rsStatusRequisicaoPill(r) {
 
 /* ---------- Requisição de vaga ---------- */
 let _rsNovaRequisicaoAberta = false;
-let _rsRequisicaoExpandida = null; // id da requisição com o pipeline de candidatos aberto
+let _rsRequisicaoExpandida = null; // id da vaga que o QUADRO mostra (ver js/48)
 
 function abrirNovaRequisicaoRS() {
   _rsNovaRequisicaoAberta = true;
@@ -267,12 +267,12 @@ const RS_EMAIL_POR_ETAPA = {
   disc_galt: {
     assunto: 'Próxima etapa: avaliação de perfil',
     corpo: (nome, vaga, orientacoes) =>
-      `<p>Olá, ${nome}!</p><p>Você avançou para a próxima etapa do processo seletivo da vaga <b>${vaga}</b>: uma avaliação de perfil e raciocínio. ${orientacoes ? 'As orientações estão logo abaixo.' : 'Nossa equipe enviará as orientações em breve.'}</p>`,
+      `<p>Olá, ${nome}!</p><p>Você avançou para a próxima etapa do processo seletivo da vaga <b>${vaga}</b>: uma avaliação de perfil e raciocínio. ${orientacoes ? 'O passo a passo e as orientações da empresa estão logo abaixo.' : 'O passo a passo está abaixo; as instruções específicas (como links) nossa equipe enviará em breve.'}</p>`,
   },
   video: {
     assunto: 'Próxima etapa: vídeo de apresentação',
     corpo: (nome, vaga, orientacoes) =>
-      `<p>Olá, ${nome}!</p><p>Você avançou para a etapa de <b>vídeo de apresentação</b> da vaga <b>${vaga}</b>. ${orientacoes ? 'As orientações estão logo abaixo.' : 'Nossa equipe enviará as instruções para o envio do seu vídeo em breve.'}</p>`,
+      `<p>Olá, ${nome}!</p><p>Você avançou para a etapa de <b>vídeo de apresentação</b> da vaga <b>${vaga}</b>. ${orientacoes ? 'O passo a passo e as orientações da empresa estão logo abaixo.' : 'O passo a passo está abaixo; as instruções específicas para o envio do vídeo nossa equipe enviará em breve.'}</p>`,
   },
   entrevista_fit: {
     assunto: 'Você avançou para a entrevista!',
@@ -282,17 +282,17 @@ const RS_EMAIL_POR_ETAPA = {
   teste_logico: {
     assunto: 'Próxima etapa: teste lógico',
     corpo: (nome, vaga, orientacoes) =>
-      `<p>Olá, ${nome}!</p><p>Você avançou para o <b>teste lógico</b> da vaga <b>${vaga}</b>. ${orientacoes ? 'As orientações estão logo abaixo.' : 'Nossa equipe enviará as orientações em breve.'}</p>`,
+      `<p>Olá, ${nome}!</p><p>Você avançou para o <b>teste lógico</b> da vaga <b>${vaga}</b>. ${orientacoes ? 'O passo a passo e as orientações da empresa estão logo abaixo.' : 'O passo a passo está abaixo; as instruções específicas (como links) nossa equipe enviará em breve.'}</p>`,
   },
   prova_teorica: {
     assunto: 'Próxima etapa: prova teórica',
     corpo: (nome, vaga, orientacoes) =>
-      `<p>Olá, ${nome}!</p><p>Você avançou para a <b>prova teórica</b> da vaga <b>${vaga}</b>. ${orientacoes ? 'As orientações estão logo abaixo.' : 'Nossa equipe enviará as orientações em breve.'}</p>`,
+      `<p>Olá, ${nome}!</p><p>Você avançou para a <b>prova teórica</b> da vaga <b>${vaga}</b>. ${orientacoes ? 'O passo a passo e as orientações da empresa estão logo abaixo.' : 'O passo a passo está abaixo; as instruções específicas (como links) nossa equipe enviará em breve.'}</p>`,
   },
   prova_pratica: {
     assunto: 'Próxima etapa: prova prática',
     corpo: (nome, vaga, orientacoes) =>
-      `<p>Olá, ${nome}!</p><p>Você avançou para a <b>prova prática</b> da vaga <b>${vaga}</b>. ${orientacoes ? 'As orientações estão logo abaixo.' : 'Nossa equipe enviará as orientações em breve.'}</p>`,
+      `<p>Olá, ${nome}!</p><p>Você avançou para a <b>prova prática</b> da vaga <b>${vaga}</b>. ${orientacoes ? 'O passo a passo e as orientações da empresa estão logo abaixo.' : 'O passo a passo está abaixo; as instruções específicas (como links) nossa equipe enviará em breve.'}</p>`,
   },
   entrevista_final: {
     assunto: 'Você avançou para a entrevista final!',
@@ -311,23 +311,161 @@ const RS_EMAIL_POR_ETAPA = {
   },
 };
 
-async function enviarEmailEtapaRS(candidato, etapa) {
+// O PASSO A PASSO que vai em TODO e-mail de etapa ("como fazer"). Texto padrão, sem prometer o que o sistema não sabe
+// (endereços, horários, links): os detalhes da empresa ou da vaga entram logo depois, em "Orientações".
+const COMO_FAZER_ETAPA_RS = {
+  nova: {
+    titulo: 'O que acontece agora',
+    passos: [
+      'Você não precisa fazer nada neste momento.',
+      'Vamos analisar o seu currículo.',
+      'A cada nova etapa você receberá um e-mail como este, explicando o que fazer.',
+    ],
+  },
+  triagem: {
+    titulo: 'O que acontece agora',
+    passos: [
+      'Você não precisa fazer nada agora: estamos analisando o seu currículo.',
+      'Se você avançar, enviaremos um novo e-mail explicando a próxima etapa.',
+    ],
+  },
+  disc_galt: {
+    titulo: 'Como fazer',
+    passos: [
+      'Abra cada link de teste indicado nas orientações abaixo.',
+      'Responda com calma e sinceridade, no seu ritmo: não existem respostas certas ou erradas.',
+      'Ao terminar, guarde o resultado (print ou PDF).',
+      'Envie o resultado da forma indicada neste e-mail.',
+    ],
+  },
+  video: {
+    titulo: 'Como fazer',
+    passos: [
+      'Você receberá um link pessoal para enviar o vídeo.',
+      'Grave pela câmera do celular ou do computador, ou escolha um arquivo de até 2 minutos.',
+      'Assista ao vídeo antes de enviar. Depois de enviado, ele não pode ser trocado.',
+    ],
+  },
+  entrevista_fit: {
+    titulo: 'Como se preparar',
+    passos: [
+      'Nossa equipe vai combinar com você o dia e o horário.',
+      'Se for online, escolha um lugar tranquilo e confira sua conexão antes.',
+      'Se for presencial, chegue com alguns minutos de antecedência.',
+      'Se tiver algum imprevisto, avise a equipe o quanto antes.',
+    ],
+  },
+  teste_logico: {
+    titulo: 'Como fazer',
+    passos: [
+      'Reserve um tempo sem interrupções.',
+      'Leia as instruções do teste com atenção antes de começar.',
+      'Siga as orientações deste e-mail para acessar o teste e entregar o resultado.',
+      'Se tiver dúvida, fale com a equipe antes do prazo.',
+    ],
+  },
+  prova_teorica: {
+    titulo: 'Como fazer',
+    passos: [
+      'Reserve um tempo sem interrupções.',
+      'Leia as instruções da prova com atenção antes de começar.',
+      'Siga as orientações deste e-mail para acessar a prova e entregar o resultado.',
+      'Se tiver dúvida, fale com a equipe antes do prazo.',
+    ],
+  },
+  prova_pratica: {
+    titulo: 'Como fazer',
+    passos: [
+      'Leia com atenção o enunciado da prova prática abaixo.',
+      'Faça a tarefa no seu ritmo, respeitando o prazo de entrega.',
+      'Entregue da forma indicada neste e-mail.',
+      'Se tiver dúvida, fale com a equipe antes do prazo.',
+    ],
+  },
+  entrevista_final: {
+    titulo: 'Como se preparar',
+    passos: [
+      'Nossa equipe vai combinar com você o dia e o horário.',
+      'Prepare-se para conversar sobre a sua trajetória e a vaga.',
+      'Se for online, escolha um lugar tranquilo e confira sua conexão antes.',
+      'Se tiver algum imprevisto, avise a equipe o quanto antes.',
+    ],
+  },
+  escolha: {
+    titulo: 'O que acontece agora',
+    passos: ['Você não precisa fazer nada agora.', 'Estamos concluindo a avaliação e retornaremos em breve.'],
+  },
+  proposta: {
+    titulo: 'O que fazer agora',
+    passos: [
+      'Leia a proposta com atenção.',
+      'Se tiver dúvidas, fale com a equipe.',
+      'Avise a equipe assim que tomar a sua decisão.',
+    ],
+  },
+  aprovado: {
+    titulo: 'O que acontece agora',
+    passos: [
+      'Nossa equipe vai combinar com você os próximos passos da contratação.',
+      'Fique atento ao seu e-mail: a equipe informará quais documentos e datas serão necessários.',
+    ],
+  },
+};
+
+function comoFazerEtapaHtml(etapa) {
+  const c = COMO_FAZER_ETAPA_RS[etapa];
+  if (!c) return '';
+  return `<p><b>${c.titulo}:</b></p><ol>${c.passos.map((p) => `<li>${p}</li>`).join('')}</ol>`;
+}
+
+// Monta o e-mail da etapa: o texto da etapa + o "Como fazer" + as orientações da vaga (ou da empresa). Pura: serve para enviar e
+// para a pré-visualização. Nome e vaga entram escapados (o nome vem do formulário público).
+// O botão "Enviar meu resultado" (só entra se o pedido foi criado e o link é um endereço https de verdade).
+function blocoEntregaEmailHtml(entrega) {
+  const link = urlSegura(entrega && entrega.link);
+  if (!link) return '';
+  const ate = entrega.prazoISO ? new Date(entrega.prazoISO).toLocaleDateString('pt-BR') : '';
+  return `<p><b>Enviar o resultado:</b> quando terminar, envie o resultado (PDF, imagem ou texto) pelo botão abaixo. Você pode anexar até 3 arquivos de 5 MB.</p><p><a href="${escaparHtml(link)}" style="display:inline-block;background:#2563eb;color:#ffffff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:bold;">Enviar meu resultado</a></p><p style="font-size:12px;color:#666;">O link é pessoal${ate ? ` e vale até ${ate}` : ''}: não compartilhe.</p>`;
+}
+
+function montarEmailEtapaRS({ nome, nomeVaga, etapa, cfg, hoje, entrega }) {
+  const tpl = RS_EMAIL_POR_ETAPA[etapa];
+  if (!tpl) return null;
+  const corpoHtml =
+    tpl.corpo(escaparHtml(nome), escaparHtml(nomeVaga), temOrientacoesEtapaRS(cfg, etapa)) +
+    comoFazerEtapaHtml(etapa) +
+    blocoConfigEtapaHtml(cfg, etapa, hoje) +
+    blocoEntregaEmailHtml(entrega);
+  return { assunto: tpl.assunto, corpoHtml };
+}
+
+// O e-mail como o candidato vai recebê-lo (com um nome de exemplo), para o RH conferir ao configurar a etapa.
+function previaEmailEtapaRS(etapa, nomeVaga, cfg) {
+  if (etapa === 'video')
+    return '<p><i>O e-mail desta etapa é gerado pelo pedido de vídeo: leva o link pessoal do candidato, o limite de 2 minutos, o prazo de envio e as orientações que você escrever.</i></p>';
+  const entrega = ETAPAS_COM_ENTREGA_RS.includes(etapa)
+    ? {
+        link: 'https://seusite.com.br/entrega.html?t=exemplo',
+        prazoISO: new Date(Date.now() + 7 * 86400000).toISOString(),
+      }
+    : undefined;
+  const m = montarEmailEtapaRS({ nome: 'Maria', nomeVaga: nomeVaga || 'Vendedor', etapa, cfg, entrega });
+  if (!m) return '<p><i>Esta etapa não envia e-mail ao candidato.</i></p>';
+  return `<p><b>Assunto:</b> ${escaparHtml(m.assunto)}</p>${m.corpoHtml}`;
+}
+
+async function enviarEmailEtapaRS(candidato, etapa, extra = {}) {
   const tpl = RS_EMAIL_POR_ETAPA[etapa];
   if (!tpl || !candidato.email) return;
   const vaga = state.rs.requisicoes.find((r) => r.id === candidato.vagaId);
   const nomeVaga = vaga ? state.cargos.find((c) => c.id === vaga.cargoId)?.nome || vaga.codigo : 'nossa vaga';
   const cfgEtapa = configEfetivaEtapaRS(vaga, etapa); // orientações da vaga (ou, na falta, as da empresa)
+  const email = montarEmailEtapaRS({ nome: candidato.nome, nomeVaga, etapa, cfg: cfgEtapa, entrega: extra.entrega });
   try {
     await sb.functions.invoke('enviar-email', {
-      // O nome do candidato vem do formulário público: sem escape, dava pra mandar HTML
+      // O nome do candidato vem do formulário público: o montador escapa, senão dava pra mandar HTML
       // (links) dentro de um e-mail da INETRIS pro endereço de qualquer pessoa.
-      body: {
-        destinatario: candidato.email,
-        assunto: tpl.assunto,
-        corpoHtml:
-          tpl.corpo(escaparHtml(candidato.nome), escaparHtml(nomeVaga), temOrientacoesEtapaRS(cfgEtapa, etapa)) +
-          blocoConfigEtapaHtml(cfgEtapa, etapa),
-      },
+      body: { destinatario: candidato.email, assunto: email.assunto, corpoHtml: email.corpoHtml },
     });
   } catch (e) {
     console.warn('Falha ao enviar e-mail de atualização de candidatura (não bloqueia o pipeline)', e);
@@ -339,6 +477,19 @@ function moverEtapaCandidatoRS(candidatoId, novaEtapa) {
   if (!cand) return;
   const anterior = cand.etapa;
   if (anterior === novaEtapa) return;
+  // DISC/GALT, teste lógico e prova teórica dependem de links e instruções: sem eles o candidato recebe só o passo a passo padrão.
+  if (ETAPAS_QUE_PRECISAM_ORIENTACAO_RS.includes(novaEtapa)) {
+    const vagaDoCandidato = state.rs.requisicoes.find((r) => r.id === cand.vagaId);
+    if (
+      !temOrientacoesEtapaRS(configEfetivaEtapaRS(vagaDoCandidato, novaEtapa), novaEtapa) &&
+      !confirm(
+        `Esta etapa (${etapaNomeRS(novaEtapa)}) ainda não tem links nem orientações configurados. O candidato receberá só o passo a passo padrão, sem o endereço do teste.\n\nConfigure em "Orientações e links que o candidato recebe" (ou em "Configurar esta vaga").\n\nMover mesmo assim?`
+      )
+    ) {
+      render(); // volta o seletor/cartão para a etapa em que o candidato estava
+      return;
+    }
+  }
   // A prova prática é criada POR VAGA: avisa antes de mandar um candidato pra ela se esta vaga ainda não definiu a sua.
   if (novaEtapa === 'prova_pratica') {
     const vagaDoCandidato = state.rs.requisicoes.find((r) => r.id === cand.vagaId);
@@ -363,6 +514,9 @@ function moverEtapaCandidatoRS(candidatoId, novaEtapa) {
   if (novaEtapa === 'video' && rsVideoHabilitado()) {
     // Entrar na etapa de vídeo já cria o pedido e manda o link (com as orientações da vaga): não manda também o aviso genérico.
     pedirVideoRS(cand.id, { automatico: true });
+  } else if (ETAPAS_COM_ENTREGA_RS.includes(novaEtapa) && rsEntregaHabilitado()) {
+    // Etapa com teste/entrega: cria o pedido e manda o e-mail da etapa JÁ com o botão "Enviar meu resultado".
+    enviarEtapaComEntregaRS(cand, novaEtapa);
   } else {
     enviarEmailEtapaRS(cand, novaEtapa);
     showToast(`Etapa atualizada — e-mail enviado a ${cand.nome}.`);
@@ -709,11 +863,10 @@ function rsRequisicoesCardHtml() {
             </div>
             <div class="field"><label>Prazo desejado</label><input id="rs_req_prazo" type="date"></div>
           </div>
+          ${modeloProcessoSelectHtml()}
+          <details style="margin:10px 0;"><summary style="cursor:pointer;font-weight:600;font-size:13px;">Mais detalhes da vaga (opcional): perfil, remuneração e requisitos</summary>
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin:8px 0;"><input id="rs_req_confidencial" type="checkbox"> Vaga confidencial (não exibir nome do cargo/empresa externamente)</label>
 
-          <h4 style="font-size:13px;margin:16px 0 8px;border-top:1px solid var(--line);padding-top:12px;">Etapas do processo seletivo desta vaga</h4>
-          <p class="small-muted" style="margin:0 0 8px;">"Nova candidatura", "Proposta" e "Aprovado" valem para toda vaga. Desmarque as etapas que esta vaga não usa (dá para mudar depois).</p>
-          ${etapasCheckboxesHtml(null, 'rs-req-etapa')}
           <h4 style="font-size:13px;margin:16px 0 8px;border-top:1px solid var(--line);padding-top:12px;">Perfil desejado para a vaga</h4>
           <div class="grid3">
             <div class="field"><label>Nível de maturidade</label>
@@ -767,6 +920,12 @@ function rsRequisicoesCardHtml() {
             <div class="field"><label>PowerPoint necessário</label><select id="rs_req_powerpoint"><option value="nao_exigido">Não exigido</option><option value="basico">Básico</option><option value="intermediario">Intermediário</option><option value="avancado">Avançado</option></select></div>
           </div>
 
+          </details>
+          <details style="margin:10px 0;"><summary style="cursor:pointer;font-weight:600;font-size:13px;">Ajustar as etapas deste processo</summary>
+          <h4 style="font-size:13px;margin:16px 0 8px;border-top:1px solid var(--line);padding-top:12px;">Etapas do processo seletivo desta vaga</h4>
+          <p class="small-muted" style="margin:0 0 8px;">"Nova candidatura", "Proposta" e "Aprovado" valem para toda vaga. Desmarque as etapas que esta vaga não usa (dá para mudar depois).</p>
+          ${etapasCheckboxesHtml(null, 'rs-req-etapa')}
+          </details>
           <button class="btn btn-primary" onclick="criarRequisicaoRS()">Enviar para aprovação</button>
           <button class="btn btn-ghost" onclick="_rsNovaRequisicaoAberta=false;render();">Cancelar</button>
         </div>`
@@ -798,7 +957,7 @@ function rsRequisicoesCardHtml() {
                   ${r.publicada && !r.encerrada ? `<button class="btn btn-sm btn-ghost" onclick="encerrarVagaRS('${r.id}')">Encerrar</button>` : ''}
                   ${
                     r.publicada
-                      ? `<button class="btn btn-sm btn-ghost" onclick="_rsRequisicaoExpandida = _rsRequisicaoExpandida==='${r.id}'?null:'${r.id}'; render();">${_rsRequisicaoExpandida === r.id ? 'Ocultar candidatos' : `Candidatos (${candidatosDaVaga.length})`}</button>`
+                      ? `<button class="btn btn-sm btn-ghost" onclick="selecionarVagaRS('${r.id}')">Abrir quadro (${candidatosDaVaga.length})</button>`
                       : ''
                   }
                 </td>
@@ -830,7 +989,7 @@ function rsRequisicoesCardHtml() {
               </td></tr>`
                   : ''
               }
-              ${_rsRequisicaoExpandida === r.id ? `<tr><td colspan="5">${renderPipelineCandidatosRS(r)}</td></tr>` : ''}`;
+              `;
               })
               .join('')}
           </tbody></table>`
@@ -887,10 +1046,6 @@ async function importarCandidaturaRS(candidaturaId, vagaId) {
 }
 
 function renderPipelineCandidatosRS(vaga) {
-  const candidatos = state.rs.candidatos
-    .filter((c) => c.vagaId === vaga.id)
-    .sort((a, b) => (b.criadoEm || '').localeCompare(a.criadoEm || ''));
-
   if (_rsCandidaturasPendentes[vaga.id] === undefined && !_rsCandidaturasCarregando[vaga.id]) {
     carregarCandidaturasPendentesRS(vaga);
   }
@@ -898,8 +1053,6 @@ function renderPipelineCandidatosRS(vaga) {
 
   return `
     <div class="card" style="background:var(--surface-2);margin-top:8px;">
-      ${etapasVagaEditorHtml(vaga)}
-      ${etapasVagaOrientacoesHtml(vaga)}
       ${
         pendentes.length
           ? `<div class="notice info" style="margin-bottom:12px;">📥 <b>${pendentes.length} candidatura(s) nova(s)</b> recebida(s) pela página pública, aguardando importar pro pipeline:
@@ -916,46 +1069,10 @@ function renderPipelineCandidatosRS(vaga) {
       </div>`
           : ''
       }
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-        <h3 style="margin:0;font-size:14px;">Candidatos — ${escaparHtml(vaga.codigo)}</h3>
-        <span class="small-muted">Para colocar alguém nesta vaga, leve a pessoa do <a href="#" onclick="goto('rs');return false;">cadastro (Recrutamento)</a>.</span>
-      </div>
-      ${
-        candidatos.length
-          ? `<table style="margin-top:10px;"><thead><tr><th>Candidato</th><th>Contato</th><th>Origem</th><th>Etapa</th><th></th></tr></thead><tbody>
-            ${candidatos
-              .map(
-                (c) => `<tr style="${c.reprovado ? 'opacity:0.6;' : ''}">
-              <td><b>${escaparHtml(c.nome)}</b></td>
-              <td class="small-muted">${escaparHtml(c.email || c.telefone || '—')}</td>
-              <td class="small-muted">${escaparHtml(c.origem)}</td>
-              <td>${
-                c.reprovado
-                  ? '<span class="pill pill-iniciar">Reprovado/desistiu</span>'
-                  : c.etapa === 'aprovado'
-                    ? '<span class="pill pill-alavancar">Aprovado</span>'
-                    : `<select onchange="moverEtapaCandidatoRS('${c.id}', this.value)" style="max-width:170px;">${etapasParaSelecaoRS(
-                        vaga,
-                        c
-                      )
-                        .map((e) => `<option value="${e.id}" ${e.id === c.etapa ? 'selected' : ''}>${e.nome}</option>`)
-                        .join('')}</select>`
-              }</td>
-              <td style="white-space:nowrap;">
-                ${
-                  c.reprovado
-                    ? `<button class="btn btn-sm btn-ghost" onclick="reabrirCandidatoRS('${c.id}')">Reabrir</button>`
-                    : c.etapa === 'aprovado'
-                      ? `<button class="btn btn-sm btn-primary" onclick="converterCandidatoEmColaboradorRS('${c.id}')" ${c.convertidoEm ? 'disabled' : ''}>${c.convertidoEm ? 'Convertido ✓' : 'Converter em colaborador'}</button>`
-                      : `<button class="btn btn-sm btn-ghost" onclick="reprovarCandidatoRS('${c.id}')">Reprovar</button>`
-                }
-              </td>
-            </tr>
-            <tr style="${c.reprovado ? 'opacity:0.6;' : ''}"><td colspan="5" style="padding-top:0;">${renderPerfilCandidatoRS(c)}${renderScorecardRS(c.id)}${videoPainelRS(c, vaga)}</td></tr>`
-              )
-              .join('')}
-          </tbody></table>`
-          : '<div class="empty" style="margin-top:10px;">Nenhum candidato nesta vaga ainda. Quem se candidata pelo link aparece acima; ou leve pessoas do Recrutamento.</div>'
-      }
+      ${quadroDaVagaHtml(vaga)}
+      <details style="margin-top:14px;" ${_rsOrientacoesVagaAberta === vaga.id ? 'open' : ''}>
+        <summary style="cursor:pointer;font-weight:600;font-size:13px;">Configurar esta vaga (etapas, orientações e prova prática) ${situacaoProvaPraticaRS(vaga) === 'pendente' ? '<span class="pill pill-desenvolver">prova prática pendente</span>' : ''}</summary>
+        <div style="margin-top:10px;">${etapasVagaEditorHtml(vaga)}${etapasVagaOrientacoesHtml(vaga)}</div>
+      </details>
     </div>`;
 }

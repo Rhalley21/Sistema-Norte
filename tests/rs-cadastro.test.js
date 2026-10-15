@@ -23,6 +23,8 @@ function ctx(papel = 'rh') {
     'js/44-page-processo-seletivo.js',
     'js/45-rs-etapas.js',
     'js/46-rs-video.js',
+    'js/48-rs-quadro.js',
+    'js/49-rs-entrega.js',
     'js/47-rs-cadastro.js',
   ]);
   c.meuPapelReal = papel;

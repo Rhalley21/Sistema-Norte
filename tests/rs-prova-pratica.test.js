@@ -22,6 +22,8 @@ function ctx(papel = 'rh') {
     'js/44-page-processo-seletivo.js',
     'js/45-rs-etapas.js',
     'js/46-rs-video.js',
+    'js/48-rs-quadro.js',
+    'js/49-rs-entrega.js',
   ]);
   c.meuPapelReal = papel;
   c.meuPerfilId = 'perfil1';
@@ -235,7 +237,7 @@ test('mover mesmo assim (aceitando) move e manda o e-mail da etapa; vaga com pro
   rodar(c, "moverEtapaCandidatoRS('cd1', 'prova_pratica')");
   assert.equal(rodar(c, 'state.rs.candidatos[0].etapa'), 'prova_pratica');
   await new Promise((r) => setTimeout(r, 10));
-  assert.equal(c.__enviados.length, 1);
+  assert.equal(c.__enviados.filter((b) => b.destinatario).length, 1, 'um e-mail ao candidato');
   const c2 = ctx();
   comVagas(c2);
   candidatoEm(c2, 'v1');
@@ -271,7 +273,11 @@ test('na vaga: o formulário traz as etapas que a vaga usa; só a prova prática
   );
   assert.equal((pendente.match(/placeholder="Critério \(ex\./g) || []).length, 6);
   assert.equal((pendente.match(/Prazo de entrega/g) || []).length, 1, 'prazo só na prova prática');
-  assert.equal((pendente.match(/<details/g) || []).length, 1 + 9, 'o painel + uma etapa de cada das 9 configuráveis');
+  assert.equal(
+    (pendente.match(/<details/g) || []).length,
+    1 + 9 * 2,
+    'o painel + as 9 etapas configuráveis, cada uma com o formulário e a pré-visualização do e-mail'
+  );
   const definida = html(0);
   assert.ok(!definida.includes('ainda não definida') && definida.includes('Simule uma venda'));
   const soTriagem = html(3);
@@ -279,7 +285,7 @@ test('na vaga: o formulário traz as etapas que a vaga usa; só a prova prática
     !soTriagem.includes('Prova prática') && !soTriagem.includes('Prazo de entrega'),
     'a vaga que desligou a prova prática não vê o formulário dela'
   );
-  assert.equal((soTriagem.match(/<details/g) || []).length, 1 + 1);
+  assert.equal((soTriagem.match(/<details/g) || []).length, 1 + 2);
 });
 
 test('na vaga: a "Referência desta vaga" mostra as responsabilidades e as habilidades pedidas (escapadas), só no formulário da prova prática', () => {
@@ -376,7 +382,11 @@ test('painel da empresa: sem a prova prática (ela é criada em cada vaga) e avi
   const c = ctx();
   comVagas(c);
   const painel = rodar(c, 'rsConfigEtapasPainelHtml()');
-  assert.equal((painel.match(/<details/g) || []).length, 8);
+  assert.equal(
+    (painel.match(/<details/g) || []).length,
+    16,
+    'oito etapas, cada uma com o formulário e a pré-visualização do e-mail'
+  );
   assert.ok(!painel.includes('rsce_prova_pratica') && painel.includes('criada em cada vaga'));
   assert.equal(plano(rodar(c, 'etapasConfiguraveisEmpresaRS().map((e) => e.id)')).includes('prova_pratica'), false);
   assert.equal(plano(rodar(c, 'etapasConfiguraveisRS().map((e) => e.id)')).includes('prova_pratica'), true);
@@ -417,7 +427,7 @@ test('integração: o funil mostra o formulário da vaga, o e-mail usa a configu
   const rs = ler('js/40-page-rs.js');
   assert.ok(rs.includes('etapasVagaOrientacoesHtml(vaga)'));
   assert.ok(/configEfetivaEtapaRS\(\s*vaga,\s*etapa\s*\)/.test(rs));
-  assert.ok(/temOrientacoesEtapaRS\(\s*cfgEtapa,\s*etapa\s*\)/.test(rs));
+  assert.ok(/montarEmailEtapaRS\(/.test(rs) && /cfg: cfgEtapa/.test(rs));
   assert.ok(/ainda não tem a prova prática definida/.test(rs));
   assert.ok(
     !/state\.rs\.configEtapas\?\.\[etapa\]/.test(rs),

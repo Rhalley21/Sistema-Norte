@@ -17,13 +17,23 @@ Uma imagem simples: o Recrutamento é a **pasta com as fichas**; o Processo sele
 
 ## R&S — Processo seletivo — Administrador, RH e líder
 
-Tudo o que acontece com uma vaga, em uma tela só:
+**Cada vaga é um quadro.** A tela tem, de cima para baixo:
 
-1. **O passo a passo** (a tabela das etapas abaixo, com quem faz cada uma e quantos candidatos estão nela).
-2. **As vagas:** **Nova requisição** (construção do perfil da vaga) → **Enviar para aprovação** → **Aprovar** → **Publicar** (divulgação, com o link para copiar) → o **funil da vaga** (mover de etapa, avaliar, reprovar, vídeo, prova prática, contratar) → **Encerrar**. O líder pede vagas e acompanha; quem aprova é o Administrador ou o RH.
-3. **Orientações e links** que o candidato recebe em cada etapa (só Administrador e RH).
+1. **Para você fazer agora:** só o que pede ação (vagas para aprovar, candidaturas novas pelo link, candidatos para triar, vídeos recebidos, vagas sem a prova prática definida, aprovados para contratar). Cada item leva para a vaga onde resolver.
+2. **O seletor de vaga** e o botão **+ Nova vaga**.
+3. **O quadro da vaga**, com 4 fases: **1. Entrada** (nova candidatura, triagem) · **2. Avaliação** (DISC/GALT, vídeo, redes sociais, checagem do currículo) · **3. Entrevistas e provas** (fit cultural, teste lógico, prova teórica, prova prática, entrevista final) · **4. Decisão** (escolha, proposta, aprovado). Cada candidato é um cartão com:
+   - **Avançar → próxima etapa**: leva direto para a próxima etapa **desta vaga** (as etapas que a vaga desligou são puladas; o e-mail da etapa, o pedido do vídeo e o aviso da prova prática funcionam como sempre);
+   - **Reprovar** (os reprovados ficam numa lista recolhida, com **Reabrir**);
+   - **Converter em colaborador**, quando está em "Aprovado".
+4. **A ficha da pessoa** (clique no nome do cartão): dados de contato, currículo, perfil, **a ação da etapa atual** (vídeo: pedir/assistir; prova prática: enunciado, prazo e critérios; DISC/GALT: links indicados; entrevistas: scorecards), o histórico e "Mover para outra etapa…" para casos fora do comum.
+5. **Configurar esta vaga** (recolhido, embaixo do quadro): as etapas da vaga, as orientações por etapa e a **prova prática da vaga**.
+6. **Vagas: criar, aprovar, publicar o link e encerrar** (recolhido): **+ Nova vaga** pede só o essencial (cargo, unidade, setor, quantidade, motivo e prazo) e um **modelo de processo** — **Completo** (todas as etapas), **Enxuto** (triagem, entrevista de fit, prova prática, entrevista final e escolha) ou **Operacional** (triagem, checagem do currículo, entrevista de fit e escolha). Perfil, remuneração e requisitos ficam em "Mais detalhes", e as etapas podem ser ajustadas em "Ajustar as etapas deste processo". Depois: **Enviar para aprovação** → **Aprovar** → **Publicar** (link para copiar) → **Encerrar**.
+7. **Como funciona: o passo a passo** (recolhido): a tabela das etapas, com quem faz cada uma e quantos candidatos estão em cada, e os indicadores.
+8. **Orientações e links que o candidato recebe** em cada etapa (só Administrador e RH).
 
-O cadastro de uma pessoa **não** é feito dentro da vaga: para colocar alguém no funil, leve a pessoa do Recrutamento.
+O líder pede vagas e acompanha o quadro; quem aprova e configura é o Administrador ou o RH.
+
+O cadastro de uma pessoa **não** é feito dentro da vaga: para colocar alguém no quadro, leve a pessoa do Recrutamento (**Levar para a vaga…**). Quem se candidata pelo link entra direto na vaga (aparece em "candidaturas novas" para você importar).
 
 # Etapas do processo seletivo
 
@@ -78,9 +88,38 @@ _Nova candidatura_, _Triagem_, _Proposta_ e _Aprovado_ continuam como eram. Repr
 - A página de candidatura e a Política de Privacidade **avisam o candidato** de que o currículo e perfis profissionais públicos podem ser verificados.
 - Essas etapas **não mandam e-mail** ao candidato.
 
+## O que o candidato recebe no e-mail de cada etapa
+
+Ao mover o candidato de etapa (pelo **Avançar** do quadro ou pelo seletor da ficha), ele recebe um e-mail com estas partes, **nesta ordem**:
+
+1. **O aviso da etapa** ("Você avançou para…").
+2. **Como fazer** — o passo a passo padrão da etapa (abaixo).
+3. **Orientações** da vaga (ou, se a vaga não tiver, da empresa): o texto, os **links** e, na prova prática, o enunciado e o prazo de entrega.
+4. **Enviar o resultado** (só nas etapas com teste ou entrega: DISC/GALT, teste lógico, prova teórica e prova prática): o botão **Enviar meu resultado**, que abre uma página pessoal onde o candidato anexa até 3 arquivos e/ou escreve um texto. Você vê o resultado na ficha do candidato. Detalhes em **docs/ENTREGA-RS.md**.
+
+| Etapa | Título | O que o e-mail explica (padrão) |
+|---|---|---|
+| Nova candidatura | O que acontece agora | Nada a fazer; vamos analisar o currículo; cada nova etapa vem por e-mail. |
+| Triagem | O que acontece agora | Nada a fazer; estamos analisando; se avançar, o próximo e-mail explica. |
+| Teste DISC e GALT | Como fazer | Abrir cada link, responder com calma e sinceridade (não há certo ou errado), guardar o resultado (print ou PDF) e enviar como indicado. |
+| Vídeo de apresentação | Como fazer | O e-mail do **pedido de vídeo** já leva o link pessoal, o limite de 2 minutos e o prazo. |
+| Entrevista de fit e final | Como se preparar | A equipe combina dia e horário; online: lugar tranquilo e conexão; presencial: chegar com antecedência; avisar imprevistos. |
+| Teste lógico e prova teórica | Como fazer | Reservar um tempo sem interrupções, ler as instruções, seguir as orientações para acessar e entregar, tirar dúvidas antes do prazo. |
+| Prova prática | Como fazer | Ler o enunciado, fazer no seu ritmo respeitando o prazo, entregar como indicado. |
+| Escolha do candidato | O que acontece agora | Nada a fazer; estamos concluindo a avaliação. |
+| Proposta | O que fazer agora | Ler a proposta, tirar dúvidas, avisar a decisão. |
+| Aprovado | O que acontece agora | A equipe combina os próximos passos e informa os documentos e datas. |
+
+As etapas **internas** (redes sociais e checagem do currículo) não mandam e-mail.
+
+O passo a passo padrão é **genérico de propósito**: ele não inventa links, endereços nem datas. O que é específico (onde fazer o teste, para onde enviar o resultado, o enunciado) vai nas **Orientações** que você configura.
+
+- **Pré-visualização:** em "Orientações e links que o candidato recebe" (empresa) e em "Configurar esta vaga" (vaga), cada etapa tem **Ver o e-mail que o candidato recebe**, mostrando o e-mail como ele chega (com um nome de exemplo) e refletindo o que está salvo.
+- **Aviso antes de mover:** se você avançar alguém para **DISC/GALT, teste lógico ou prova teórica** e a etapa ainda não tem links nem orientações (nem da vaga nem da empresa), o sistema pergunta antes, porque o candidato receberia só o passo a passo padrão, sem o endereço do teste. (A prova prática já tinha aviso próprio.)
+
 ## Prova prática: criada em cada vaga
 
-A prova prática **não tem texto geral da empresa**: o que se pede a um vendedor não é o que se pede a um analista financeiro. Cada vaga que usa a etapa define a sua, no funil da vaga, em **R&S — Processo seletivo → a vaga → Orientações e prova prática desta vaga**:
+A prova prática **não tem texto geral da empresa**: o que se pede a um vendedor não é o que se pede a um analista financeiro. Cada vaga que usa a etapa define a sua, no funil da vaga, em **no quadro da vaga → Configurar esta vaga → Orientações e prova prática desta vaga**:
 
 - **Enunciado** (até 2000 caracteres): a tarefa que o candidato deve fazer, o que entregar e **como entregar** (por exemplo, "envie o arquivo para rh@suaempresa.com.br").
 - **Prazo de entrega** (de 1 a 30 dias): o e-mail mostra a data limite, contada a partir do dia em que o candidato entra na etapa.
@@ -88,7 +127,7 @@ A prova prática **não tem texto geral da empresa**: o que se pede a um vendedo
 - **Critérios de avaliação** (até 6, cada um com peso de 1 a 10): servem para o RH avaliar a entrega com o mesmo critério para todos os candidatos da vaga. **Eles são só do RH e não vão no e-mail do candidato.** (O registro da nota por critério chega na tela de registro dos resultados.)
 - O formulário mostra a **Referência desta vaga** (responsabilidades do cargo e habilidades desejadas) para ajudar a criar uma prova coerente com ela.
 
-O candidato recebe o enunciado **da vaga em que está**, quando entra na etapa. Se a vaga usa a prova prática e ainda não definiu o enunciado, ela aparece como **pendente** (no funil da vaga e na tela do Processo seletivo) e, ao mover um candidato para essa etapa, o sistema **pergunta** antes, porque o e-mail sairia sem a tarefa.
+O candidato recebe o enunciado **da vaga em que está**, quando entra na etapa. Se a vaga usa a prova prática e ainda não definiu o enunciado, ela aparece como **pendente** (em "Para você fazer agora" e na ficha do candidato) e, ao mover um candidato para essa etapa, o sistema **pergunta** antes, porque o e-mail sairia sem a tarefa.
 
 As **outras etapas** também aceitam orientações por vaga; quando a vaga tem as suas, elas valem **no lugar** das da empresa (que ficam em R&S — Processo seletivo).
 

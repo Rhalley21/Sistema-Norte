@@ -502,6 +502,7 @@ test('as tarefas da rotina diária são todas isoladas (inclusive as novas) e o 
     'teste_gratis',
     'nr1_campanhas',
     'videos_rs',
+    'entregas_rs',
     'limpeza_logs',
   ])
     assert.ok(o.includes(`tarefa('${nome}'`), `tarefa ${nome} fora do isolamento`);

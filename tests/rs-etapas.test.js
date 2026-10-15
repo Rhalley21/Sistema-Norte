@@ -15,7 +15,14 @@ const ler = (f) => fs.readFileSync(path.join(raiz, f), 'utf8');
 const plano = (x) => JSON.parse(JSON.stringify(x));
 
 function ctx() {
-  const c = carregarArquivos(['js/02-core-helpers.js', 'js/40-page-rs.js', 'js/45-rs-etapas.js', 'js/46-rs-video.js']);
+  const c = carregarArquivos([
+    'js/02-core-helpers.js',
+    'js/40-page-rs.js',
+    'js/45-rs-etapas.js',
+    'js/46-rs-video.js',
+    'js/48-rs-quadro.js',
+    'js/49-rs-entrega.js',
+  ]);
   c.__toasts = [];
   c.__renders = 0;
   c.showToast = (t) => c.__toasts.push(t);
@@ -274,8 +281,8 @@ test('copiar etapas de outra vaga: copia o que a outra usa; sem escolher a orige
 test('integração: o funil usa as etapas da vaga, a vaga nova guarda as etapas e os dados de teste usam etapas que existem', () => {
   const rs = ler('js/40-page-rs.js');
   assert.ok(
-    /etapasParaSelecaoRS\(\s*vaga,\s*c\s*\)/.test(rs),
-    'o seletor de etapa do funil deve usar as etapas da vaga'
+    /etapasParaSelecaoRS\(\s*vaga,\s*c\s*\)/.test(ler('js/48-rs-quadro.js', 'js/49-rs-entrega.js')),
+    'o seletor de etapa da ficha deve usar as etapas da vaga'
   );
   assert.ok(
     rs.includes("document.querySelectorAll('.rs-req-etapa:checked')") && rs.includes('etapasAtivas: etapasMarcadasRS(')
@@ -283,7 +290,9 @@ test('integração: o funil usa as etapas da vaga, a vaga nova guarda as etapas 
   assert.ok(rs.includes("etapasCheckboxesHtml(null, 'rs-req-etapa')") && rs.includes('etapasVagaEditorHtml(vaga)'));
   assert.ok(rs.includes('migrarEtapasLegadasRS(state.rs.candidatos'));
   assert.ok(!/const ETAPAS_RS = \[/.test(rs), 'o catálogo deve existir só em js/45-rs-etapas.js');
-  assert.ok(ler('app.html').includes('js/45-rs-etapas.js', 'js/46-rs-video.js'));
+  assert.ok(
+    ler('app.html').includes('js/45-rs-etapas.js', 'js/46-rs-video.js', 'js/48-rs-quadro.js', 'js/49-rs-entrega.js')
+  );
   const c = ctx();
   const ids = plano(rodar(c, 'ETAPAS_RS')).map((e) => e.id);
   [...ler('js/21-dados-teste.js').matchAll(/\{ nome: '[^']+', etapa: '(\w+)' \}/g)].forEach((m) =>
@@ -418,9 +427,20 @@ test('orientações só existem nas etapas que mandam e-mail ao candidato: as in
 
 test('integração: o e-mail da etapa e a tela de R&S usam a configuração; os links NÃO estão escritos no código; a Política cita sites de terceiros', () => {
   const rs = ler('js/40-page-rs.js');
-  assert.ok(/blocoConfigEtapaHtml\(\s*cfgEtapa,\s*etapa/.test(rs) && /temOrientacoesEtapaRS\(/.test(rs));
+  assert.ok(
+    /montarEmailEtapaRS\(\{[\s\S]*?cfg: cfgEtapa/.test(rs) &&
+      /blocoConfigEtapaHtml\(cfg, etapa, hoje\)/.test(rs) &&
+      /temOrientacoesEtapaRS\(cfg, etapa\)/.test(rs)
+  );
   assert.ok(rs.includes('state.rs.configEtapas = {}'));
-  for (const arq of ['js/40-page-rs.js', 'js/45-rs-etapas.js', 'js/46-rs-video.js', 'js/21-dados-teste.js'])
+  for (const arq of [
+    'js/40-page-rs.js',
+    'js/45-rs-etapas.js',
+    'js/46-rs-video.js',
+    'js/48-rs-quadro.js',
+    'js/49-rs-entrega.js',
+    'js/21-dados-teste.js',
+  ])
     assert.ok(!/pactorh|personalidades\.mobi/.test(ler(arq)), `${arq}: link de terceiro escrito no código`);
   assert.ok(/Algumas\s+etapas\s+podem\s+ser\s+realizadas\s+em\s+sites\s+de\s+terceiros/.test(ler('privacidade.html')));
 });
@@ -469,7 +489,11 @@ test('painel de orientações: um bloco por etapa; salvar sanitiza, ignora link 
     "meuPapelReal = 'rh'; state.rs = { requisicoes: [], candidatos: [], configEtapas: { video: { instrucoes: 'antiga', links: [] } } };"
   );
   const painel = rodar(c, 'rsConfigEtapasPainelHtml()');
-  assert.equal((painel.match(/<details/g) || []).length, 8, 'a prova prática não tem texto geral: só por vaga');
+  assert.equal(
+    (painel.match(/<details/g) || []).length,
+    16,
+    'oito etapas (a prova prática não tem texto geral), cada uma com o formulário e a pré-visualização do e-mail'
+  );
   assert.ok(painel.includes('https://') && painel.includes('configurada') && painel.includes('Salvar orientações'));
   const campos = {
     rsce_disc_galt_ins: 'Faça os dois testes',

@@ -22,6 +22,8 @@ function ctx(papel = 'rh') {
     'js/44-page-processo-seletivo.js',
     'js/45-rs-etapas.js',
     'js/46-rs-video.js',
+    'js/48-rs-quadro.js',
+    'js/49-rs-entrega.js',
     'js/47-rs-cadastro.js',
   ]);
   c.meuPapelReal = papel;
@@ -120,7 +122,7 @@ test('acesso: Administrador, RH e líder entram (o líder pede vagas); colaborad
     );
 });
 
-test('a tela mostra o passo a passo, quantos candidatos há em cada etapa e a explicação simples de como usar', () => {
+test('a tela mostra "Para você fazer agora", o seletor de vaga e o passo a passo recolhido com a quantidade de candidatos em cada etapa', () => {
   const c = ctx();
   const html = paginaCom(c, {
     requisicoes: [],
@@ -132,20 +134,18 @@ test('a tela mostra o passo a passo, quantos candidatos há em cada etapa e a ex
       { vagaId: null, etapa: null },
     ],
   });
-  assert.ok(html.includes('O passo a passo') && html.includes('Como usar'));
+  assert.ok(html.includes('Para você fazer agora') && html.includes('Como funciona: o passo a passo'));
   const linha = (nome) => new RegExp(`<td><b>${nome}</b></td>([\\s\\S]*?)</tr>`).exec(html)[1];
   assert.ok(/<b>2<\/b>/.test(linha('Triagem dos currículos')), 'triagem tem 2 (o reprovado não conta)');
   assert.ok(/<b>1<\/b>/.test(linha('Vídeo de apresentação')));
   assert.ok(/<b>0<\/b>/.test(linha('Entrevista final')));
-  assert.ok(
-    html.includes('Levar') && html.includes('R&S — Recrutamento'),
-    'explica que as pessoas se levam do Recrutamento'
-  );
+  assert.ok(html.includes('Recrutamento'), 'explica que as pessoas ficam no Recrutamento');
   assert.ok(html.includes('DISC e o GALT') && html.includes('redes sociais'));
 });
 
-test('as vagas ficam NESTA tela (criar, aprovar, publicar); o funil de uma vaga aberta mostra o aviso de que pessoas vêm do Recrutamento', () => {
+test('as vagas ficam NESTA tela e a vaga aprovada vira um QUADRO de 4 fases (sem cadastro de pessoa dentro da vaga)', () => {
   const c = ctx('rh');
+  rodar(c, '_rsCandidaturasPendentes = { v1: [] };');
   const html = paginaCom(
     c,
     {
@@ -164,17 +164,22 @@ test('as vagas ficam NESTA tela (criar, aprovar, publicar); o funil de uma vaga 
     },
     [{ id: 'c1', nome: 'Vendedor' }]
   );
-  assert.ok(html.includes('Requisições de vaga') && html.includes('Nova requisição') && html.includes('REQ-001'));
-  rodar(c, "_rsRequisicaoExpandida = 'v1'; _rsCandidaturasPendentes = { v1: [] };");
-  const aberto = rodar(c, 'pageProcessoSeletivoRS()');
-  assert.ok(aberto.includes('Candidatos — REQ-001') && aberto.includes('cadastro (Recrutamento)'));
   assert.ok(
-    !aberto.includes('+ Candidato') && !aberto.includes('rs_cand_nome'),
+    html.includes('Requisições de vaga') &&
+      html.includes('Nova requisição') &&
+      html.includes('REQ-001') &&
+      html.includes('Abrir quadro')
+  );
+  for (const fase of ['1. Entrada', '2. Avaliação', '3. Entrevistas e provas', '4. Decisão'])
+    assert.ok(html.includes(fase), fase);
+  assert.ok(html.includes('Nenhum candidato nesta vaga ainda') && html.includes('Recrutamento'));
+  assert.ok(
+    !html.includes('+ Candidato') && !html.includes('rs_cand_nome'),
     'o cadastro de pessoa não fica mais dentro da vaga'
   );
 });
 
-test('orientações das etapas e indicadores: só Administrador e RH; o líder vê as vagas mas não a configuração', () => {
+test('orientações das etapas e indicadores: só Administrador e RH; o líder vê o quadro e as vagas, mas não a configuração', () => {
   for (const papel of ['owner', 'rh']) {
     const html = paginaCom(ctx(papel), { requisicoes: [], candidatos: [] });
     assert.ok(
@@ -183,8 +188,8 @@ test('orientações das etapas e indicadores: só Administrador e RH; o líder v
     );
     assert.equal(
       (html.match(/<details/g) || []).length,
-      1 + 8,
-      'o bloco recolhível + uma etapa de cada das 8 com texto da empresa'
+      3 + 16,
+      'vagas + como funciona + orientações, mais uma etapa de cada das 8 com texto da empresa'
     );
   }
   const lider = paginaCom(ctx('lider'), { requisicoes: [], candidatos: [] });

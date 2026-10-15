@@ -693,3 +693,161 @@ test('vídeos: o prazo de retenção (6 meses) é o MESMO na rotina, na função
   );
   assert.ok(ler('docs/VIDEO-RS.md').includes('6 meses'));
 });
+
+// ======================= RESULTADOS ENVIADOS PELOS CANDIDATOS =======================
+const TE = 'rs_entregas';
+const BUCKET_E = 'entregas-candidatos';
+function cenarioEntregas(linhas) {
+  const banco = criarBanco({ [TE]: linhas, __agora: ISO(AGORA) });
+  const arm = criarArmazenamento();
+  return { banco, arm, admin: { from: (n) => banco.from(n), storage: arm } };
+}
+
+test('resultados: pedido vencido sem envio vira "expirado"; enviado, cancelado e dentro do prazo não mudam', async () => {
+  const c = tarefas();
+  const { banco, admin } = cenarioEntregas([
+    {
+      id: 'vencido',
+      empresa_id: 'e1',
+      status: 'solicitado',
+      prazo_ate: ISO(AGORA - 1000),
+      criado_em: ISO(AGORA - 86400000),
+    },
+    {
+      id: 'no-prazo',
+      empresa_id: 'e1',
+      status: 'solicitado',
+      prazo_ate: ISO(AGORA + 86400000),
+      criado_em: ISO(AGORA - 86400000),
+    },
+    {
+      id: 'feito',
+      empresa_id: 'e1',
+      status: 'enviado',
+      prazo_ate: ISO(AGORA - 5000),
+      enviado_em: ISO(AGORA - 86400000),
+      criado_em: ISO(AGORA - 86400000),
+    },
+    {
+      id: 'cancelado',
+      empresa_id: 'e1',
+      status: 'cancelado',
+      prazo_ate: ISO(AGORA - 5000),
+      criado_em: ISO(AGORA - 86400000),
+    },
+  ]);
+  const r = await c.manterEntregasRs(admin, AGORA);
+  assert.deepEqual(plano(r), { expirados: 1, removidos: 0, arquivosRemovidos: 0 });
+  assert.deepEqual(Object.fromEntries(banco.tabelas[TE].map((x) => [x.id, x.status])), {
+    vencido: 'expirado',
+    'no-prazo': 'solicitado',
+    feito: 'enviado',
+    cancelado: 'cancelado',
+  });
+});
+
+test('resultados: depois de 6 meses os ARQUIVOS (todos) e o registro são apagados (fronteira exata); os recentes ficam intactos', async () => {
+  const c = tarefas();
+  const { banco, arm, admin } = cenarioEntregas([
+    {
+      id: 'velho',
+      empresa_id: 'e1',
+      status: 'enviado',
+      enviado_em: '2026-04-10T10:59:59Z',
+      criado_em: '2026-04-01T00:00:00Z',
+      prazo_ate: ISO(AGORA),
+    }, // 1s além de 6 meses
+    {
+      id: 'limite',
+      empresa_id: 'e1',
+      status: 'enviado',
+      enviado_em: '2026-04-10T12:00:00Z',
+      criado_em: '2026-04-01T00:00:00Z',
+      prazo_ate: ISO(AGORA),
+    }, // exatamente 6 meses: ainda vale
+    {
+      id: 'novo',
+      empresa_id: 'e1',
+      status: 'enviado',
+      enviado_em: '2026-09-01T00:00:00Z',
+      criado_em: '2026-08-30T00:00:00Z',
+      prazo_ate: ISO(AGORA),
+    },
+  ]);
+  for (const caminho of [
+    'e1/velho/arquivo-1.pdf',
+    'e1/velho/arquivo-2.png',
+    'e1/limite/arquivo-1.pdf',
+    'e1/novo/arquivo-1.png',
+  ])
+    arm.simularEnvio(BUCKET_E, caminho, new Uint8Array(20), 'application/pdf');
+  const r = await c.manterEntregasRs(admin, AGORA);
+  assert.deepEqual(plano(r), { expirados: 0, removidos: 1, arquivosRemovidos: 2 });
+  assert.deepEqual(banco.tabelas[TE].map((x) => x.id).sort(), ['limite', 'novo']);
+  assert.deepEqual(
+    [...arm.arquivos.keys()].sort(),
+    [`${BUCKET_E}/e1/limite/arquivo-1.pdf`, `${BUCKET_E}/e1/novo/arquivo-1.png`].sort()
+  );
+});
+
+test('resultados: pedidos que nunca receberam nada também saem depois de 6 meses (contados do pedido), com as sobras de tentativas', async () => {
+  const c = tarefas();
+  const { banco, arm, admin } = cenarioEntregas([
+    {
+      id: 'abandonado',
+      empresa_id: 'e1',
+      status: 'expirado',
+      criado_em: '2026-03-01T00:00:00Z',
+      prazo_ate: '2026-03-08T00:00:00Z',
+    },
+    {
+      id: 'recente',
+      empresa_id: 'e1',
+      status: 'expirado',
+      criado_em: '2026-09-01T00:00:00Z',
+      prazo_ate: '2026-09-08T00:00:00Z',
+    },
+  ]);
+  arm.simularEnvio(BUCKET_E, 'e1/abandonado/arquivo-1.png', new Uint8Array(20), 'image/png'); // sobra de tentativa não confirmada
+  const r = await c.manterEntregasRs(admin, AGORA);
+  assert.equal(r.removidos, 1);
+  assert.equal(r.arquivosRemovidos, 1);
+  assert.equal(arm.arquivos.size, 0);
+  assert.deepEqual(
+    banco.tabelas[TE].map((x) => x.id),
+    ['recente']
+  );
+});
+
+test('resultados: se não conseguir apagar os arquivos, o registro FICA (a rotina tenta de novo amanhã) e a falha é avisada', async () => {
+  const c = tarefas();
+  const { banco, arm, admin } = cenarioEntregas([
+    {
+      id: 'velho',
+      empresa_id: 'e1',
+      status: 'enviado',
+      enviado_em: '2026-01-01T00:00:00Z',
+      criado_em: '2026-01-01T00:00:00Z',
+      prazo_ate: ISO(AGORA),
+    },
+  ]);
+  arm.simularEnvio(BUCKET_E, 'e1/velho/arquivo-1.pdf', new Uint8Array(20), 'application/pdf');
+  const original = arm.from;
+  arm.from = (b) => ({
+    ...original(b),
+    remove: async () => ({ data: null, error: { message: 'storage fora do ar' } }),
+  });
+  await assert.rejects(c.manterEntregasRs(admin, AGORA), /storage fora do ar/);
+  assert.equal(banco.tabelas[TE].length, 1, 'sem os arquivos apagados, o registro não pode sumir');
+});
+
+test('resultados: o prazo de retenção (6 meses) é o MESMO na rotina, na função entrega-rs, na Política de Privacidade e na documentação', () => {
+  const numero = (arq, re) => Number(re.exec(ler(arq))[1]);
+  assert.equal(numero('supabase/functions/rotinas-agendadas/index.ts', /const ENTREGA_RETENCAO_MESES = (\d+)/), 6);
+  assert.equal(numero('supabase/functions/entrega-rs/index.ts', /const ENTREGA_RETENCAO_MESES = (\d+)/), 6);
+  assert.ok(
+    /resultad[\s\S]{0,400}6\s+meses|6\s+meses[\s\S]{0,400}resultad/i.test(ler('privacidade.html')),
+    'a Política de Privacidade precisa citar os resultados e os 6 meses'
+  );
+  assert.ok(ler('docs/ENTREGA-RS.md').includes('6 meses'));
+});

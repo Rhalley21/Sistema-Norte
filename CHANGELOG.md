@@ -3,6 +3,78 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.120.0 — O candidato devolve o resultado do teste pelo sistema
+Nas etapas com teste ou entrega (**DISC/GALT, teste lógico, prova teórica e prova prática**), o e-mail da etapa traz, além do link do
+teste e do "Como fazer", o botão **Enviar meu resultado**. Ele abre uma página pessoal (`entrega.html`, sem login) onde o candidato
+anexa **até 3 arquivos** (PDF, PNG, JPG ou WEBP, **5 MB** cada) e/ou escreve um **texto**, e envia **uma única vez**.
+
+**Para o RH:** mover o candidato (Avançar ou seletor da ficha) para uma dessas etapas cria o pedido e manda **um só e-mail**, já com o
+botão. Na **ficha do candidato**, o painel **Resultados enviados pelo candidato** lista os pedidos de todas as etapas, com **Ver
+resultado** (texto + arquivos por links temporários de 10 minutos, registrado na Auditoria), **Reenviar link**, **Cancelar**,
+**Excluir** e **Pedir o resultado agora**. "Para você fazer agora" conta os resultados enviados. Se o pedido falhar, o e-mail da
+etapa sai mesmo assim, sem o botão, e o RH é avisado. Não dá para excluir a pessoa do cadastro com resultado enviado.
+
+**Garantias (cada uma tem teste):**
+- O servidor **confere o tipo real de cada arquivo** pelos primeiros bytes (PDF, PNG, JPEG, WEBP); arquivo falso, vazio, grande
+  demais, que não chegou ou de formato diferente do declarado **apaga todos os arquivos da tentativa**. Tamanho (5 MB) e formatos são
+  impostos também pelo armazenamento privado. Na confirmação vale o tamanho REAL guardado, não o que o navegador disse.
+- Os arquivos vão direto do aparelho ao armazenamento; o código do link tem 256 bits e só o hash vai ao banco; uma única entrega
+  (duas confirmações simultâneas valem uma vez); voltar para a etapa cancela o link antigo; o caminho interno dos arquivos nunca
+  vai ao navegador; o botão do e-mail só aceita link https; a Auditoria só leva IDs.
+- **Retenção de 6 meses:** a rotina diária apaga os arquivos e depois o registro, e expira pedidos vencidos. Política de Privacidade
+  (HTML e Word) atualizada.
+- O passo a passo padrão do e-mail agora diz "da forma indicada neste e-mail" (cobre o botão e as orientações).
+
+**Ativar — NESTA ORDEM** (docs/ENTREGA-RS.md): (1) rodar `sql/43-entregas-rs.sql`; (2) implantar a função `entrega-rs` com **Verify
+JWT desligado** e **reimplantar a `rotinas-agendadas`** (o SQL vem antes); (3) subir o site; (4) **fazer o teste real** do guia.
+
+**NÃO testado com o Supabase de verdade:** o envio direto ao armazenamento (link de envio assinado) e a entrega do e-mail — só com
+armazenamento simulado e Chromium (31 verificações de navegador). Faça o teste real do guia antes de usar com candidatos.
+
+**Testes:** 52 novos (servidor, página e RH) e 5 da rotina, com 20 regressões plantadas e detectadas.
+
+## v0.119.0 — O e-mail de cada etapa ensina o candidato a fazer
+Ao mover o candidato de etapa, o e-mail dele passa a ter **três partes, nesta ordem**: o aviso da etapa, o **"Como fazer"**
+(passo a passo padrão, escrito para cada etapa) e as **orientações e links** da vaga (ou da empresa).
+
+- **Passo a passo para todas as etapas que mandam e-mail** (nova candidatura, triagem, DISC/GALT, vídeo, entrevistas, teste
+  lógico, prova teórica, prova prática, escolha, proposta e aprovado). É **genérico de propósito**: não inventa links, endereços
+  nem datas (um teste confere). As etapas internas continuam sem e-mail.
+- As frases "nossa equipe enviará as orientações em breve" agora vêm **junto** do passo a passo, e não no lugar dele.
+- **Montador único do e-mail** (`montarEmailEtapaRS`): o mesmo código monta o e-mail enviado e a pré-visualização.
+- **Pré-visualização** em cada etapa ("Ver o e-mail que o candidato recebe"), na configuração da empresa e na da vaga, refletindo o
+  que está salvo.
+- **Aviso antes de mover** para DISC/GALT, teste lógico ou prova teórica quando ainda não há links nem orientações (da vaga ou da
+  empresa): sem eles o candidato receberia só o passo a passo, sem o endereço do teste. Vale também para o botão Avançar.
+- O e-mail do **vídeo** continua sendo o do pedido de vídeo (já traz link pessoal, limite de 2 minutos e prazo).
+
+**Ativar**: só subir o site (sem SQL nem função nova). **Testes**: 16 novos do e-mail (e 6 ajustados), com 10 regressões plantadas e
+detectadas. O envio real do e-mail (entrega, caixa de spam, aparência no Gmail/Outlook) não foi testado daqui: mande um e-mail de
+teste para você mesmo (candidato de teste com o seu e-mail) antes de usar com candidatos.
+
+## v0.118.0 — Processo seletivo mais simples: o quadro da vaga
+A tela do Processo seletivo deixou de ser uma pilha de seções e virou **um quadro por vaga**.
+
+1. **Quadro em 4 fases** (Entrada · Avaliação · Entrevistas e provas · Decisão). Cada candidato é um cartão com **Avançar → próxima
+   etapa DA VAGA** (as etapas que a vaga desligou são puladas), **Reprovar** e, no fim, **Converter em colaborador**. Acabou a
+   lista de 13 etapas por candidato. O Avançar usa o mesmo caminho de antes (histórico, e-mail da etapa, pedido do vídeo e
+   aviso da prova prática). Reprovados ficam numa lista recolhida, com Reabrir.
+2. **"Para você fazer agora"** no topo: vagas para aprovar, candidaturas novas, candidatos para triar, vídeos recebidos, vagas
+   sem a prova prática definida e aprovados para contratar — cada item leva para a vaga onde resolver.
+3. **Ficha da pessoa** (clique no nome): dados, currículo, perfil, histórico e **a ação da etapa atual** (vídeo, prova prática com
+   enunciado/prazo/critérios, links do DISC/GALT, scorecards das entrevistas). Substitui os painéis soltos embaixo de cada linha.
+4. **Criar a vaga em poucos campos:** cargo, unidade, setor, quantidade, motivo e prazo à vista; **modelo de processo**
+   (Completo, Enxuto ou Operacional) no lugar de marcar 11 caixinhas; perfil, remuneração e requisitos em "Mais detalhes";
+   ajuste fino das etapas em "Ajustar as etapas deste processo".
+5. **Configuração separada do dia a dia:** "Configurar esta vaga" (etapas, orientações e prova prática) fica recolhido embaixo do
+   quadro; "Vagas", "Como funciona" e as orientações da empresa são seções recolhidas.
+
+Nada muda nos dados, nas etapas, nos e-mails nem no vídeo: só a forma de mexer. A tabela de candidatos e o seletor de 13 etapas
+saíram (a ficha ainda tem "Mover para outra etapa…" para casos fora do comum).
+
+**Ativar**: só subir o site (sem SQL nem função nova). **Testes**: 27 novos do quadro (e 5 ajustados), com 12 regressões
+plantadas e detectadas. Não foi testado em navegador de verdade: confira o fluxo do quadro depois de subir.
+
 ## v0.117.0 — Recrutamento = cadastro de pessoas; Processo seletivo = tudo da vaga
 Reorganização para ficar simples: cada tela tem **uma** função.
 

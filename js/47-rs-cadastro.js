@@ -235,6 +235,13 @@ function removerPessoaRS(id) {
     return showToast(
       'Esta pessoa tem um vídeo enviado. Exclua o vídeo antes, no painel do candidato em R&S — Processo seletivo.'
     );
+  const comResultado =
+    typeof entregasDoCandidatoRS === 'function' &&
+    pessoa.registros.some((r) => entregasDoCandidatoRS(r.id).some((x) => x.status === 'enviado'));
+  if (comResultado)
+    return showToast(
+      'Esta pessoa enviou resultados (arquivos). Exclua os resultados antes, na ficha do candidato em R&S — Processo seletivo.'
+    );
   const aviso =
     pessoa.situacao === 'em_processo' ? '\n\nATENÇÃO: ela está em um processo seletivo, que também será apagado.' : '';
   if (

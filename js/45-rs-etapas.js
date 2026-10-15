@@ -184,6 +184,12 @@ const CONFIG_ETAPA_LIMITES = {
 // Etapas cujo conteúdo depende da vaga: não existe versão "geral" da empresa — cada vaga define a sua.
 const ETAPAS_SO_POR_VAGA_RS = ['prova_pratica'];
 
+// Etapas em que o candidato DEVOLVE um resultado pelo sistema (botão "Enviar meu resultado" no e-mail da etapa).
+const ETAPAS_COM_ENTREGA_RS = ['disc_galt', 'teste_logico', 'prova_teorica', 'prova_pratica'];
+
+// Etapas cujo e-mail só serve se tiver LINK ou instrução da empresa (o candidato precisa saber onde fazer).
+const ETAPAS_QUE_PRECISAM_ORIENTACAO_RS = ['disc_galt', 'teste_logico', 'prova_teorica'];
+
 // Etapas que mandam e-mail ao candidato e, portanto, podem ter orientações (as internas e as fixas não).
 function etapasConfiguraveisRS() {
   return ETAPAS_RS.filter((e) => !e.fixa && !e.interna);
@@ -308,7 +314,7 @@ function blocoConfigEtapaHtml(cfg, etapaId, hoje) {
 }
 
 /* ---------- Formulário de uma etapa (usado na empresa e na vaga) ---------- */
-function etapaConfigCamposHtml(prefixo, etapa, cfg, referenciaHtml = '') {
+function etapaConfigCamposHtml(prefixo, etapa, cfg, referenciaHtml = '', previaHtml = '') {
   const c = configEtapaSanitizada(cfg, etapa.id);
   const e = escaparHtml;
   const pp = etapa.id === 'prova_pratica';
@@ -333,6 +339,7 @@ function etapaConfigCamposHtml(prefixo, etapa, cfg, referenciaHtml = '') {
       ${pp ? `<div class="field" style="margin:8px 0;"><label>Prazo de entrega (dias, de 1 a ${L.prazoDiasMax})</label><input id="${id('prazo')}" type="number" min="1" max="${L.prazoDiasMax}" value="${e(c.prazoDias || '')}" style="width:120px;"></div>` : ''}
       ${[0, 1, 2].map(linha).join('')}
       ${pp ? `<h4 style="font-size:13px;margin:10px 0 4px;">Critérios de avaliação <small class="small-muted">(só para você — não vão no e-mail do candidato)</small></h4>${Array.from({ length: L.criterios }, (_, i) => criterio(i)).join('')}` : ''}
+      <details style="margin-top:8px;"><summary class="small-muted" style="cursor:pointer;font-size:12.5px;">Ver o e-mail que o candidato recebe</summary><div style="border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:6px;background:var(--surface-2);font-size:13px;">${previaHtml}</div></details>
     </div></details>`;
 }
 
@@ -364,7 +371,15 @@ function rsConfigEtapasPainelHtml() {
     <p class="small-muted" style="margin:0 0 10px;">Para cada etapa, escreva as orientações e cole até ${CONFIG_ETAPA_LIMITES.links} links (por exemplo, onde fazer o teste DISC). Isso vai no e-mail do candidato quando ele entra na etapa. Só aceita endereços que começam com <b>https://</b>. Testes feitos em sites externos têm a política de privacidade do próprio site: confira antes de indicar. Cada vaga pode ter orientações próprias, que valem no lugar destas.</p>
     <p class="small-muted" style="margin:0 0 10px;">A <b>prova prática</b> não tem texto geral: ela é <b>criada em cada vaga</b> (em R&S, na vaga, em "Orientações e prova prática desta vaga").</p>
     ${etapasConfiguraveisEmpresaRS()
-      .map((et) => etapaConfigCamposHtml('rsce_', et, cfgs[et.id]))
+      .map((et) =>
+        etapaConfigCamposHtml(
+          'rsce_',
+          et,
+          cfgs[et.id],
+          '',
+          previaEmailEtapaRS(et.id, '', configEtapaSanitizada(cfgs[et.id], et.id))
+        )
+      )
       .join('')}
     <button class="btn btn-sm btn-primary" onclick="salvarConfigEtapasRS()">Salvar orientações</button>
   </div>`;
@@ -408,7 +423,7 @@ function etapasVagaOrientacoesHtml(vaga) {
     <summary style="cursor:pointer;font-weight:600;font-size:13px;">Orientações e prova prática desta vaga ${pendente ? '<span class="pill pill-desenvolver">prova prática ainda não definida</span>' : ''}</summary>
     <div style="padding:10px 0;">
       <p class="small-muted" style="margin:0 0 8px;">As orientações desta vaga valem no lugar das da empresa (R&S — Processo seletivo). A <b>prova prática</b> só existe por vaga: crie a desta aqui.</p>
-      ${usadas.map((et) => etapaConfigCamposHtml(`rsve_${vaga.id}_`, et, vaga.etapasConfig?.[et.id], et.id === 'prova_pratica' ? referenciaDaVagaHtml(vaga) : '')).join('')}
+      ${usadas.map((et) => etapaConfigCamposHtml(`rsve_${vaga.id}_`, et, vaga.etapasConfig?.[et.id], et.id === 'prova_pratica' ? referenciaDaVagaHtml(vaga) : '', previaEmailEtapaRS(et.id, state.cargos.find((c) => c.id === vaga.cargoId)?.nome || vaga.codigo, configEfetivaEtapaRS(vaga, et.id)))).join('')}
       <button class="btn btn-sm btn-primary" onclick="salvarConfigEtapasVagaRS('${escaparParaOnclick(vaga.id)}')">Salvar orientações da vaga</button>
     </div></details>`;
 }
@@ -433,4 +448,50 @@ function salvarConfigEtapasVagaRS(vagaId) {
       : 'Orientações da vaga salvas.'
   );
   render();
+}
+
+/* ---------- Modelos de processo e "próxima etapa" ---------- */
+
+// Modelos prontos: em vez de marcar as 11 etapas uma a uma, a vaga começa de um modelo e ajusta só se precisar.
+const MODELOS_PROCESSO_RS = {
+  completo: { nome: 'Completo', descricao: 'Todas as etapas.', etapas: null },
+  enxuto: {
+    nome: 'Enxuto',
+    descricao: 'Triagem, entrevista de fit, prova prática, entrevista final e escolha.',
+    etapas: ['triagem', 'entrevista_fit', 'prova_pratica', 'entrevista_final', 'escolha'],
+  },
+  operacional: {
+    nome: 'Operacional',
+    descricao: 'Triagem, checagem do currículo, entrevista de fit e escolha.',
+    etapas: ['triagem', 'checagem_curriculo', 'entrevista_fit', 'escolha'],
+  },
+};
+
+// As etapas opcionais de um modelo (o desconhecido vira "completo").
+function etapasDoModeloRS(modeloId) {
+  const modelo = MODELOS_PROCESSO_RS[modeloId] || MODELOS_PROCESSO_RS.completo;
+  return modelo.etapas ? etapasMarcadasRS(modelo.etapas) : etapasOpcionaisRS().map((e) => e.id);
+}
+
+// Marca na tela as etapas do modelo escolhido (o RH ainda pode ajustar uma a uma).
+function aplicarModeloProcessoRS(modeloId) {
+  const ids = new Set(etapasDoModeloRS(modeloId));
+  document.querySelectorAll('.rs-req-etapa').forEach((el) => {
+    el.checked = ids.has(el.value);
+  });
+}
+
+function modeloProcessoSelectHtml() {
+  return `<div class="field"><label>Modelo de processo</label>
+    <select id="rs_req_modelo" onchange="aplicarModeloProcessoRS(this.value)">${Object.entries(MODELOS_PROCESSO_RS)
+      .map(([id, m]) => `<option value="${id}">${escaparHtml(m.nome)} — ${escaparHtml(m.descricao)}</option>`)
+      .join('')}</select></div>`;
+}
+
+// A próxima etapa DESTA vaga depois da etapa atual (as que a vaga desligou são puladas). Null no fim do processo.
+function proximaEtapaDaVagaRS(vaga, etapaId) {
+  const ordem = ETAPAS_RS.map((e) => e.id);
+  const atual = ordem.indexOf(etapaId);
+  if (atual < 0) return null;
+  return etapasAtivasDaVagaRS(vaga).find((e) => ordem.indexOf(e.id) > atual) || null;
 }
