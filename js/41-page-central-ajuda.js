@@ -167,6 +167,11 @@ const FAQ_CENTRAL = [
     k: ['ver', 'resultado', 'candidato', 'enviou', 'guardado', 'tempo', 'meses', 'ficha', 'excluir', 'arquivos'],
   },
   {
+    p: 'Como cadastro várias pessoas de uma vez, a partir de uma planilha?',
+    r: 'Em R&S — Recrutamento, clique em "Importar planilha". Baixe o modelo, preencha (nome é obrigatório; e-mail, telefone, origem e currículo são opcionais), salve como CSV e escolha o arquivo. O sistema mostra uma prévia do que será importado e do que será pulado (repetidas, já cadastradas e linhas com erro). Só depois de você confirmar as pessoas são criadas, como "só cadastradas". O limite é de 500 linhas por arquivo.',
+    k: ['importar', 'planilha', 'excel', 'csv', 'varias', 'pessoas', 'cadastrar', 'lote', 'recrutamento'],
+  },
+  {
     p: 'Meu ponto é em papel, posso usar o sistema?',
     r: 'Sim. Em Folha de Ponto (papel) (Administrador e RH) você fotografa a folha ou a lista de presença do dia, o sistema lê os horários, você confere e corrige, e só então confirma. A leitura pode errar, por isso a conferência é obrigatória.',
     k: ['papel', 'folha', 'foto', 'fotografar', 'manual', 'lista', 'presenca', 'ponto'],

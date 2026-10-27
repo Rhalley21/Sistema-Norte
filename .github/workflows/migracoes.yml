@@ -1,0 +1,55 @@
+# =========================================================================
+# Migrações do banco (SQL): o que falta rodar?
+# -------------------------------------------------------------------------
+# SÓ MANUAL: Actions > "Migrações do banco" > Run workflow.
+#   - Por padrão é uma SIMULAÇÃO: lista os arquivos de sql/ que ainda não estão registrados no banco.
+#   - Para APLICAR de verdade: marque "executar". Em PRODUÇÃO isso só funciona se a variável do GitHub
+#     MIGRACOES_AUTOMATICAS_PRODUCAO = true existir (libere só depois do Supabase Pro e de testar no ambiente de testes).
+# Precisa do secret SUPABASE_ACCESS_TOKEN. Variáveis opcionais: PROJETO_PRODUCAO, PROJETO_TESTE.
+# Veja docs/AMBIENTES.md.
+# =========================================================================
+name: Migrações do banco
+
+on:
+  workflow_dispatch:
+    inputs:
+      ambiente:
+        description: 'Qual ambiente (producao ou teste)'
+        type: choice
+        options: [producao, teste]
+        default: producao
+      executar:
+        description: 'Marque para aplicar DE VERDADE. Desmarcado = só simula (lista o que falta).'
+        type: boolean
+        default: false
+
+concurrency:
+  group: migracoes
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  migracoes:
+    name: Migrações
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Instalar o Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Ver (e, se liberado, aplicar) as migrações
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJETO_PRODUCAO: ${{ vars.PROJETO_PRODUCAO }}
+          PROJETO_TESTE: ${{ vars.PROJETO_TESTE }}
+          LIBERA_PRODUCAO: ${{ vars.MIGRACOES_AUTOMATICAS_PRODUCAO }}
+          AMBIENTE: ${{ inputs.ambiente }}
+          EXECUTAR: ${{ inputs.executar }}
+        run: node scripts/migracoes.js

@@ -2,6 +2,7 @@
 <html lang="pt-BR">
   <head>
     <!-- Sentry — monitoramento de erros (ver app.html pra explicação). -->
+    <script src="ambiente.js"></script>
     <script src="https://browser.sentry-cdn.com/7.120.0/bundle.min.js" crossorigin="anonymous"></script>
     <script>
       Sentry.init({
@@ -1128,8 +1129,8 @@
       // ---- Teste grátis automático: mesma Edge Function "teste-gratis"
       // já usada no resto do sistema (gera o código, aprova e manda o
       // e-mail, tudo numa chamada só, protegida por reCAPTCHA). ----
-      const SUPABASE_URL_LANDING = 'https://mgkmvrgfmuexgxkuslur.supabase.co';
-      const SUPABASE_ANON_KEY_LANDING = 'sb_publishable_uOz0hehVdqv_7Q2LBzVbzg_J6ZH40fh';
+      const SUPABASE_URL_LANDING = window.NORTE_AMBIENTE.supabaseUrl;
+      const SUPABASE_ANON_KEY_LANDING = window.NORTE_AMBIENTE.anonKey;
       const RECAPTCHA_SITE_KEY_LANDING = '6LfeLM0tAAAAAEkhPUj62-mvS-IbcAzJbvYF3l0h';
       let recaptchaTesteWidgetId;
 

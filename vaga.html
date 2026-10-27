@@ -2,6 +2,7 @@
 <html lang="pt-BR">
   <head>
     <!-- Sentry — monitoramento de erros (ver app.html pra explicação). -->
+    <script src="ambiente.js"></script>
     <script src="https://browser.sentry-cdn.com/7.120.0/bundle.min.js" crossorigin="anonymous"></script>
     <script>
       Sentry.init({
@@ -228,8 +229,8 @@
 
     <script>
       // ---- Configuração (mesmos valores públicos que o app principal usa) ----
-      const SUPABASE_URL = 'https://mgkmvrgfmuexgxkuslur.supabase.co';
-      const SUPABASE_ANON_KEY = 'sb_publishable_uOz0hehVdqv_7Q2LBzVbzg_J6ZH40fh';
+      const SUPABASE_URL = window.NORTE_AMBIENTE.supabaseUrl;
+      const SUPABASE_ANON_KEY = window.NORTE_AMBIENTE.anonKey;
       // TODO: troque pela Site Key (pública) do seu reCAPTCHA — a mesma que você
       // cadastrou em https://www.google.com/recaptcha/admin
       const RECAPTCHA_SITE_KEY = '6LfeLM0tAAAAAEkhPUj62-mvS-IbcAzJbvYF3l0h';

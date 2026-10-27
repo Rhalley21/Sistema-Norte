@@ -25,6 +25,7 @@ function ctx(papel = 'rh') {
     'js/47-rs-cadastro.js',
     'js/48-rs-quadro.js',
     'js/49-rs-entrega.js',
+    'js/50-rs-importacao.js',
   ]);
   c.meuPapelReal = papel;
   c.meuPerfilId = 'perfil1';
@@ -651,10 +652,10 @@ test('"+ Nova vaga" abre a seção das vagas já com o formulário aberto', () =
 });
 
 test('integração: o quadro reutiliza o movimento de etapa (sem duplicar regras) e está no app; a tabela antiga de candidatos saiu', () => {
-  const q = ler('js/48-rs-quadro.js', 'js/49-rs-entrega.js');
+  const q = ler('js/48-rs-quadro.js', 'js/49-rs-entrega.js', 'js/50-rs-importacao.js');
   assert.ok(/moverEtapaCandidatoRS\(candidatoId, proxima\.id\)/.test(q));
   assert.ok(!/historico\.push|enviarEmailEtapaRS/.test(q), 'o quadro não pode reimplementar o movimento');
-  assert.ok(ler('app.html').includes('js/48-rs-quadro.js', 'js/49-rs-entrega.js'));
+  assert.ok(ler('app.html').includes('js/48-rs-quadro.js', 'js/49-rs-entrega.js', 'js/50-rs-importacao.js'));
   const rs = ler('js/40-page-rs.js');
   assert.ok(!rs.includes('<th>Candidato</th>') && rs.includes('quadroDaVagaHtml(vaga)'));
   assert.ok(ler('js/44-page-processo-seletivo.js').includes('faixaPendenciasHtml(gestor)'));

@@ -22,6 +22,7 @@ function ctx() {
     'js/46-rs-video.js',
     'js/48-rs-quadro.js',
     'js/49-rs-entrega.js',
+    'js/50-rs-importacao.js',
   ]);
   c.__toasts = [];
   c.__renders = 0;
@@ -281,7 +282,9 @@ test('copiar etapas de outra vaga: copia o que a outra usa; sem escolher a orige
 test('integração: o funil usa as etapas da vaga, a vaga nova guarda as etapas e os dados de teste usam etapas que existem', () => {
   const rs = ler('js/40-page-rs.js');
   assert.ok(
-    /etapasParaSelecaoRS\(\s*vaga,\s*c\s*\)/.test(ler('js/48-rs-quadro.js', 'js/49-rs-entrega.js')),
+    /etapasParaSelecaoRS\(\s*vaga,\s*c\s*\)/.test(
+      ler('js/48-rs-quadro.js', 'js/49-rs-entrega.js', 'js/50-rs-importacao.js')
+    ),
     'o seletor de etapa da ficha deve usar as etapas da vaga'
   );
   assert.ok(
@@ -291,7 +294,13 @@ test('integração: o funil usa as etapas da vaga, a vaga nova guarda as etapas 
   assert.ok(rs.includes('migrarEtapasLegadasRS(state.rs.candidatos'));
   assert.ok(!/const ETAPAS_RS = \[/.test(rs), 'o catálogo deve existir só em js/45-rs-etapas.js');
   assert.ok(
-    ler('app.html').includes('js/45-rs-etapas.js', 'js/46-rs-video.js', 'js/48-rs-quadro.js', 'js/49-rs-entrega.js')
+    ler('app.html').includes(
+      'js/45-rs-etapas.js',
+      'js/46-rs-video.js',
+      'js/48-rs-quadro.js',
+      'js/49-rs-entrega.js',
+      'js/50-rs-importacao.js'
+    )
   );
   const c = ctx();
   const ids = plano(rodar(c, 'ETAPAS_RS')).map((e) => e.id);

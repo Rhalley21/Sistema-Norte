@@ -1,0 +1,60 @@
+# =========================================================================
+# Publicar o SITE DE TESTES (segundo repositório do GitHub)
+# -------------------------------------------------------------------------
+# A cada push no ramo "teste", depois que o CI passar, copia só os arquivos do site (sem testes, SQL, funções e docs)
+# para o repositório de testes, que publica pelo GitHub Pages. FICA DESLIGADO até você criar a variável
+# PUBLICAR_TESTE = true. Precisa da variável REPO_TESTE (ex.: Rhalley21/Sistema-Norte-teste) e do secret TOKEN_REPO_TESTE
+# (token com permissão de escrita SÓ nesse repositório). Veja docs/AMBIENTES.md.
+# O site de testes se reconhece pelo endereço (veja ambiente.js) e só fala com o projeto Supabase de testes.
+# =========================================================================
+name: Publicar site de testes
+
+on:
+  push:
+    branches: [teste]
+  workflow_dispatch:
+
+concurrency:
+  group: publicar-teste
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
+  publicar:
+    name: Publicar
+    needs: verificar
+    if: ${{ vars.PUBLICAR_TESTE == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Copiar o site para o repositório de testes
+        env:
+          TOKEN: ${{ secrets.TOKEN_REPO_TESTE }}
+          REPO: ${{ vars.REPO_TESTE }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TOKEN:-}" ] || [ -z "${REPO:-}" ]; then
+            echo "::error::Faltam o secret TOKEN_REPO_TESTE e/ou a variável REPO_TESTE. Veja docs/AMBIENTES.md."
+            exit 1
+          fi
+          rm -rf /tmp/site && mkdir /tmp/site
+          rsync -a --exclude='.git' --exclude='node_modules' --exclude='tests' --exclude='docs' --exclude='sql' --exclude='scripts' --exclude='supabase' --exclude='.github' --exclude='*.md' ./ /tmp/site/
+          touch /tmp/site/.nojekyll
+          cd /tmp/site
+          git init -q
+          git checkout -q -b main
+          git config user.name "ci"
+          git config user.email "ci@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Site de testes: ${GITHUB_SHA}"
+          git push -q -f "https://x-access-token:${TOKEN}@github.com/${REPO}.git" main
+          echo "Site de testes publicado em ${REPO}."

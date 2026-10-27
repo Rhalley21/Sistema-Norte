@@ -70,3 +70,7 @@ Ficam no Supabase (**Edge Functions → a função → Secrets**), não no GitHu
 - **Quero parar tudo:** apague a variável `DEPLOY_AUTOMATICO`. O CI continua rodando, só a implantação para.
 
 > **Aviso honesto:** esta automação foi escrita e validada (YAML, `actionlint`, scripts e testes), mas a implantação real no seu Supabase só pode ser comprovada rodando-a. Por isso a ordem dos passos acima: simulação, depois uma função de teste, depois o automático.
+
+## Ambientes, migrações e site de testes
+
+O ambiente de testes (segundo projeto Supabase e segundo site), o fluxo **Migrações do banco** (que mostra quais SQLs faltam rodar e, se liberado, os aplica) e a publicação do site de testes estão explicados em **docs/AMBIENTES.md**, com a lista de variáveis e segredos do GitHub.

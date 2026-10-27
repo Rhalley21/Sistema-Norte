@@ -135,7 +135,7 @@ test('página do vídeo: sem rastreadores, sem Referer, fora dos buscadores, com
     ),
     'rastreador na página que carrega o código do link'
   );
-  const externos = [...h.matchAll(/<script[^>]+src="([^"]+)"/g)].map((m) => m[1]);
+  const externos = [...h.matchAll(/<script[^>]+src="(https?:[^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(externos, ['https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js']);
   assert.ok(!/supabase-js@(2|latest|\^|~)(\/|")/.test(h), 'versão da biblioteca precisa ser exata');
   assert.ok(
@@ -182,6 +182,7 @@ function ctx(papel = 'owner') {
     'js/46-rs-video.js',
     'js/48-rs-quadro.js',
     'js/49-rs-entrega.js',
+    'js/50-rs-importacao.js',
   ]);
   c.meuPapelReal = papel;
   c.meuPerfilId = 'perfil1';
@@ -526,12 +527,18 @@ test('quem não é Administrador/RH movendo para a etapa de vídeo NÃO cria ped
 // ======================= integração =======================
 test('integração: o funil mostra o painel do vídeo, o app carrega o arquivo e as ações existem na função', () => {
   const rs = ler('js/40-page-rs.js');
-  assert.ok(/videoPainelRS\(\s*c,\s*vaga\s*\)/.test(ler('js/48-rs-quadro.js', 'js/49-rs-entrega.js')));
+  assert.ok(
+    /videoPainelRS\(\s*c,\s*vaga\s*\)/.test(ler('js/48-rs-quadro.js', 'js/49-rs-entrega.js', 'js/50-rs-importacao.js'))
+  );
   assert.ok(/novaEtapa === 'video' && rsVideoHabilitado\(\)/.test(rs));
-  assert.ok(ler('app.html').includes('js/46-rs-video.js', 'js/48-rs-quadro.js', 'js/49-rs-entrega.js'));
+  assert.ok(
+    ler('app.html').includes('js/46-rs-video.js', 'js/48-rs-quadro.js', 'js/49-rs-entrega.js', 'js/50-rs-importacao.js')
+  );
   const fn = ler('supabase/functions/video-rs/index.ts');
   const usadas = [
-    ...ler('js/46-rs-video.js', 'js/48-rs-quadro.js', 'js/49-rs-entrega.js').matchAll(/chamarVideoRS\('(video_\w+)'/g),
+    ...ler('js/46-rs-video.js', 'js/48-rs-quadro.js', 'js/49-rs-entrega.js', 'js/50-rs-importacao.js').matchAll(
+      /chamarVideoRS\('(video_\w+)'/g
+    ),
   ].map((m) => m[1]);
   assert.ok(usadas.length >= 6);
   for (const a of new Set(usadas)) assert.ok(fn.includes(`action === '${a}'`), `a função não trata a ação ${a}`);

@@ -400,7 +400,7 @@ function pageRS() {
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
         <h3 style="margin:0;">Pessoas <span class="small-muted">(${lista.length}${lista.length !== todas.length ? ` de ${todas.length}` : ''})</span></h3>
-        <button class="btn btn-primary btn-sm" onclick="abrirNovaPessoaRS()">${_rsPessoaFormAberto ? 'Fechar' : '+ Pessoa'}</button>
+        <span style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-ghost btn-sm" onclick="abrirImportacaoRS()">${_rsImportacao.aberto ? 'Fechar importação' : 'Importar planilha'}</button><button class="btn btn-primary btn-sm" onclick="abrirNovaPessoaRS()">${_rsPessoaFormAberto ? 'Fechar' : '+ Pessoa'}</button></span>
       </div>
       ${
         _rsPessoaFormAberto
@@ -415,6 +415,7 @@ function pageRS() {
         </div>`
           : ''
       }
+      ${importacaoPainelHtml()}
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0;">
         <input id="rs_cad_busca" type="search" placeholder="Buscar por nome, e-mail, telefone ou origem…" value="${e(_rsCadastroFiltro.busca)}" onchange="filtrarCadastroRS('busca', this.value)" style="flex:1;min-width:220px;">
         <select onchange="filtrarCadastroRS('situacao', this.value)">${Object.entries(SITUACOES_PESSOA_RS)

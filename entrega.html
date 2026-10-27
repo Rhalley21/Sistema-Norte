@@ -213,11 +213,12 @@
     </div>
 
     <!-- Única biblioteca externa: o envio direto ao armazenamento usa o supabase-js. Versão FIXA (nunca "latest"). -->
+    <script src="ambiente.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
     <script>
       // ---- Configuração (mesmos valores públicos que as outras páginas públicas usam) ----
-      const SUPABASE_URL = 'https://mgkmvrgfmuexgxkuslur.supabase.co';
-      const SUPABASE_ANON_KEY = 'sb_publishable_uOz0hehVdqv_7Q2LBzVbzg_J6ZH40fh';
+      const SUPABASE_URL = window.NORTE_AMBIENTE.supabaseUrl;
+      const SUPABASE_ANON_KEY = window.NORTE_AMBIENTE.anonKey;
       const BUCKET = 'entregas-candidatos';
 
       // ---- Regras da entrega (testadas) --------------------------------------------------------

@@ -15,6 +15,17 @@ Uma imagem simples: o Recrutamento é a **pasta com as fichas**; o Processo sele
 - **Banco de talentos:** entra sozinho quem marcou a autorização no formulário da vaga. No Recrutamento a pessoa só aparece com a marca "No banco". Quem não autorizou não pode ser levado para lá.
 - **Quem se candidata pelo link da vaga** entra direto no processo daquela vaga (em "candidaturas novas", para você importar) e também aparece no Recrutamento.
 
+### Importar pessoas de uma planilha (Recrutamento)
+
+Em **R&S — Recrutamento**, o botão **Importar planilha** cadastra várias pessoas de uma vez:
+
+1. Baixe o **modelo de planilha (CSV)** e preencha: **nome** (obrigatório), e-mail, telefone, origem e currículo. As colunas podem vir em qualquer ordem, com ou sem acento, e também são reconhecidos nomes parecidos (por exemplo, "celular", "WhatsApp", "fonte", "resumo").
+2. No Excel, salve como **CSV** (Arquivo > Salvar como > CSV). O sistema entende ponto e vírgula, vírgula ou tabulação, aspas e arquivos do Excel brasileiro (com acentos). Limite: **500 linhas e 1 MB** por arquivo; arquivos `.xlsx` não são aceitos.
+3. Escolha o arquivo. O sistema mostra uma **prévia** com a situação de cada linha: **será importada**, **repetida na planilha**, **já cadastrada** (pelo mesmo e-mail ou telefone) ou **erro** (sem nome, e-mail inválido, nome grande demais). **Nada é criado ainda.**
+4. Clique em **Importar N pessoa(s)**. Só entram as linhas aptas, como **"só cadastradas"**: sem vaga, **sem e-mail ao candidato** e **sem ir para o banco de talentos** (que só recebe quem autorizou no formulário da vaga).
+
+O arquivo é lido no seu navegador; nada vai ao servidor antes de você confirmar. Importe apenas pessoas que a empresa tem motivo legítimo para guardar (por exemplo, quem se candidatou). A Auditoria registra só a **quantidade** importada, nunca os nomes.
+
 ## R&S — Processo seletivo — Administrador, RH e líder
 
 **Cada vaga é um quadro.** A tela tem, de cima para baixo:

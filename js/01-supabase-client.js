@@ -4,8 +4,8 @@
    dados_sistema). Chave "anon/publishable" — segura de
    expor no front-end.
    ========================================================= */
-const SUPABASE_URL = 'https://mgkmvrgfmuexgxkuslur.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_uOz0hehVdqv_7Q2LBzVbzg_J6ZH40fh';
+const SUPABASE_URL = window.NORTE_AMBIENTE.supabaseUrl;
+const SUPABASE_ANON_KEY = window.NORTE_AMBIENTE.anonKey;
 // BUG CORRIGIDO (disputa de "quem chega primeiro"): por padrão, o próprio
 // supabase-js já tenta detectar e processar sozinho qualquer token de sessão
 // presente na URL (detectSessionInUrl: true), ao mesmo tempo em que nosso

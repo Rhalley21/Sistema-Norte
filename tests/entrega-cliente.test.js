@@ -98,7 +98,7 @@ test('página do resultado: sem rastreadores, sem Referer, fora dos buscadores, 
     'rastreador na página que carrega o código do link'
   );
   assert.deepEqual(
-    [...h.matchAll(/<script[^>]+src="([^"]+)"/g)].map((m) => m[1]),
+    [...h.matchAll(/<script[^>]+src="(https?:[^"]+)"/g)].map((m) => m[1]),
     ['https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js']
   );
   assert.ok(!/supabase-js@(2|latest|\^|~)(\/|")/.test(h));
@@ -143,6 +143,7 @@ function ctx(papel = 'owner') {
     'js/47-rs-cadastro.js',
     'js/48-rs-quadro.js',
     'js/49-rs-entrega.js',
+    'js/50-rs-importacao.js',
   ]);
   c.meuPapelReal = papel;
   c.meuPerfilId = 'perfil1';

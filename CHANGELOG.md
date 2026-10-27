@@ -3,6 +3,52 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.122.0 — Importar pessoas de uma planilha (Recrutamento)
+Primeiro dos itens que faltavam no recrutamento: **cadastrar várias pessoas de uma vez**.
+
+- Botão **Importar planilha** no Recrutamento: baixa um **modelo CSV**, lê o arquivo **no navegador** (nada vai ao servidor antes da
+  confirmação) e mostra uma **prévia** com a situação de cada linha: será importada, repetida na planilha, já cadastrada (mesmo
+  e-mail ou telefone, inclusive de quem já está em processo seletivo) ou erro (sem nome, e-mail inválido, campo grande demais).
+- Entende **CSV de verdade**: separador `;` `,` ou tabulação, aspas, aspas duplicadas, quebras de linha dentro de aspas, CRLF/LF, e
+  arquivos em UTF-8 ou **Windows-1252** (o CSV do Excel brasileiro). Reconhece as colunas em qualquer ordem e com sinônimos
+  (nome, e-mail, telefone/celular/WhatsApp, origem/fonte, currículo/resumo). Limite de **500 linhas e 1 MB**; `.xlsx` é recusado com
+  a orientação de salvar como CSV.
+- As pessoas entram **"só cadastradas"**: sem vaga, **sem e-mail ao candidato** e **fora do banco de talentos**. Rodar o mesmo arquivo
+  de novo não duplica ninguém. O texto das células nunca é executado (HTML e fórmulas de planilha ficam como texto puro). A
+  Auditoria registra só a quantidade.
+
+**Ativar:** só subir o site (sem SQL nem função nova). **Testes:** 27 novos, com 14 regressões plantadas e detectadas (e 1 mutação
+sem efeito real). Não foi visto em navegador de verdade: confira o fluxo depois de subir (veja o roteiro abaixo no guia).
+
+## v0.121.0 — Preparação do ambiente de testes e verificador de migrações
+Item 7 do caminho para vender o sistema: **ambiente de testes separado** e **deploy/migrações automáticos**. O segundo projeto Supabase
+ainda não existe (depende do plano Pro), então tudo o que depende dele está **pronto e desligado**; o que não depende, já funciona.
+
+- **`ambiente.js`:** um arquivo único com o endereço e a chave PÚBLICA de cada ambiente, que escolhe o ambiente pelo **endereço do
+  site** (`teste.`/`staging.` no começo, ou `-teste` no caminho = teste; o resto = produção). **Não dá para trocar de ambiente por
+  parâmetro da URL**, então o site de produção nunca fala com o banco de testes. Enquanto o projeto de testes não existe, o site de
+  testes mostra uma faixa vermelha e não fala com ninguém. As seis telas que tinham o endereço e a chave escritos (app, entrada,
+  planos, vaga, vídeo e resultado) agora leem desse arquivo; um teste garante que nenhuma volta a escrevê-los e que **não há chave
+  secreta no site**.
+- **Deploy das funções por ambiente:** o fluxo manual ganhou a escolha `producao`/`teste` (teste exige a variável `PROJETO_TESTE`);
+  em push continua sendo sempre produção, e o automático continua desligado até a variável `DEPLOY_AUTOMATICO`.
+- **Verificador de migrações (`scripts/migracoes.js` + fluxo "Migrações do banco"):** lê os SQL da pasta `sql/` (do 15 em diante, que
+  se registram sozinhos), pergunta ao banco quais já estão registrados e **lista os pendentes, em ordem numérica**. Por padrão só
+  **simula**. Aplicar de verdade exige a caixinha "executar" e, **em produção, a variável `MIGRACOES_AUTOMATICAS_PRODUCAO = true`**.
+  Aplica um por vez, **para no primeiro erro**, confere se cada arquivo se registrou e **nunca imprime o token nem o SQL**. Só manual,
+  nunca em push. Entende banco novo (tabela de controle ainda inexistente).
+- **Publicação do site de testes (`publicar-teste.yml`):** a cada push no ramo `teste`, depois do CI, copia só o site para o
+  repositório de testes. Desligado até `PUBLICAR_TESTE = true`.
+- **docs/AMBIENTES.md:** como tudo funciona, as variáveis e os segredos do GitHub, e o passo a passo para quando o Pro chegar.
+
+**Ativar:** só subir o site (sem SQL nem função nova). Para usar o verificador: criar o secret `SUPABASE_ACCESS_TOKEN` e rodar o
+fluxo "Migrações do banco" como **simulação**.
+
+**NÃO testado com o Supabase de verdade:** a API de consulta ao banco usada pelo verificador, a publicação do site de testes e o
+deploy no projeto de testes. Por isso a primeira execução do verificador deve ser uma simulação.
+
+**Testes:** 32 novos (ambientes, telas, fluxos do GitHub e verificador com API simulada), com 15 regressões plantadas e detectadas.
+
 ## v0.120.0 — O candidato devolve o resultado do teste pelo sistema
 Nas etapas com teste ou entrega (**DISC/GALT, teste lógico, prova teórica e prova prática**), o e-mail da etapa traz, além do link do
 teste e do "Como fazer", o botão **Enviar meu resultado**. Ele abre uma página pessoal (`entrega.html`, sem login) onde o candidato

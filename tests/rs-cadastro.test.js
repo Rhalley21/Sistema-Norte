@@ -25,6 +25,7 @@ function ctx(papel = 'rh') {
     'js/46-rs-video.js',
     'js/48-rs-quadro.js',
     'js/49-rs-entrega.js',
+    'js/50-rs-importacao.js',
     'js/47-rs-cadastro.js',
   ]);
   c.meuPapelReal = papel;
