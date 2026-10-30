@@ -3,6 +3,112 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.126.0 — Segurança por papel (correção urgente)
+Uma auditoria automática das regras do banco e testes contra um **Postgres de verdade** (PGlite, com as migrações reais) mostraram que a tela escondia o que o banco
+deixava fazer. Qualquer usuário logado, inclusive um colaborador, conseguia pela API: **virar Administrador**, **criar convite de RH**, **sobrescrever ou apagar o documento
+inteiro da empresa**, **editar a própria empresa** (plano, teste grátis, suspensão), e uma conta **desativada** continuava lendo tudo. Cada brecha foi provada (o ataque
+funciona no banco antigo) e corrigida (falha no novo). Uma suspeita minha, "entrar em outra empresa", NÃO era possível e foi corrigida na documentação.
+
+**`sql/45-seguranca-papeis.sql`:** gatilhos que protegem as colunas de `perfis` (só o Administrador promove a RH; o RH troca líder e colaborador; ninguém muda o próprio papel
+nem o do Administrador; desativar só Administrador e RH, nunca a si mesmo) e de `empresas` (só o Administrador edita o cadastro; plano, licença e suspensão só o super admin);
+convites só para Administrador e RH (RH só convida líder e colaborador); `empresa_do_usuario()` e `meu_papel()` passam a considerar conta desativada e têm caminho de busca fixo;
+tabelas antigas fechadas; **gravação do documento só pela função `salvar_dados_areas`**, que confere o papel de novo, aceita só as áreas permitidas (tabela por papel), grava só as
+áreas enviadas e registra as recusadas em `seguranca_log`. Fecha a gravação direta na tabela.
+
+**Navegador (`js/18-persistence.js`):** grava pela função, enviando **só as áreas alteradas que o papel pode gravar** (matriz idêntica à do SQL, conferida por teste); área recusada
+volta ao que o servidor tem e a pessoa é avisada; "sem permissão" avisa para atualizar a página, sem repetir; **funciona se o site subir antes do SQL** (grava como antes) e descobre
+a função depois. Corrigido durante o desenvolvimento: o caminho de compatibilidade marcava como salva uma alteração feita durante a gravação (pego por teste).
+
+**Verificador permanente (`scripts/matriz-rls.py` + `docs/MATRIZ-RLS.md`):** lê todos os SQL, gera a matriz de segurança e **falha o CI** se uma migração nova abrir de novo uma escrita sem
+controle de papel (exceções documentadas com motivo); conferido contra o Postgres real. **`scripts/sql-sem-aspas.py`:** gera a versão sem aspas do SQL (testada num Postgres real).
+**`sql/emergencia/reverter-45.sql`:** plano de emergência testado (reabre as brechas, por isso fica fora da pasta numerada).
+
+**Documentos:** `docs/SEGURANCA-PAPEIS.md` (regras, ordem de subida, teste com três contas), `docs/REVISAO-SEGURANCA.md` (pacote para um revisor independente) e
+`docs/CONTINUIDADE.md` (plano para quando só uma pessoa conhece o sistema).
+
+**ATIVAR — ORDEM IMPORTA: (1) subir o site; (2) rodar o SQL 44 e depois o 45 (versões sem aspas); (3) testar com três contas.** Se o 45 rodar antes do site novo, ninguém consegue salvar.
+**AINDA ABERTO:** a leitura do documento (qualquer pessoa da empresa lê todas as áreas) e o filtro por equipe/pessoa (etapas 2 e 3); sem verificação em duas etapas; testes são contra
+Postgres simulado, não contra o Supabase real.
+**Testes:** `@electric-sql/pglite` entra como dependência de desenvolvimento. 79 novos (34 de segurança contra banco real, 18 do navegador, 6 da matriz, 3 do sem-aspas, 2 da reversão, e o
+restante ajustado), com erros plantados e detectados.
+
+**Corrigido na conferência final (verificador):** o gerador da matriz entendia `drop policy`, mas **não `drop table`**, e por isso a `docs/MATRIZ-RLS.md` mostrava como se existissem
+as duas tabelas das provas, apagadas na migração 41 (pego por um teste antigo que proíbe qualquer resto das provas). Agora uma tabela apagada sai da matriz, com as regras dela;
+a ordem de leitura dos arquivos SQL também passou a ser determinística (desempate pelo nome). A matriz correta tem **32 tabelas e 44 regras**. Coberto por teste novo.
+
+## v0.125.0 — Relatórios do recrutamento
+Primeiro item do bloco de funções "para depois" (antes só havia 3 números no Processo seletivo: tempo de contratação, aceite e candidatos por vaga).
+Nova tela **R&S — Relatórios** (menu Pessoas, só Administrador e RH), toda calculada do histórico de movimentações que o sistema já guarda:
+
+- **Funil** (quantos chegaram a cada etapa, % do total e % da etapa anterior; com uma vaga, só as etapas dela).
+- **Tempo em cada etapa** (média e mediana só dos movimentos concluídos) e **candidatos parados** há mais de 7 dias, com "Abrir ficha" (é o gargalo).
+- **Origem dos candidatos** (agrupa LinkedIn/linkedin; quantos chegam à decisão e à contratação), **reprovações** por etapa e por motivo (texto livre),
+  **por vaga** e **resumo** (tempo de contratação e aceite com o MESMO critério do indicador antigo, conferido por teste).
+- Filtros por **vaga** e por **período** (30, 90, 365 dias ou todo). **Exportar para planilha (CSV)** para o Excel brasileiro (`;`, vírgula decimal, acentos),
+  com proteção contra fórmulas de planilha, sem nomes de candidatos, e Auditoria só com os totais.
+- A tela avisa os limites: amostras com menos de 5 casos ("poucos dados"), candidatos sem data fora do filtro de período, motivo livre.
+- Acessível desde o começo: tabelas com legenda e cabeçalhos, barras só visuais (os números estão no texto), rótulos nos filtros.
+
+**Correção de dados:** "Reabrir" um candidato não deixava nenhum registro (o histórico terminava em "reprovado"), o que impediria calcular tempos. Agora deixa
+"Reaberto". Quem foi reaberto antes não entra na contagem de "em andamento".
+
+**Ativar:** só subir o site (sem SQL nem função nova). Guia e roteiro de conferência: docs/RELATORIOS-RS.md.
+**Testes:** 37 novos, com datas fixas e números conferíveis à mão, e 20 regressões plantadas e detectadas (e 2 mutações sem efeito real). Não foi visto em
+navegador de verdade: confira o roteiro de 5 minutos do guia depois de subir.
+
+## v0.124.0 — Salvamento seguro: duas pessoas ao mesmo tempo não apagam o trabalho uma da outra
+Item "saúde do código" do plano: a pergunta "o que acontece quando duas pessoas salvam ao mesmo tempo?" foi respondida lendo o código, e a resposta
+era **"vale a última gravação, sem aviso"**. Os dados de uma empresa ficam em UM documento e cada salvamento sobrescrevia o documento inteiro com a tela
+de quem salvou (sem nenhuma verificação de versão). O aviso em tempo real só avisava e nem aparecia nos 4 segundos seguintes a uma ação. Com dois ou
+mais usuários de RH ou líderes, alguém perdia trabalho, sem saber. (O navegador é o único que grava nesse documento; as funções do servidor só leem.)
+
+**Agora:**
+- **Versão no banco** (`sql/44-dados-sistema-versao.sql`): coluna `versao` e um gatilho que a sobe em QUALQUER atualização. O navegador só grava se a
+  versão ainda for a que ele carregou (conferido pelo banco, de forma atômica).
+- **Combinação em três vias** (`js/53-merge-estado.js`, funções puras): se outra pessoa gravou antes, busca a versão nova e combina campo a campo e **item
+  por item** (listas com `id`: candidatos, colaboradores, ciclos...). Dois RHs movendo candidatos diferentes, ou o líder avaliando enquanto o RH mexe em
+  outra área, ficam os dois. Histórico que só cresce junta os acréscimos. Mesmo campo do mesmo item: vale o seu, avisa e registra na Auditoria só o
+  número de pontos e as áreas (nunca valores). Apagou x alterou: o item fica. Um valor vazio padrão não apaga dado real de um campo que a base nunca teve
+  (achado por teste: empresa nova com dois navegadores).
+- **Só grava o que mudou**, uma gravação por vez, até 4 tentativas, aviso de falha uma vez, nova tentativa em 15 s, e **confirmação ao fechar a aba com
+  alteração não salva**. A alteração feita DURANTE uma gravação não é marcada como salva por engano.
+- **A tela não é redesenhada sozinha** depois de combinar (poderia apagar um formulário em preenchimento): o botão Atualizar ganha o pontinho.
+- **Ordem de subida segura:** se o site subir antes do SQL, funciona no modo antigo (com aviso no console); um navegador antigo em cache também funciona.
+  A proteção contra salvar sem carga bem-sucedida (incidente anterior de perda de dados) continua.
+
+**Ativar — nesta ordem:** (1) rodar o SQL 44 (use o arquivo sem aspas); (2) subir o site. Guia, limites e o **teste real em duas janelas**:
+docs/SALVAMENTO-SEGURO.md.
+**NÃO testado com o Supabase de verdade:** só com um banco simulado que se comporta como o real (versão que sobe sozinha, gravação condicional, erro de
+duplicidade). Faça o teste de duas janelas antes de depender disto.
+**Testes:** 64 novos (29 da combinação, incluindo 300 cenários aleatórios sem nenhuma alteração perdida, e 35 do salvamento com dois navegadores
+compartilhando o mesmo documento), com 25 regressões plantadas e detectadas.
+**Limites:** mesmo campo ao mesmo tempo (vale o último), texto longo editado por duas pessoas (vale o último) e listas de objetos sem `id` (vale o bloco de
+quem gravou por último). A modularização do código (outra metade do item) fica para a próxima etapa.
+
+## v0.123.0 — Facilidade de uso: acessibilidade, "o que fazer hoje" e primeiros passos
+Primeiro bloco do plano de facilidade de uso (celular e empresa de demonstração ficam para o próximo). Antes de construir, o estado foi MEDIDO.
+
+**1. Acessibilidade básica (`js/51-acessibilidade.js`, `css/style.css`, `app.html`).** Medição inicial: 0 rótulos ligados a campos em todo o
+sistema, 14 elementos clicáveis fora do teclado, contraste de 2,5:1 no cinza de apoio (48 usos), sem link de pular, sem aviso de tela para leitor
+de tela, foco escondido nos campos. Agora: rótulos ligados automaticamente, teclado (Enter e Espaço) nos itens clicáveis, nomes para botões só com
+ícone, menu com "página atual", cores de texto com 4,5:1 ou mais, foco visível, "Pular para o conteúdo", aviso anunciado e respeito a "reduzir
+movimento". O módulo só mexe em ATRIBUTOS e nunca derruba a tela. Seis seletores sem nome nas telas do recrutamento foram corrigidos na fonte.
+Prova em navegador real (axe-core): **24 e 31 problemas para 0 e 0** nas telas de Recrutamento e Processo seletivo. Guia: docs/ACESSIBILIDADE.md.
+
+**2. "Recrutamento: o que fazer hoje" no painel inicial** do Administrador e do RH (antes: nenhuma pendência de recrutamento). Vagas para aprovar,
+candidatos para triar, vídeos e resultados recebidos, vagas sem prova prática e aprovados para contratar; cada item leva direto à vaga. Só aparece
+para quem usa o recrutamento e tem algo a fazer; as listas do servidor carregam uma vez só.
+
+**3. Um único "Primeiros passos" (`js/52-primeiros-passos.js`).** O painel do Administrador mostrava DOIS onboardings diferentes ao mesmo tempo
+(com listas que não batiam). Ambos saíram. O novo cartão tem 7 passos obrigatórios (empresa, estrutura, cultura, cargo, mais uma pessoa,
+colaboradores, primeiro ciclo) e a primeira vaga como passo opcional; explica por que cada passo importa, destaca o próximo, tem barra de progresso
+acessível, marca sozinho o que foi feito e some quando os obrigatórios acabam (ou ao "Ocultar").
+
+**Ativar:** só subir o site (sem SQL nem função nova). `package.json` ganhou `jsdom` (só para testes).
+**Testes:** 43 novos (22 de acessibilidade, 9 do cartão do recrutamento, 12 dos primeiros passos), com 46 regressões plantadas e detectadas
+(e 2 mutações sem efeito real).
+**NÃO verificado:** leitor de tela de verdade, as demais telas do sistema em navegador real e o celular (próximo item).
+
 ## v0.122.0 — Importar pessoas de uma planilha (Recrutamento)
 Primeiro dos itens que faltavam no recrutamento: **cadastrar várias pessoas de uma vez**.
 

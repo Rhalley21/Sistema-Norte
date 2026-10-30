@@ -1,6 +1,6 @@
 {
   "name": "plataforma-norte",
-  "version": "0.122.0",
+  "version": "0.126.0",
   "private": true,
   "description": "Plataforma NORTE — Metodologia NORTE, Instituto INETRIS",
   "scripts": {
@@ -15,7 +15,9 @@
     "verificar": "npm run lint && npm run format:check && npm run check:sintaxe && npm run check:tipos && npm test"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.13",
     "eslint": "^8.57.0",
+    "jsdom": "^26.1.0",
     "prettier": "^3.3.3",
     "typescript": "^5.9.3"
   },

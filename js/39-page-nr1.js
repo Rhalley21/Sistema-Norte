@@ -1188,15 +1188,15 @@ function renderPainelExecutivoNr1() {
       <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);">
         <div class="kpi-card-inetris" style="flex-direction:column;">
           <div class="kpi-card-label">Riscos baixos</div>
-          <div class="kpi-card-valor" style="color:var(--alavancar);">${porNivel.Baixo}</div>
+          <div class="kpi-card-valor" style="color:var(--alavancar-texto);">${porNivel.Baixo}</div>
         </div>
         <div class="kpi-card-inetris" style="flex-direction:column;">
           <div class="kpi-card-label">Riscos médios</div>
-          <div class="kpi-card-valor" style="color:var(--desenvolver);">${porNivel.Médio}</div>
+          <div class="kpi-card-valor" style="color:var(--desenvolver-texto);">${porNivel.Médio}</div>
         </div>
         <div class="kpi-card-inetris" style="flex-direction:column;">
           <div class="kpi-card-label">Riscos altos/críticos</div>
-          <div class="kpi-card-valor" style="color:var(--iniciar);">${porNivel.Alto + porNivel.Crítico}</div>
+          <div class="kpi-card-valor" style="color:var(--iniciar-texto);">${porNivel.Alto + porNivel.Crítico}</div>
         </div>
         <div class="kpi-card-inetris" style="flex-direction:column;">
           <div class="kpi-card-label">Ações atrasadas</div>

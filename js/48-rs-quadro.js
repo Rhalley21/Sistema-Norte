@@ -285,7 +285,7 @@ function fichaDoCandidatoHtml(c, vaga) {
     .join('');
   const acoes = c.reprovado
     ? `<button class="btn btn-sm btn-ghost" onclick="reabrirCandidatoRS('${id}')">Reabrir</button>`
-    : `<select onchange="moverEtapaCandidatoRS('${id}', this.value)" style="max-width:220px;"><option value="">Mover para outra etapa…</option>${etapasParaSelecaoRS(
+    : `<select aria-label="Mover para outra etapa" onchange="moverEtapaCandidatoRS('${id}', this.value)" style="max-width:220px;"><option value="">Mover para outra etapa…</option>${etapasParaSelecaoRS(
         vaga,
         c
       )
@@ -340,4 +340,47 @@ function quadroDaVagaHtml(vaga) {
 function iniciarNovaVagaRS() {
   _psVagasAberto = true;
   abrirNovaRequisicaoRS();
+}
+
+// ---------- "O que fazer hoje" no painel inicial ----------
+// Vai direto para a pendência: abre o Processo seletivo já na vaga certa (e na seção certa).
+function irParaPendenciaRS(chave, vagaId) {
+  if (chave === 'aprovar') _psVagasAberto = true;
+  if (chave === 'prova' && vagaId) _rsOrientacoesVagaAberta = vagaId;
+  _rsRequisicaoExpandida = vagaId || null;
+  _psFichaAberta = null;
+  goto('rs_processo');
+}
+
+// O cartão "Recrutamento: o que fazer hoje" do painel de Administrador e RH. Só aparece para quem USA o recrutamento e tem algo
+// a fazer; some quando não há nada. As listas que vêm do servidor (vídeos e resultados) carregam uma vez só.
+function renderPendenciasRecrutamento() {
+  if (!['owner', 'rh'].includes(meuPapelReal) || !state.rs) return '';
+  const usaRecrutamento = state.rs.requisicoes.length + state.rs.candidatos.length > 0;
+  if (!usaRecrutamento) return '';
+  if (typeof carregarEntregasRS === 'function' && typeof _rsEntregas !== 'undefined' && _rsEntregas === null)
+    carregarEntregasRS();
+  if (
+    typeof rsVideoHabilitado === 'function' &&
+    rsVideoHabilitado() &&
+    typeof _rsVideos !== 'undefined' &&
+    _rsVideos === null
+  )
+    carregarVideosRS();
+  const acoes = acoesPendentesRS({
+    requisicoes: state.rs.requisicoes,
+    candidatos: state.rs.candidatos,
+    videos: typeof _rsVideos !== 'undefined' ? _rsVideos || [] : [],
+    entregas: typeof _rsEntregas !== 'undefined' ? _rsEntregas || [] : [],
+    candidaturasPendentes: {},
+    vagaSelecionadaId: null,
+    gestor: true,
+  });
+  if (!acoes.length) return '';
+  const e = escaparHtml;
+  return `<div class="card" style="border-left:3px solid var(--gold);">
+    <h3 style="margin:0 0 4px;font-size:15px;">Recrutamento: o que fazer hoje</h3>
+    <div class="small-muted" style="margin-bottom:10px;">Clique para ir direto à vaga onde resolver.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">${acoes.map((a) => `<button class="btn btn-sm btn-ghost" onclick="irParaPendenciaRS('${a.chave}', ${a.vagaId ? `'${escaparParaOnclick(a.vagaId)}'` : 'null'})">${e(a.texto)} →</button>`).join('')}</div>
+  </div>`;
 }

@@ -171,7 +171,7 @@ async function salvarEmpresa() {
   const cnpj = document.getElementById('f_cnpj').value.trim();
   if (!validarCNPJ(cnpj)) {
     erroEl.innerHTML =
-      '<p class="small-muted" style="color:var(--iniciar);margin-top:8px;">CNPJ inválido — confira o número digitado (dígito verificador não confere).</p>';
+      '<p class="small-muted" style="color:var(--iniciar-texto);margin-top:8px;">CNPJ inválido — confira o número digitado (dígito verificador não confere).</p>';
     return;
   }
 
@@ -185,10 +185,10 @@ async function salvarEmpresa() {
   if (erroCnpj) {
     if (erroCnpj.code === '23505' || /duplicate|unique/i.test(erroCnpj.message || '')) {
       erroEl.innerHTML =
-        '<p class="small-muted" style="color:var(--iniciar);margin-top:8px;">CNPJ já cadastrado nesta instância. Se isso for um erro, entre em contato com o suporte.</p>';
+        '<p class="small-muted" style="color:var(--iniciar-texto);margin-top:8px;">CNPJ já cadastrado nesta instância. Se isso for um erro, entre em contato com o suporte.</p>';
     } else {
       erroEl.innerHTML =
-        '<p class="small-muted" style="color:var(--iniciar);margin-top:8px;">Não foi possível salvar agora. Tente novamente.</p>';
+        '<p class="small-muted" style="color:var(--iniciar-texto);margin-top:8px;">Não foi possível salvar agora. Tente novamente.</p>';
     }
     return;
   }

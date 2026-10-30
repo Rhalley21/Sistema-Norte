@@ -134,7 +134,7 @@ function etapasVagaEditorHtml(vaga) {
         <button class="btn btn-sm btn-primary" onclick="salvarEtapasVagaRS('${escaparParaOnclick(vaga.id)}')">Salvar etapas</button>
         ${
           outras.length
-            ? `<select id="rs_etapas_copiar_${escaparHtml(vaga.id)}" style="max-width:220px;"><option value="">Copiar de outra vaga…</option>${outras.map((r) => `<option value="${escaparHtml(r.id)}">${escaparHtml(nomeDe(r))} (${escaparHtml(r.codigo)})</option>`).join('')}</select>
+            ? `<select aria-label="Copiar as etapas de outra vaga" id="rs_etapas_copiar_${escaparHtml(vaga.id)}" style="max-width:220px;"><option value="">Copiar de outra vaga…</option>${outras.map((r) => `<option value="${escaparHtml(r.id)}">${escaparHtml(nomeDe(r))} (${escaparHtml(r.codigo)})</option>`).join('')}</select>
                <button class="btn btn-sm btn-ghost" onclick="copiarEtapasVagaRS('${escaparParaOnclick(vaga.id)}')">Copiar</button>`
             : ''
         }

@@ -122,7 +122,7 @@ function pageWebhooks() {
           : `
         <div class="field"><label>Nome (rótulo interno)</label><input value="${escaparHtml(_webhookNovoNome)}" oninput="_webhookNovoNome=this.value;" placeholder="Ex: Slack do RH"></div>
         <div class="field"><label>URL</label><input id="webhook_novo_url_input" value="${escaparHtml(_webhookNovoUrl)}" oninput="_webhookNovoUrl=this.value; document.getElementById('aviso_slack_detectado').style.display = /hooks\.slack\.com/i.test(this.value) ? '' : 'none';" placeholder="https://..."></div>
-        <p id="aviso_slack_detectado" class="small-muted" style="color:var(--alavancar);margin-top:-8px;display:${/hooks\.slack\.com/i.test(_webhookNovoUrl) ? '' : 'none'};">✅ URL do Slack detectada — a mensagem vai chegar formatada como texto, não como JSON bruto.</p>
+        <p id="aviso_slack_detectado" class="small-muted" style="color:var(--alavancar-texto);margin-top:-8px;display:${/hooks\.slack\.com/i.test(_webhookNovoUrl) ? '' : 'none'};">✅ URL do Slack detectada — a mensagem vai chegar formatada como texto, não como JSON bruto.</p>
         <div class="field"><label>Eventos <small>(nenhum marcado = recebe todos)</small></label>
           <div class="chip-row">
             ${EVENTOS_DOMINIO_DISPONIVEIS.map(
@@ -155,7 +155,7 @@ function pageWebhooks() {
               </div>
               <div style="display:flex;gap:6px;">
                 <button class="btn btn-ghost btn-sm" onclick="${w.ativo ? 'alternarAtivoWebhook' : 'alternarAtivoWebhook'}('${w.id}', ${!w.ativo})">${w.ativo ? 'Desativar' : 'Ativar'}</button>
-                <button class="btn btn-ghost btn-sm" style="color:var(--iniciar);" onclick="excluirWebhook('${w.id}','${escaparParaOnclick(w.nome)}')">Excluir</button>
+                <button class="btn btn-ghost btn-sm" style="color:var(--iniciar-texto);" onclick="excluirWebhook('${w.id}','${escaparParaOnclick(w.nome)}')">Excluir</button>
               </div>
             </div>
             <div class="small-muted" style="margin-top:6px;font-size:11.5px;">

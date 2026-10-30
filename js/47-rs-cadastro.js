@@ -347,7 +347,7 @@ function pageRS() {
     const emProcesso = p.processos.find((r) => situacaoDoRegistroRS(r) === 'em_processo');
     const acoes = [
       pode.ok && vagas.length
-        ? `<select id="rs_levar_${e(c.id)}" style="max-width:190px;"><option value="">Levar para a vaga…</option>${vagas.map((r) => `<option value="${e(r.id)}">${e(nomeDaVaga(r))}</option>`).join('')}</select> <button class="btn btn-sm btn-primary" onclick="levarPessoaParaVagaRS('${id}')">Levar</button>`
+        ? `<select aria-label="Escolher a vaga para levar a pessoa" id="rs_levar_${e(c.id)}" style="max-width:190px;"><option value="">Levar para a vaga…</option>${vagas.map((r) => `<option value="${e(r.id)}">${e(nomeDaVaga(r))}</option>`).join('')}</select> <button class="btn btn-sm btn-primary" onclick="levarPessoaParaVagaRS('${id}')">Levar</button>`
         : '',
       emProcesso
         ? `<button class="btn btn-sm btn-primary" onclick="irParaProcessoDaVagaRS('${escaparParaOnclick(emProcesso.vagaId)}')">Ver no processo</button>`
@@ -418,7 +418,9 @@ function pageRS() {
       ${importacaoPainelHtml()}
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0;">
         <input id="rs_cad_busca" type="search" placeholder="Buscar por nome, e-mail, telefone ou origem…" value="${e(_rsCadastroFiltro.busca)}" onchange="filtrarCadastroRS('busca', this.value)" style="flex:1;min-width:220px;">
-        <select onchange="filtrarCadastroRS('situacao', this.value)">${Object.entries(SITUACOES_PESSOA_RS)
+        <select aria-label="Filtrar por situação" onchange="filtrarCadastroRS('situacao', this.value)">${Object.entries(
+          SITUACOES_PESSOA_RS
+        )
           .map(
             ([k, rot]) =>
               `<option value="${k}" ${k === _rsCadastroFiltro.situacao ? 'selected' : ''}>${e(rot)}</option>`

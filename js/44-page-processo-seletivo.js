@@ -134,11 +134,12 @@ function pageProcessoSeletivoRS() {
         <span class="small-muted">Vaga</span>
         ${
           aprovadas.length
-            ? `<select onchange="selecionarVagaRS(this.value)" style="max-width:320px;">${aprovadas.map((r) => `<option value="${e(r.id)}" ${vaga && vaga.id === r.id ? 'selected' : ''}>${e(nomeDe(r))}</option>`).join('')}</select>`
+            ? `<select aria-label="Escolher a vaga" onchange="selecionarVagaRS(this.value)" style="max-width:320px;">${aprovadas.map((r) => `<option value="${e(r.id)}" ${vaga && vaga.id === r.id ? 'selected' : ''}>${e(nomeDe(r))}</option>`).join('')}</select>`
             : '<span class="small-muted">nenhuma vaga aprovada ainda</span>'
         }
       </div>
-      <button class="btn btn-primary btn-sm" onclick="iniciarNovaVagaRS()">+ Nova vaga</button>
+      <span style="display:flex;gap:8px;flex-wrap:wrap;">${gestor ? '<button class="btn btn-ghost btn-sm" onclick="goto(\'rs_relatorios\')">Relatórios</button>' : ''}
+      <button class="btn btn-primary btn-sm" onclick="iniciarNovaVagaRS()">+ Nova vaga</button></span>
     </div>
 
     ${vaga ? renderPipelineCandidatosRS(vaga) : '<div class="card"><div class="empty">Nenhuma vaga aprovada ainda. Clique em "+ Nova vaga", envie para aprovação e, depois de aprovada, ela vira um quadro aqui.</div></div>'}

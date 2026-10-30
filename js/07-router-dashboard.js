@@ -54,6 +54,8 @@ function renderRoute() {
       return pageBancoTalentos();
     case 'rs_processo':
       return pageProcessoSeletivoRS();
+    case 'rs_relatorios':
+      return pageRelatoriosRS();
     case 'clima':
       return pageClima();
     case 'nr1':
@@ -99,57 +101,6 @@ function renderMinhaAvaliacaoPendente() {
   </div>`;
 }
 
-function renderPendenciasAdmin() {
-  const passos = [
-    {
-      texto: 'Ativar o cadastro da empresa',
-      rota: 'empresa',
-      feito: !!(state.empresa && state.empresa.estado === 'Ativa'),
-    },
-    {
-      texto: 'Cadastrar ao menos uma Unidade na Estrutura Organizacional',
-      rota: 'estrutura',
-      feito: state.estrutura.length > 0,
-    },
-    {
-      texto: 'Preencher a Cultura Organizacional (missão, visão, valores)',
-      rota: 'cultura',
-      feito: !!state.cultura.missao,
-    },
-    {
-      texto: 'Publicar ao menos um Desenho de Cargo',
-      rota: 'cargos',
-      feito: state.cargos.some((c) => c.desenho.aprovado),
-    },
-    {
-      texto: 'Convidar ao menos mais uma pessoa (RH, Gestor ou Colaborador)',
-      rota: 'usuarios',
-      feito: _perfisEmpresa.length >= 2,
-    },
-  ];
-  const feitos = passos.filter((p) => p.feito).length;
-  if (feitos === passos.length) return ''; // onboarding completo — some daqui, não fica poluindo o dashboard pra sempre
-
-  const percentual = Math.round((feitos / passos.length) * 100);
-  const primeiroAcesso = feitos === 0;
-  return `
-    <div class="card" style="border-left:3px solid var(--gold);">
-      <h3>${primeiroAcesso ? 'Bem-vindo(a) à Plataforma NORTE! 👋' : 'Onboarding do tenant'} <small>${feitos} de ${passos.length} passos concluídos — siga a ordem abaixo pra deixar o sistema pronto pra operar</small></h3>
-      <div style="background:var(--surface-2);border-radius:20px;height:8px;overflow:hidden;margin:10px 0 16px;">
-        <div style="background:var(--gold);height:100%;width:${percentual}%;transition:width .3s ease;"></div>
-      </div>
-      ${passos
-        .map(
-          (p) => `
-        <div class="pendencia-item" style="${p.feito ? 'opacity:.55;' : ''}">
-          <span>${p.feito ? '✅' : '◻'} ${p.texto}</span>
-          ${!p.feito ? `<button class="btn btn-sm" onclick="goto('${p.rota}')">Resolver →</button>` : ''}
-        </div>
-      `
-        )
-        .join('')}
-    </div>`;
-}
 function diasDesdeAbertura(ciclo) {
   const hoje = new Date(hojeLocalISO());
   const abertura = new Date(ciclo.dataAbertura);
@@ -217,7 +168,7 @@ function renderKpisRH() {
           <div>
             <div class="kpi-card-label">Pendências de avaliador</div>
             <div class="kpi-card-valor">${k.pendentesTotal}</div>
-            <div class="kpi-card-nota">${k.pendentesTotal ? '<span style="color:var(--iniciar);">Precisam de decisão</span> · ver →' : 'Nenhuma pendência agora'}</div>
+            <div class="kpi-card-nota">${k.pendentesTotal ? '<span style="color:var(--iniciar-texto);">Precisam de decisão</span> · ver →' : 'Nenhuma pendência agora'}</div>
           </div>
         </div>
       </div>
@@ -456,7 +407,7 @@ function renderPendenciasRH() {
       ${promocaoVencendo.length ? `<div class="pendencia-item"><span><b>${promocaoVencendo.length}</b> ciclo(s) extraordinário(s) pós-promoção (RN016) vencendo nos próximos 7 dias</span><button class="btn btn-sm" onclick="goto('ciclos')">Ver →</button></div>` : ''}
       ${
         pontoHabilitado && _dashPontoPendencias && _dashPontoPendencias.total
-          ? `<div class="pendencia-item"><span><b>${_dashPontoPendencias.total}</b> justificativa(s) de ponto aguardando decisão${_dashPontoPendencias.escalonadas ? ` — <b style="color:var(--iniciar);">${_dashPontoPendencias.escalonadas} escalonada(s)</b> (mais de 3 dias sem resposta)` : ''}</span><button class="btn btn-sm" onclick="goto('conferencia_ponto')">Decidir →</button></div>`
+          ? `<div class="pendencia-item"><span><b>${_dashPontoPendencias.total}</b> justificativa(s) de ponto aguardando decisão${_dashPontoPendencias.escalonadas ? ` — <b style="color:var(--iniciar-texto);">${_dashPontoPendencias.escalonadas} escalonada(s)</b> (mais de 3 dias sem resposta)` : ''}</span><button class="btn btn-sm" onclick="goto('conferencia_ponto')">Decidir →</button></div>`
           : ''
       }
       ${nr1AcoesAtrasadas ? `<div class="pendencia-item"><span><b>${nr1AcoesAtrasadas}</b> ação(ões) do plano NR1 com prazo vencido</span><button class="btn btn-sm" onclick="goto('nr1')">Ver →</button></div>` : ''}
@@ -519,7 +470,7 @@ function renderPendenciasGestor() {
       ${semFeedback.length ? `<div class="pendencia-item"><span><b>${semFeedback.length}</b> reunião(ões) de feedback ainda não registrada(s)</span><button class="btn btn-sm" onclick="goto('ciclos')">Registrar →</button></div>` : ''}
       ${
         pontoHabilitado && _dashPontoPendencias && _dashPontoPendencias.total
-          ? `<div class="pendencia-item"><span><b>${_dashPontoPendencias.total}</b> justificativa(s) de ponto aguardando decisão${_dashPontoPendencias.escalonadas ? ` — <b style="color:var(--iniciar);">${_dashPontoPendencias.escalonadas} escalonada(s)</b> (mais de 3 dias sem resposta)` : ''}</span><button class="btn btn-sm" onclick="goto('conferencia_ponto')">Decidir →</button></div>`
+          ? `<div class="pendencia-item"><span><b>${_dashPontoPendencias.total}</b> justificativa(s) de ponto aguardando decisão${_dashPontoPendencias.escalonadas ? ` — <b style="color:var(--iniciar-texto);">${_dashPontoPendencias.escalonadas} escalonada(s)</b> (mais de 3 dias sem resposta)` : ''}</span><button class="btn btn-sm" onclick="goto('conferencia_ponto')">Decidir →</button></div>`
           : ''
       }
       ${substitutoNaoDefinidoGestor ? `<div class="pendencia-item"><span>Você ainda não definiu um <b>substituto</b> para aprovar no seu lugar quando estiver ausente</span><button class="btn btn-sm" onclick="goto('conferencia_ponto')">Definir →</button></div>` : ''}
@@ -622,10 +573,18 @@ function pageDashboard() {
   } else if (state.role === 'rh') {
     const corpoRH = renderDashboardRH(); // roda primeiro pra calcular os dados que os KPIs e o painel de gráficos usam
     body =
-      renderMinhaAvaliacaoPendente() + renderPendenciasRH() + renderKpisRH() + renderPainelOperacionalRH() + corpoRH;
+      renderMinhaAvaliacaoPendente() +
+      renderPendenciasRecrutamento() +
+      renderPendenciasRH() +
+      renderKpisRH() +
+      renderPainelOperacionalRH() +
+      corpoRH;
   } else {
     body =
-      renderMinhaAvaliacaoPendente() + renderPendenciasAdmin() + renderDashboardAdmin(abertos, pdisAtivos, encerrados);
+      renderMinhaAvaliacaoPendente() +
+      renderPrimeirosPassos() +
+      renderPendenciasRecrutamento() +
+      renderDashboardAdmin(abertos, pdisAtivos, encerrados);
   }
 
   const meuNome = nomePorPerfilId(meuPerfilId);
@@ -675,65 +634,6 @@ function pageDashboard() {
 }
 
 /* ---------- Administrador: visão geral da empresa, indicadores estratégicos, evolução consolidada ---------- */
-// Checklist de primeiros passos — só aparece pra quem ainda não completou o
-// básico, calculado a partir do estado real da empresa (não de um contador
-// manual). Some sozinho quando tudo estiver feito; também dá pra fechar
-// manualmente antes disso, se a pessoa preferir.
-function renderChecklistOnboarding() {
-  if (state.configuracoes?.onboardingOculto) return '';
-  const passos = [
-    {
-      titulo: 'Complete o cadastro da empresa',
-      feito: !!(state.empresa?.razaoSocial && state.empresa?.cnpj),
-      rota: 'empresa',
-    },
-    {
-      titulo: 'Crie a estrutura organizacional',
-      feito: state.estrutura.length > 0,
-      rota: 'estrutura',
-    },
-    {
-      titulo: 'Publique pelo menos um cargo',
-      feito: state.cargos.some((c) => c.desenho?.aprovado),
-      rota: 'cargos',
-    },
-    {
-      titulo: 'Cadastre seus colaboradores',
-      feito: state.colaboradores.some((c) => !c.inativo),
-      rota: 'colaboradores',
-    },
-    {
-      titulo: 'Abra o primeiro ciclo de avaliação',
-      feito: state.ciclos.length > 0,
-      rota: 'ciclos',
-    },
-  ];
-  const concluidos = passos.filter((p) => p.feito).length;
-  if (concluidos === passos.length) return '';
-
-  return `
-    <div class="card" style="border-left:3px solid var(--gold);">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-        <h3 style="margin:0;">Primeiros passos <small>${concluidos} de ${passos.length} concluídos</small></h3>
-        <button class="btn btn-ghost btn-sm" onclick="state.configuracoes = state.configuracoes || {}; state.configuracoes.onboardingOculto = true; render();">Ocultar</button>
-      </div>
-      <div style="margin:10px 0 4px;height:6px;background:var(--surface-2);border-radius:99px;overflow:hidden;">
-        <div style="height:100%;width:${(concluidos / passos.length) * 100}%;background:var(--gold);border-radius:99px;"></div>
-      </div>
-      <div style="display:grid;gap:8px;margin-top:12px;">
-        ${passos
-          .map(
-            (p) => `
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;${p.feito ? '' : 'border-top:1px solid var(--line);'}">
-            <span style="${p.feito ? 'color:var(--ink-faint);text-decoration:line-through;' : ''}">${p.feito ? '✓' : '○'} ${p.titulo}</span>
-            ${!p.feito ? `<button class="btn btn-sm btn-primary" onclick="goto('${p.rota}')">Ir</button>` : ''}
-          </div>`
-          )
-          .join('')}
-      </div>
-    </div>
-  `;
-}
 
 function renderDashboardAdmin(abertos, pdisAtivos, encerrados) {
   const unidades = state.estrutura.filter((n) => n.tipo === 'unidade');
@@ -872,7 +772,6 @@ function renderDashboardAdmin(abertos, pdisAtivos, encerrados) {
   };
 
   return `
-    ${renderChecklistOnboarding()}
     ${
       meuPapelReal === 'owner'
         ? `
@@ -1331,9 +1230,9 @@ function renderDashboardGestor() {
               const diff = ordemIDA[ultimo.diagnostico.geral] - ordemIDA[anterior.diagnostico.geral];
               evolucao =
                 diff > 0
-                  ? '<span style="color:var(--alavancar);">↑ Melhorou</span>'
+                  ? '<span style="color:var(--alavancar-texto);">↑ Melhorou</span>'
                   : diff < 0
-                    ? '<span style="color:var(--iniciar);">↓ Piorou</span>'
+                    ? '<span style="color:var(--iniciar-texto);">↓ Piorou</span>'
                     : '<span class="small-muted">→ Manteve</span>';
             }
             return `<tr>

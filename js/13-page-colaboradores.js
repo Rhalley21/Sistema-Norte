@@ -131,10 +131,10 @@ function renderPreviewImportacao() {
             <div class="import-preview-info">
               <div class="import-preview-nome">${l.nome || '<span class="small-muted">(sem nome)</span>'}</div>
               <div class="import-preview-campos">
-                <span><b>Cargo:</b> ${l.cargo ? l.cargo.nome : '<span style="color:var(--iniciar);">—</span>'}</span>
-                <span><b>Unidade:</b> ${l.unidade ? l.unidade.nome : '<span style="color:var(--iniciar);">—</span>'}</span>
-                <span><b>Setor:</b> ${l.setor ? l.setor.nome : '<span style="color:var(--iniciar);">—</span>'}</span>
-                <span><b>Gestor:</b> ${l.gestor ? l.gestor.nome : '<span style="color:var(--iniciar);">—</span>'}</span>
+                <span><b>Cargo:</b> ${l.cargo ? l.cargo.nome : '<span style="color:var(--iniciar-texto);">—</span>'}</span>
+                <span><b>Unidade:</b> ${l.unidade ? l.unidade.nome : '<span style="color:var(--iniciar-texto);">—</span>'}</span>
+                <span><b>Setor:</b> ${l.setor ? l.setor.nome : '<span style="color:var(--iniciar-texto);">—</span>'}</span>
+                <span><b>Gestor:</b> ${l.gestor ? l.gestor.nome : '<span style="color:var(--iniciar-texto);">—</span>'}</span>
               </div>
               ${l.erros.length ? `<div class="import-preview-erro">${l.erros.join(' · ')}</div>` : ''}
             </div>
@@ -388,7 +388,7 @@ function pageColaboradores() {
             return `
           <tr style="${p.inativo ? 'opacity:.6;' : ''}">
             <td><b>${escaparHtml(p.nome)}</b></td>
-            <td class="small-muted">${cargo ? cargo.nome + (p.versaoCargoVinculada ? ' (v' + p.versaoCargoVinculada + ')' : ' <span style="color:var(--iniciar);">(vínculo desatualizado — use Movimentar)</span>') : '—'}</td>
+            <td class="small-muted">${cargo ? cargo.nome + (p.versaoCargoVinculada ? ' (v' + p.versaoCargoVinculada + ')' : ' <span style="color:var(--iniciar-texto);">(vínculo desatualizado — use Movimentar)</span>') : '—'}</td>
             <td class="small-muted">${nomeEstrutura(p.unidadeId)}</td>
             <td class="small-muted">${nomeEstrutura(p.setorId)}</td>
             <td class="small-muted">${p.gestorPerfilId ? nomePerfil(p.gestorPerfilId) : '—'}</td>
@@ -405,8 +405,8 @@ function pageColaboradores() {
                   !p.inativo
                     ? `<button class="btn btn-ghost btn-sm" onclick="desligarColaborador('${p.id}')">Desligar</button>`
                     : `
-                  <button class="btn btn-ghost btn-sm" style="color:var(--alavancar);" onclick="religarColaborador('${p.id}')">Religar</button>
-                  <button class="btn btn-ghost btn-sm" style="color:var(--iniciar);" onclick="confirmarAnonimizacao('${p.id}')">Anonimizar (LGPD)</button>
+                  <button class="btn btn-ghost btn-sm" style="color:var(--alavancar-texto);" onclick="religarColaborador('${p.id}')">Religar</button>
+                  <button class="btn btn-ghost btn-sm" style="color:var(--iniciar-texto);" onclick="confirmarAnonimizacao('${p.id}')">Anonimizar (LGPD)</button>
                 `
                 }
               `

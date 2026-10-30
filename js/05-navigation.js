@@ -31,6 +31,7 @@ const STEPS_BASE = [
   }, // RH/Admin conferem as batidas com as fotos
   { id: 'rs', label: 'R&S — Recrutamento', group: 'Pessoas', papeis: ['owner', 'rh'] }, // cadastro de pessoas: guarda os dados e leva a pessoa para um processo seletivo
   { id: 'rs_processo', label: 'R&S — Processo seletivo', group: 'Pessoas', papeis: ['owner', 'rh', 'lider'] }, // as vagas, as etapas e o funil de cada vaga
+  { id: 'rs_relatorios', label: 'R&S — Relatórios', group: 'Pessoas', papeis: ['owner', 'rh'] }, // funil, tempo por etapa, origem e reprovações do recrutamento
   { id: 'rs_talentos', label: 'R&S — Banco de talentos', group: 'Pessoas', papeis: ['owner', 'rh'] }, // candidatos que autorizaram ficar no banco
   {
     id: 'folha_papel',
@@ -105,6 +106,8 @@ function stepUnlocked(id) {
     case 'rs_talentos':
       return true;
     case 'rs_processo':
+      return true;
+    case 'rs_relatorios':
       return true;
     case 'ciclos':
       return state.colaboradores.length > 0;

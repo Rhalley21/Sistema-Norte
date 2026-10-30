@@ -77,7 +77,7 @@ function renderTrocaSenhaObrigatoria() {
         <p class="page-desc" style="margin-bottom:20px;">Esta conta foi criada com uma senha provisória. Escolha uma senha própria para continuar.</p>
         <div class="field"><label>Nova senha <small>(mínimo 6 caracteres)</small></label><input id="tf_nova_senha" type="password"></div>
         <div class="field"><label>Confirme a nova senha</label><input id="tf_confirma_senha" type="password"></div>
-        ${erroLogin ? `<p style="color:var(--iniciar);font-size:13px;margin:8px 0;">${escaparHtml(erroLogin)}</p>` : ''}
+        ${erroLogin ? `<p style="color:var(--iniciar-texto);font-size:13px;margin:8px 0;">${escaparHtml(erroLogin)}</p>` : ''}
         <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="trocarSenhaObrigatoria()">Definir senha e entrar</button>
       </div>
     </div>`;
@@ -153,7 +153,7 @@ function renderLogin() {
             </label>`
               : ''
           }
-          ${erroLogin ? `<p style="color:var(--iniciar);font-size:12.5px;margin:-4px 0 12px;">${erroLogin}</p>` : ''}
+          ${erroLogin ? `<p style="color:var(--iniciar-texto);font-size:12.5px;margin:-4px 0 12px;">${erroLogin}</p>` : ''}
           <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="${modoLogin === 'entrar' ? 'entrarLogin()' : 'cadastrarLogin()'}" ${carregandoLogin || statusAtual.bloqueado ? 'disabled' : ''}>
             ${carregandoLogin ? 'Aguarde…' : statusAtual.bloqueado ? `Bloqueado (${statusAtual.minutosRestantes} min)` : modoLogin === 'entrar' ? 'Entrar' : 'Criar conta'}
           </button>
@@ -602,7 +602,7 @@ function renderRedefinirSenha() {
         <p class="page-desc">Digite a nova senha para a sua conta.</p>
         <div class="field"><label>Nova senha</label><input id="rs-senha" type="password" minlength="6" required></div>
         <div class="field"><label>Confirmar nova senha</label><input id="rs-senha-confirma" type="password" minlength="6" required></div>
-        ${erroRedefinirSenha ? `<p style="color:var(--iniciar);font-size:12.5px;margin:-4px 0 12px;">${erroRedefinirSenha}</p>` : ''}
+        ${erroRedefinirSenha ? `<p style="color:var(--iniciar-texto);font-size:12.5px;margin:-4px 0 12px;">${erroRedefinirSenha}</p>` : ''}
         <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="confirmarNovaSenha()" ${carregandoRedefinirSenha ? 'disabled' : ''}>
           ${carregandoRedefinirSenha ? 'Salvando…' : 'Salvar nova senha'}
         </button>

@@ -119,22 +119,22 @@ function renderCardPontoDashboard() {
       conteudo = `
         <div class="kpi-grid" style="grid-template-columns:1fr 1fr;">
           <div class="kpi-card-inetris">
-            <div class="kpi-card-icone" style="color:var(--iniciar);">
+            <div class="kpi-card-icone" style="color:var(--iniciar-texto);">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
             </div>
             <div>
               <div class="kpi-card-label">Atraso médio por colaborador</div>
-              <div class="kpi-card-valor" style="color:var(--iniciar);">${_dashFmtMin(r.mediaAtraso)}</div>
+              <div class="kpi-card-valor" style="color:var(--iniciar-texto);">${_dashFmtMin(r.mediaAtraso)}</div>
               <div class="small-muted" style="font-size:11px;">${r.comAtraso} de ${r.colaboradores} tiveram atraso</div>
             </div>
           </div>
           <div class="kpi-card-inetris">
-            <div class="kpi-card-icone" style="color:var(--alavancar);">
+            <div class="kpi-card-icone" style="color:var(--alavancar-texto);">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6M12 22v-6M4.9 4.9l4.2 4.2M14.9 14.9l4.2 4.2M2 12h6M22 12h-6M4.9 19.1l4.2-4.2M14.9 9.1l4.2-4.2"/></svg>
             </div>
             <div>
               <div class="kpi-card-label">Hora extra média por colaborador</div>
-              <div class="kpi-card-valor" style="color:var(--alavancar);">${_dashFmtMin(r.mediaExtra)}</div>
+              <div class="kpi-card-valor" style="color:var(--alavancar-texto);">${_dashFmtMin(r.mediaExtra)}</div>
               <div class="small-muted" style="font-size:11px;">${r.comExtra} de ${r.colaboradores} fizeram hora extra</div>
             </div>
           </div>
@@ -183,13 +183,13 @@ function renderCardRankingDashboard() {
     conteudo = `
       <div class="kpi-grid" style="grid-template-columns:1fr 1fr;">
         <div class="kpi-card-inetris" style="flex-direction:column;align-items:stretch;">
-          <div class="kpi-card-label" style="color:var(--alavancar);display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+          <div class="kpi-card-label" style="color:var(--alavancar-texto);display:flex;align-items:center;gap:6px;margin-bottom:6px;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg> Melhores
           </div>
           ${melhores.map((r) => linha(r, 'var(--alavancar)')).join('')}
         </div>
         <div class="kpi-card-inetris" style="flex-direction:column;align-items:stretch;">
-          <div class="kpi-card-label" style="color:var(--iniciar);display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+          <div class="kpi-card-label" style="color:var(--iniciar-texto);display:flex;align-items:center;gap:6px;margin-bottom:6px;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg> Precisam de atenção
           </div>
           ${atencao.map((r) => linha(r, 'var(--iniciar)')).join('')}

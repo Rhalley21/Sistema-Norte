@@ -1031,7 +1031,7 @@ function folhaListaDiaTotalHtml(l) {
   const t = folhaMinutosTrabalhados(ord);
   const alerta =
     !t.completo || t.suspeito
-      ? ' <span title="Horário sem par ou período longo demais — confira" style="color:var(--iniciar);">⚠</span>'
+      ? ' <span title="Horário sem par ou período longo demais — confira" style="color:var(--iniciar-texto);">⚠</span>'
       : '';
   return `${folhaFormatarDuracao(t.minutos)}${alerta}`;
 }
@@ -1153,9 +1153,9 @@ function folhaTotalDiaHtml(d) {
   const t = folhaMinutosTrabalhados(d.marcacoes);
   if (!folhaMarcacoesValidas(d.marcacoes).length) return '<span class="small-muted">—</span>';
   const alerta = !t.completo
-    ? ' <span title="Marcação sem par — confira" style="color:var(--iniciar);">⚠</span>'
+    ? ' <span title="Marcação sem par — confira" style="color:var(--iniciar-texto);">⚠</span>'
     : t.suspeito
-      ? ' <span title="Período maior que 16h — confira" style="color:var(--iniciar);">⚠</span>'
+      ? ' <span title="Período maior que 16h — confira" style="color:var(--iniciar-texto);">⚠</span>'
       : '';
   return `${folhaFormatarDuracao(t.minutos)}${alerta}`;
 }
@@ -1181,7 +1181,8 @@ function folhaResumoHtml() {
   if (r.semRegistro.length) pendencias.push(`${r.semRegistro.length} dia(s) útil(eis) sem marcação`);
   if (r.incompletos.length) pendencias.push(`${r.incompletos.length} com marcação incompleta`);
   if (r.suspeitos.length) pendencias.push(`${r.suspeitos.length} com período maior que 16h`);
-  const corSaldo = r.saldoMin < 0 ? 'color:var(--iniciar);' : r.saldoMin > 0 ? 'color:var(--alavancar);' : '';
+  const corSaldo =
+    r.saldoMin < 0 ? 'color:var(--iniciar-texto);' : r.saldoMin > 0 ? 'color:var(--alavancar-texto);' : '';
   return `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:14px;">
       ${item('Dias trabalhados', r.diasTrabalhados)}
@@ -1191,7 +1192,7 @@ function folhaResumoHtml() {
       ${item('Saldo', folhaFormatarDuracao(r.saldoMin, true), corSaldo)}
       ${item('Faltas', r.faltas)}
     </div>
-    ${pendencias.length ? `<div class="small-muted" style="margin-top:10px;color:var(--iniciar);">⚠ Pendências: ${pendencias.join(' · ')}</div>` : ''}
+    ${pendencias.length ? `<div class="small-muted" style="margin-top:10px;color:var(--iniciar-texto);">⚠ Pendências: ${pendencias.join(' · ')}</div>` : ''}
   `;
 }
 
@@ -1296,7 +1297,7 @@ function renderEditorFolha() {
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
         ${editavel ? `<button class="btn" onclick="folhaSalvarRascunho()">Salvar rascunho</button><button class="btn btn-primary" onclick="folhaConfirmar()">Confirmar folha</button>` : `<button class="btn btn-ghost" onclick="folhaReabrir()">Reabrir folha</button>`}
         <button class="btn btn-ghost" onclick="folhaExportarPdf()">Exportar PDF</button>
-        ${editavel && f.id ? `<button class="btn btn-ghost" style="color:var(--iniciar);" onclick="folhaExcluirRascunho()">Excluir rascunho</button>` : ''}
+        ${editavel && f.id ? `<button class="btn btn-ghost" style="color:var(--iniciar-texto);" onclick="folhaExcluirRascunho()">Excluir rascunho</button>` : ''}
       </div>
     </div>
   `;
@@ -1336,9 +1337,10 @@ function folhaListaDiaLinhaHtml(l, i, colunas, ativos, duplicados) {
   ).join('');
 
   let situacao;
-  if (sit.tipo === 'sem_colaborador') situacao = '<span style="color:var(--iniciar);">escolha o colaborador</span>';
+  if (sit.tipo === 'sem_colaborador')
+    situacao = '<span style="color:var(--iniciar-texto);">escolha o colaborador</span>';
   else if (sit.tipo === 'sem_data') situacao = '<span class="small-muted">informe a data</span>';
-  else if (bloqueado) situacao = '<span style="color:var(--iniciar);">folha confirmada — reabra antes</span>';
+  else if (bloqueado) situacao = '<span style="color:var(--iniciar-texto);">folha confirmada — reabra antes</span>';
   else if (sit.tipo === 'existente') {
     situacao = `<span class="small-muted">já tem ${sit.atuais.join(' · ')}</span>
       <select style="max-width:110px;" onchange="folhaListaDiaModo(${i}, this.value)">
@@ -1348,7 +1350,7 @@ function folhaListaDiaLinhaHtml(l, i, colunas, ativos, duplicados) {
   } else situacao = '<span class="small-muted">novo</span>';
   if (l.colaboradorId && duplicados.has(l.colaboradorId))
     situacao +=
-      '<div style="color:var(--desenvolver);font-size:12px;">⚠ outro nome da lista aponta pra este colaborador (serão somados)</div>';
+      '<div style="color:var(--desenvolver-texto);font-size:12px;">⚠ outro nome da lista aponta pra este colaborador (serão somados)</div>';
 
   const podeMarcar = !!l.colaboradorId && temHorario && !bloqueado;
   return `<tr style="${fundo}">
@@ -1386,7 +1388,7 @@ function renderListaDia() {
     notaData = `<span class="small-muted">${FOLHA_DIAS_SEMANA[dow]} · competência ${folhaRotuloCompetencia(L.data.slice(0, 7))}</span>`;
     if (dow === 0 || dow === 6)
       notaData +=
-        ' <span style="color:var(--desenvolver);font-size:12px;">⚠ cai num fim de semana — confira a data</span>';
+        ' <span style="color:var(--desenvolver-texto);font-size:12px;">⚠ cai num fim de semana — confira a data</span>';
   }
 
   return `
@@ -1459,9 +1461,9 @@ function renderListaFolhas() {
         <td>${folhaFormatarDuracao(r.minutosTrabalhados)}</td>
         <td>${folhaFormatarDuracao(r.atrasoMin)}</td>
         <td>${folhaFormatarDuracao(r.extraMin)}</td>
-        <td style="${r.saldoMin < 0 ? 'color:var(--iniciar);' : ''}">${folhaFormatarDuracao(r.saldoMin, true)}</td>
+        <td style="${r.saldoMin < 0 ? 'color:var(--iniciar-texto);' : ''}">${folhaFormatarDuracao(r.saldoMin, true)}</td>
         <td>${r.faltas}</td>
-        <td>${pend ? `<span style="color:var(--iniciar);">⚠ ${pend}</span>` : '<span class="small-muted">—</span>'}</td>
+        <td>${pend ? `<span style="color:var(--iniciar-texto);">⚠ ${pend}</span>` : '<span class="small-muted">—</span>'}</td>
         <td style="text-align:right;"><button class="btn btn-sm btn-ghost" onclick="folhaAbrir('${escaparParaOnclick(f.colaborador_id)}')">Abrir</button></td>
       </tr>`;
     })

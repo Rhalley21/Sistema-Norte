@@ -327,7 +327,7 @@ function importacaoPainelHtml() {
     : '';
   const previa = p
     ? `<div style="margin-top:12px;">
-        <div style="font-size:13px;margin-bottom:6px;"><b>${e(_rsImportacao.arquivo)}</b>: ${p.resumo.total} linha(s) — <b>${p.resumo.aptas}</b> serão importadas${p.resumo.jaCadastradas ? `, ${p.resumo.jaCadastradas} já cadastrada(s)` : ''}${p.resumo.duplicadasArquivo ? `, ${p.resumo.duplicadasArquivo} repetida(s) na planilha` : ''}${p.resumo.erros ? `, <span style="color:var(--iniciar);">${p.resumo.erros} com erro</span>` : ''}.</div>
+        <div style="font-size:13px;margin-bottom:6px;"><b>${e(_rsImportacao.arquivo)}</b>: ${p.resumo.total} linha(s) — <b>${p.resumo.aptas}</b> serão importadas${p.resumo.jaCadastradas ? `, ${p.resumo.jaCadastradas} já cadastrada(s)` : ''}${p.resumo.duplicadasArquivo ? `, ${p.resumo.duplicadasArquivo} repetida(s) na planilha` : ''}${p.resumo.erros ? `, <span style="color:var(--iniciar-texto);">${p.resumo.erros} com erro</span>` : ''}.</div>
         ${p.ignoradas.length ? `<div class="small-muted" style="margin-bottom:6px;">Colunas ignoradas: ${p.ignoradas.map(e).join(', ')}.</div>` : ''}
         <div style="overflow-x:auto;"><table><thead><tr><th>Linha</th><th>Nome</th><th>E-mail</th><th>Telefone</th><th>Situação</th></tr></thead><tbody>${p.linhas
           .slice(0, 20)
@@ -357,7 +357,7 @@ function importacaoPainelHtml() {
       <li>Escolha o arquivo abaixo, confira a prévia e confirme.</li>
     </ol>
     <div class="small-muted" style="margin-bottom:8px;">Repetidas (mesmo e-mail ou telefone) e linhas com erro não são importadas. As pessoas entram <b>só cadastradas</b>, sem receber e-mail e sem ir para o banco de talentos. Importe apenas pessoas que você tem motivo legítimo para guardar (por exemplo, quem se candidatou).</div>
-    ${p ? '' : `<input type="file" id="rs_import_arquivo" accept=".csv,.txt,text/csv,text/plain" onchange="lerArquivoImportacaoRS(event)">`}
+    ${p ? '' : `<input type="file" aria-label="Escolher o arquivo CSV da planilha" id="rs_import_arquivo" accept=".csv,.txt,text/csv,text/plain" onchange="lerArquivoImportacaoRS(event)">`}
     ${aviso}${previa}
   </div>`;
 }

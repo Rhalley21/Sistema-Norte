@@ -546,6 +546,15 @@ function reabrirCandidatoRS(candidatoId) {
   const cand = state.rs.candidatos.find((c) => c.id === candidatoId);
   if (!cand) return;
   cand.reprovado = false;
+  // deixa registro: sem isso o histórico termina em "reprovado" e os relatórios não sabem quando o candidato voltou
+  cand.historico = cand.historico || [];
+  cand.historico.push({
+    de: 'reprovado',
+    para: cand.etapa,
+    autorId: meuPerfilId,
+    em: new Date().toISOString(),
+    observacao: 'Reaberto',
+  });
   render();
 }
 

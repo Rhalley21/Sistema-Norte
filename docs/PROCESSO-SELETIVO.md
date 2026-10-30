@@ -26,6 +26,10 @@ Em **R&S — Recrutamento**, o botão **Importar planilha** cadastra várias pes
 
 O arquivo é lido no seu navegador; nada vai ao servidor antes de você confirmar. Importe apenas pessoas que a empresa tem motivo legítimo para guardar (por exemplo, quem se candidatou). A Auditoria registra só a **quantidade** importada, nunca os nomes.
 
+### Relatórios do recrutamento
+
+Em **R&S — Relatórios** (Administrador e RH) ficam o funil, o tempo em cada etapa, os candidatos parados, a origem dos candidatos e as reprovações, com exportação para planilha. Explicação completa e como conferir em **docs/RELATORIOS-RS.md**. Na tela do Processo seletivo há um botão **Relatórios** que leva até lá.
+
 ## R&S — Processo seletivo — Administrador, RH e líder
 
 **Cada vaga é um quadro.** A tela tem, de cima para baixo:

@@ -271,7 +271,7 @@ function pageUsuarios() {
         </div>
       </div>
       <button class="btn btn-primary" style="margin-top:12px;" onclick="gerarConvite()" ${_gerandoConvite ? 'disabled' : ''}>Gerar convite</button>
-      ${_erroConvite ? `<p style="color:var(--iniciar);font-size:12.5px;margin-top:8px;">${_erroConvite}</p>` : ''}
+      ${_erroConvite ? `<p style="color:var(--iniciar-texto);font-size:12.5px;margin-top:8px;">${_erroConvite}</p>` : ''}
       ${
         _convitesEmpresa.length
           ? `

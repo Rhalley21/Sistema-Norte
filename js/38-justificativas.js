@@ -433,7 +433,7 @@ function renderSecaoAprovacaoJustificativas() {
                     ? `<button class="btn btn-sm btn-primary" onclick="decidirJustificativa('${j.id}',true)">Aprovar</button>
                        <button class="btn btn-sm btn-ghost" onclick="decidirJustificativa('${j.id}',false)">Rejeitar</button>`
                     : j.tipo === 'atestado' && j.status === 'aprovada'
-                      ? `<span class="pill pill-alavancar">Abonado</span> <button class="btn btn-sm btn-ghost" style="color:var(--iniciar);" onclick="decidirJustificativa('${j.id}',false)" title="Reverter se o atestado for inválido">Reverter</button>`
+                      ? `<span class="pill pill-alavancar">Abonado</span> <button class="btn btn-sm btn-ghost" style="color:var(--iniciar-texto);" onclick="decidirJustificativa('${j.id}',false)" title="Reverter se o atestado for inválido">Reverter</button>`
                       : `<span class="pill ${_justifStatusPill(j.status)}">${_justifStatusLabel(j.status)}</span>`
                 }</td>
               </tr>`

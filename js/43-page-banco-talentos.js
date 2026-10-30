@@ -183,7 +183,7 @@ function talentosListaHtml() {
     .map((t) => {
       const p = t.perfil || {};
       const dias = talentoDiasParaExpirar(t.expiraEm);
-      const expira = `${new Date(t.expiraEm).toLocaleDateString('pt-BR')}${dias <= 60 ? ` · <span style="color:var(--desenvolver);">faltam ${Math.max(dias, 0)} dia(s)</span>` : ''}`;
+      const expira = `${new Date(t.expiraEm).toLocaleDateString('pt-BR')}${dias <= 60 ? ` · <span style="color:var(--desenvolver-texto);">faltam ${Math.max(dias, 0)} dia(s)</span>` : ''}`;
       const chave = escaparParaOnclick(t.chave);
       return `<div class="card" style="margin-bottom:10px;">
         <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
@@ -202,7 +202,7 @@ function talentosListaHtml() {
           <div style="display:flex;gap:6px;align-items:flex-start;flex-wrap:wrap;">
             ${t.temCurriculo ? `<button class="btn btn-sm btn-primary" onclick="talentoCurriculo('${chave}')">Currículo</button>` : ''}
             <button class="btn btn-sm btn-ghost" onclick="talentoAlternarPerfil('${chave}')">${_talPerfilAberto === t.chave ? 'Ocultar perfil' : 'Ver perfil'}</button>
-            <button class="btn btn-sm btn-ghost" style="color:var(--iniciar);" onclick="talentoRemover('${chave}')">Remover</button>
+            <button class="btn btn-sm btn-ghost" style="color:var(--iniciar-texto);" onclick="talentoRemover('${chave}')">Remover</button>
           </div>
         </div>
         ${_talPerfilAberto === t.chave ? talentoPerfilHtml(t) : ''}

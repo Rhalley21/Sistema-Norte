@@ -172,6 +172,53 @@ const FAQ_CENTRAL = [
     k: ['importar', 'planilha', 'excel', 'csv', 'varias', 'pessoas', 'cadastrar', 'lote', 'recrutamento'],
   },
   {
+    p: 'O que são os "Primeiros passos" no painel e como faço para sumirem?',
+    r: 'É a lista que o Administrador vê enquanto configura a empresa: dados da empresa, estrutura, cultura, um cargo publicado, mais uma pessoa convidada, colaboradores e o primeiro ciclo de avaliação. O sistema marca sozinho o que você já fez e destaca o próximo passo. O cartão some quando os passos obrigatórios acabam, ou você pode clicar em "Ocultar". Abrir a primeira vaga no recrutamento aparece como passo opcional.',
+    k: ['primeiros', 'passos', 'onboarding', 'comecar', 'configurar', 'ocultar', 'lista', 'painel', 'inicio'],
+  },
+  {
+    p: 'O que é o cartão "Recrutamento: o que fazer hoje" no painel?',
+    r: 'Aparece para o Administrador e o RH que usam o recrutamento. Mostra o que está esperando você: vagas para aprovar, candidatos para triar, vídeos e resultados recebidos, vagas sem a prova prática definida e aprovados para contratar. Clique em um item para ir direto à vaga. Quando não há nada a fazer, o cartão some.',
+    k: ['recrutamento', 'hoje', 'fazer', 'pendencias', 'painel', 'vagas', 'candidatos', 'aprovar', 'triar'],
+  },
+  {
+    p: 'Dá para usar o sistema só com o teclado ou com leitor de tela?',
+    r: 'Sim, em boa parte. Tab percorre os campos e botões (o primeiro é "Pular para o conteúdo"), Enter e Espaço acionam os botões e os itens clicáveis, e há um anel de foco visível. Os campos têm nome para leitores de tela. A acessibilidade foi conferida por testes automáticos, mas ainda não por um usuário de leitor de tela: se algo atrapalhar você, abra um chamado dizendo em qual tela.',
+    k: ['acessibilidade', 'teclado', 'leitor', 'tela', 'cego', 'tab', 'foco', 'contraste', 'deficiencia'],
+  },
+  {
+    p: 'Duas pessoas podem usar o sistema ao mesmo tempo sem apagar o trabalho uma da outra?',
+    r: 'Sim. Quando alguém salva enquanto você trabalha, o sistema combina as duas alterações em vez de sobrescrever: o que cada pessoa mexeu fica, item por item (por exemplo, dois RHs movendo candidatos diferentes). Aparece o aviso "Suas alterações foram combinadas com as que outra pessoa fez ao mesmo tempo" e o botão Atualizar ganha um pontinho; clique nele para ver tudo. Se as duas pessoas mudarem exatamente o mesmo campo ao mesmo tempo, vale a alteração de quem salvou por último e você é avisado.',
+    k: [
+      'simultaneo',
+      'pessoas',
+      'conflito',
+      'sobrescrever',
+      'apagar',
+      'combinadas',
+      'atualizar',
+      'usuarios',
+      'salvar',
+      'tempo',
+    ],
+  },
+  {
+    p: 'Onde vejo o funil, o tempo de cada etapa e onde os candidatos ficam parados?',
+    r: 'Em R&S — Relatórios (menu Pessoas, para Administrador e RH). Você escolhe uma vaga ou todas e o período, e vê o funil (quantos chegaram a cada etapa), o tempo médio em cada etapa, os candidatos parados há mais de 7 dias (com um botão para abrir a ficha), de onde vêm os candidatos e em que etapa e por qual motivo eles saem. O botão "Exportar para planilha" baixa tudo em CSV. Os números vêm do histórico de movimentações; candidatos antigos podem ter lacunas.',
+    k: [
+      'relatorio',
+      'relatorios',
+      'funil',
+      'tempo',
+      'etapa',
+      'parados',
+      'gargalo',
+      'origem',
+      'recrutamento',
+      'exportar',
+    ],
+  },
+  {
     p: 'Meu ponto é em papel, posso usar o sistema?',
     r: 'Sim. Em Folha de Ponto (papel) (Administrador e RH) você fotografa a folha ou a lista de presença do dia, o sistema lê os horários, você confere e corrige, e só então confirma. A leitura pode errar, por isso a conferência é obrigatória.',
     k: ['papel', 'folha', 'foto', 'fotografar', 'manual', 'lista', 'presenca', 'ponto'],
@@ -599,7 +646,7 @@ function renderAssistente() {
         ${_assistenteMsgs.length ? mensagens : '<p class="small-muted" style="margin:0;">Ex.: "como convido um colaborador?", "como funciona o banco de horas?", "como abro um ciclo de avaliação?"</p>'}
         ${_assistenteEnviando ? '<div class="small-muted" style="margin:4px 0 8px;">Digitando…</div>' : ''}
       </div>
-      ${_assistenteErro ? `<div style="color:var(--iniciar);font-size:13px;margin-top:8px;">${escaparHtml(_assistenteErro)} <a href="#" onclick="abrirNovoChamado();return false;">Abrir chamado</a></div>` : ''}
+      ${_assistenteErro ? `<div style="color:var(--iniciar-texto);font-size:13px;margin-top:8px;">${escaparHtml(_assistenteErro)} <a href="#" onclick="abrirNovoChamado();return false;">Abrir chamado</a></div>` : ''}
       <div style="display:flex;gap:8px;align-items:flex-end;margin-top:12px;">
         <textarea id="ass_input" rows="2" maxlength="1200" style="flex:1;" placeholder="Escreva sua dúvida e tecle Enter" ${_assistenteEnviando ? 'disabled' : ''} oninput="_assistenteRascunho=this.value" onkeydown="assistenteTecla(event)">${escaparHtml(_assistenteRascunho)}</textarea>
         <button class="btn btn-primary" onclick="enviarPerguntaAssistente()" ${_assistenteEnviando ? 'disabled' : ''}>Enviar</button>

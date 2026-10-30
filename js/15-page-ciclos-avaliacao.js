@@ -1117,11 +1117,11 @@ function renderResultadoCiclo(ciclo, cargo, indicadores) {
       <div class="grid2">
         <div>
           <b style="font-size:13px;">Pontos fortes</b>
-          <div class="chip-row">${d.pontosFortes.length ? d.pontosFortes.map((n) => `<div class="chip" style="color:var(--alavancar);border-color:var(--alavancar);">${n}</div>`).join('') : '<span class="small-muted">Nenhum indicador em Alavancar ainda.</span>'}</div>
+          <div class="chip-row">${d.pontosFortes.length ? d.pontosFortes.map((n) => `<div class="chip" style="color:var(--alavancar-texto);border-color:var(--alavancar);">${n}</div>`).join('') : '<span class="small-muted">Nenhum indicador em Alavancar ainda.</span>'}</div>
         </div>
         <div>
           <b style="font-size:13px;">Oportunidades de melhoria</b>
-          <div class="chip-row">${d.oportunidades.length ? d.oportunidades.map((n) => `<div class="chip" style="color:var(--desenvolver);border-color:var(--desenvolver);">${n}</div>`).join('') : '<span class="small-muted">Nenhuma oportunidade identificada.</span>'}</div>
+          <div class="chip-row">${d.oportunidades.length ? d.oportunidades.map((n) => `<div class="chip" style="color:var(--desenvolver-texto);border-color:var(--desenvolver);">${n}</div>`).join('') : '<span class="small-muted">Nenhuma oportunidade identificada.</span>'}</div>
         </div>
       </div>
       ${
@@ -1129,7 +1129,7 @@ function renderResultadoCiclo(ciclo, cargo, indicadores) {
           ? `
       <div style="margin-top:14px;">
         <b style="font-size:13px;">Prioridades de atenção <small style="font-weight:400;">(Comportamento/Resultado em Iniciar — maior peso estratégico)</small></b>
-        <div class="chip-row">${d.competenciasCriticas.map((n) => `<div class="chip" style="color:var(--iniciar);border-color:var(--iniciar);">${n}</div>`).join('')}</div>
+        <div class="chip-row">${d.competenciasCriticas.map((n) => `<div class="chip" style="color:var(--iniciar-texto);border-color:var(--iniciar);">${n}</div>`).join('')}</div>
       </div>`
           : ''
       }

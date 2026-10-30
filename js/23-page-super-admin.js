@@ -595,7 +595,7 @@ function pageSuperAdmin() {
               const podeCobrar = l.whatsapp && l.link;
               return `<tr>
               <td><b>${escaparHtml(l.nome)}</b></td>
-              <td class="small-muted">${l.whatsapp ? escaparHtml(l.whatsapp) : '<span style="color:var(--iniciar);">sem WhatsApp</span>'}</td>
+              <td class="small-muted">${l.whatsapp ? escaparHtml(l.whatsapp) : '<span style="color:var(--iniciar-texto);">sem WhatsApp</span>'}</td>
               <td><span class="pill ${l.status === 'Em dia' ? 'pill-alavancar' : l.status === 'Atrasado' || l.status === 'Cancelado' ? 'pill-iniciar' : 'pill-neutral'}">${l.status}</span></td>
               <td>
                 <select id="plano_${l.id}" style="min-width:130px;">
@@ -802,10 +802,10 @@ function pageSuperAdmin() {
                   }${
                     e.acesso_suspenso
                       ? `<button class="btn btn-sm btn-ghost" onclick="reativarEmpresa('${e.id}','${escaparParaOnclick(e.nome_fantasia)}')">Reativar</button>`
-                      : `<button class="btn btn-sm btn-ghost" style="color:var(--iniciar);" onclick="suspenderEmpresa('${e.id}','${escaparParaOnclick(e.nome_fantasia)}')">Suspender</button>`
+                      : `<button class="btn btn-sm btn-ghost" style="color:var(--iniciar-texto);" onclick="suspenderEmpresa('${e.id}','${escaparParaOnclick(e.nome_fantasia)}')">Suspender</button>`
                   }${
                     trialExpirado
-                      ? `<button class="btn btn-sm btn-ghost" style="color:var(--iniciar);" onclick="apagarDadosEmpresa('${e.id}','${escaparParaOnclick(e.nome_fantasia)}')">Apagar dados</button>`
+                      ? `<button class="btn btn-sm btn-ghost" style="color:var(--iniciar-texto);" onclick="apagarDadosEmpresa('${e.id}','${escaparParaOnclick(e.nome_fantasia)}')">Apagar dados</button>`
                       : ''
                   }`
             }</td>

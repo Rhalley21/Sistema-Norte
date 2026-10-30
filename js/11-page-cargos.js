@@ -34,7 +34,7 @@ function pageCargos() {
               (l) =>
                 `<div class="import-preview-row" style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);">
               <span>${escaparHtml(l.nome || '(sem nome)')}</span>
-              ${l.erros.length ? `<span class="import-preview-erro">${l.erros.join('; ')}</span>` : '<span style="color:var(--alavancar);font-size:12.5px;">ok</span>'}
+              ${l.erros.length ? `<span class="import-preview-erro">${l.erros.join('; ')}</span>` : '<span style="color:var(--alavancar-texto);font-size:12.5px;">ok</span>'}
             </div>`
             )
             .join('')}
