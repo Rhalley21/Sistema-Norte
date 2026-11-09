@@ -111,17 +111,27 @@ async function pedirEntregaRS(candidatoId, etapa) {
 
 // Entrou numa etapa com entrega: cria o pedido e manda o e-mail da etapa JÁ com o botão "Enviar meu resultado".
 // Se o pedido falhar, o e-mail da etapa sai mesmo assim (sem o botão) e o RH é avisado.
-async function enviarEtapaComEntregaRS(cand, etapa) {
+// Cria o pedido de resultado e manda o e-mail da etapa com o botão "Enviar meu resultado". Devolve { enviado, semBotao }.
+// silencioso: sem avisos na tela nem recarga da lista (o lote faz isso uma vez no fim).
+async function enviarEtapaComEntregaRS(cand, etapa, opcoes) {
+  const silencioso = !!(opcoes && opcoes.silencioso);
   const r = await pedirEntregaRS(cand.id, etapa);
-  if (!r.ok && !r.jaEnviado)
+  if (!r.ok && !r.jaEnviado && !silencioso)
     showToast(`O pedido de resultado não foi criado (${r.erro}). O e-mail da etapa foi enviado sem o botão de envio.`);
-  await enviarEmailEtapaRS(cand, etapa, r.ok ? { entrega: { link: r.link, prazoISO: r.prazoISO } } : {});
-  showToast(
-    r.ok
-      ? `Etapa atualizada — e-mail enviado a ${cand.nome}, com o botão para enviar o resultado.`
-      : `Etapa atualizada — e-mail enviado a ${cand.nome}.`
+  const enviado = await enviarEmailEtapaRS(
+    cand,
+    etapa,
+    r.ok ? { entrega: { link: r.link, prazoISO: r.prazoISO } } : {}
   );
-  await carregarEntregasRS(true);
+  if (!silencioso) {
+    showToast(
+      r.ok
+        ? `Etapa atualizada — e-mail enviado a ${cand.nome}, com o botão para enviar o resultado.`
+        : `Etapa atualizada — e-mail enviado a ${cand.nome}.`
+    );
+    await carregarEntregasRS(true);
+  }
+  return { enviado, semBotao: !r.ok };
 }
 
 async function pedirEntregaAgoraRS(candidatoId, etapa) {

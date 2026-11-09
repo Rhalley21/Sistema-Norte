@@ -54,6 +54,8 @@ function renderRoute() {
       return pageBancoTalentos();
     case 'rs_processo':
       return pageProcessoSeletivoRS();
+    case 'rs_agenda':
+      return pageAgendaRS();
     case 'rs_relatorios':
       return pageRelatoriosRS();
     case 'clima':

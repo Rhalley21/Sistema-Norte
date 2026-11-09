@@ -267,7 +267,7 @@ async function notificarProximaEtapaCiclo(ciclo) {
       `Avaliação pendente — ${colaborador.nome}`,
       emailWrapperHTML(
         'Sua avaliação está pendente',
-        `Há uma avaliação de <b>${escaparHtml(colaborador.nome)}</b> aguardando você na Plataforma NORTE.`
+        `Há uma avaliação de <b>${escaparHtml(colaborador.nome)}</b> aguardando você no INETRIS.`
       )
     );
   }
@@ -1452,7 +1452,7 @@ async function notificarPDIAprovado(ciclo) {
     'Seu PDI foi aprovado',
     emailWrapperHTML(
       'PDI aprovado',
-      `Seu Plano de Desenvolvimento Individual (PDI) foi aprovado e a construção está encerrada. Agora é hora de colocar as ações em prática — acompanhe pela Plataforma NORTE.`
+      `Seu Plano de Desenvolvimento Individual (PDI) foi aprovado e a construção está encerrada. Agora é hora de colocar as ações em prática — acompanhe pelo INETRIS.`
     )
   );
 }

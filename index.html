@@ -1042,6 +1042,13 @@
             >
               Solicitar teste grátis
             </button>
+            <p style="font-size: 12px; color: var(--muted); margin: 12px 0 0; text-align: center; line-height: 1.5">
+              Ao solicitar, você concorda com os
+              <a href="termos.html" target="_blank" rel="noopener">Termos de Uso</a>
+              e a
+              <a href="privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>
+              .
+            </p>
           </div>
         </div>
       </section>
@@ -1145,6 +1152,57 @@
       }
       renderRecaptchaTesteQuandoPronto();
 
+      // ---- A tela de sucesso. O código aparece AQUI (e também vai por e-mail): antes a pessoa dependia só do e-mail, e um e-mail
+      // que caía no spam ou falhava perdia o lead sem ninguém saber. ----
+      const CODIGO_TESTE_VALIDO = /^NORTE-[A-Z2-9]{4}-[A-Z2-9]{4}$/;
+      function escaparHtmlLanding(t) {
+        return String(t).replace(
+          /[&<>"']/g,
+          (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+        );
+      }
+      function mostrarTesteLiberado(data, pessoa) {
+        // Depois do sucesso o botão fixo "Testar grátis" do rodapé não faz mais sentido (levaria a um formulário que já foi usado).
+        const botaoFixo = document.querySelector('.sticky');
+        if (botaoFixo) botaoFixo.style.display = 'none';
+        const codigo = String((data && data.codigo) || '');
+        const emailSeguro = escaparHtmlLanding(pessoa.email);
+        const alvo = document.getElementById('teste_gratis_form');
+        if (!CODIGO_TESTE_VALIDO.test(codigo)) {
+          alvo.innerHTML = `<div style="text-align:center;padding:10px 0;"><h3 style="margin:0 0 8px;">Teste liberado!</h3><p style="color:var(--muted);margin:0;">Enviamos o código de acesso para <b>${emailSeguro}</b>. Confira sua caixa de entrada e o spam.</p></div>`;
+          return;
+        }
+        // nome, e-mail e empresa passam para o cadastro SÓ pela sessão deste navegador (nunca pelo endereço da página)
+        try {
+          sessionStorage.setItem(
+            'inetris_prefill_cadastro',
+            JSON.stringify({ nome: pessoa.nome, email: pessoa.email, empresa: pessoa.empresa })
+          );
+        } catch (_) {}
+        const aviso = data.emailEnviado
+          ? `Também enviamos o código para <b>${emailSeguro}</b>. Confira a caixa de entrada e o spam.`
+          : 'Não conseguimos enviar o e-mail agora, mas o seu código está aqui. Guarde-o.';
+        alvo.innerHTML = `
+            <div style="text-align:center;padding:6px 0;">
+              <h3 style="margin:0 0 6px;">Teste liberado!</h3>
+              <p style="color:var(--muted);margin:0 0 10px;">Este é o seu código de licença. Guarde-o:</p>
+              <div id="tg-codigo" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:24px;font-weight:700;letter-spacing:1px;background:#f3f6fb;border:1px dashed #9fb3d1;border-radius:10px;padding:12px;margin:0 0 10px;user-select:all;">${codigo}</div>
+              <button class="btn" id="tg-copiar" onclick="copiarCodigoTeste('${codigo}')" style="margin-bottom:10px;">Copiar código</button>
+              <a class="btn btn-p" id="tg-criar-conta" href="app.html#cadastro&codigo=${encodeURIComponent(codigo)}" style="width:100%;justify-content:center;">Criar minha conta agora</a>
+              <p style="color:var(--muted);font-size:13px;margin:12px 0 0;">${aviso}</p>
+            </div>`;
+      }
+      function copiarCodigoTeste(codigo) {
+        if (!CODIGO_TESTE_VALIDO.test(String(codigo))) return;
+        const botao = document.getElementById('tg-copiar');
+        const ok = () => {
+          if (botao) botao.textContent = 'Código copiado!';
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText)
+          navigator.clipboard.writeText(codigo).then(ok, () => {});
+        else ok();
+      }
+
       async function enviarTesteGratisLanding() {
         const nome = document.getElementById('tg-nome').value.trim();
         const email = document.getElementById('tg-email').value.trim();
@@ -1181,12 +1239,7 @@
           const data = await resp.json().catch(() => ({}));
           if (!resp.ok) throw new Error(data.error || 'Não foi possível liberar seu teste agora.');
 
-          document.getElementById('teste_gratis_form').innerHTML = `
-            <div style="text-align:center;padding:10px 0;">
-              <div style="width:52px;height:52px;border-radius:50%;background:#eaf7ef;color:#15803d;font-size:26px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">✓</div>
-              <h3 style="margin:0 0 8px;">Teste liberado!</h3>
-              <p style="color:var(--muted);margin:0;">Enviamos o código de acesso para <b>${email.replace(/</g, '&lt;')}</b> — confira sua caixa de entrada (e o spam, por garantia).</p>
-            </div>`;
+          mostrarTesteLiberado(data, { nome, email, empresa });
         } catch (err) {
           erroEl.textContent = err.message || 'Não foi possível enviar. Tente novamente.';
           erroEl.style.display = 'block';

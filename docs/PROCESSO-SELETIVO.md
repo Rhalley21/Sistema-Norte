@@ -26,6 +26,14 @@ Em **R&S — Recrutamento**, o botão **Importar planilha** cadastra várias pes
 
 O arquivo é lido no seu navegador; nada vai ao servidor antes de você confirmar. Importe apenas pessoas que a empresa tem motivo legítimo para guardar (por exemplo, quem se candidatou). A Auditoria registra só a **quantidade** importada, nunca os nomes.
 
+### WhatsApp com o candidato e divulgação da vaga
+
+Na ficha do candidato, o botão **WhatsApp** abre o aplicativo com uma mensagem pronta (você edita e envia). No cartão da vaga publicada, a linha **Divulgar** compartilha a vaga pelo WhatsApp, LinkedIn e e-mail, e copia o texto do anúncio. Explicação completa e roteiro de teste real em **docs/WHATSAPP-E-DIVULGACAO-RS.md**.
+
+### Agenda das entrevistas e movimentação em lote
+
+Em **R&S — Agenda** (Administrador e RH) ficam as entrevistas marcadas, as que já passaram e quem está sem data. No quadro da vaga, **Selecionar vários** permite avançar, mover ou reprovar vários candidatos de uma vez. Explicação completa e roteiro de teste real em **docs/AGENDA-E-LOTE-RS.md**.
+
 ### Relatórios do recrutamento
 
 Em **R&S — Relatórios** (Administrador e RH) ficam o funil, o tempo em cada etapa, os candidatos parados, a origem dos candidatos e as reprovações, com exportação para planilha. Explicação completa e como conferir em **docs/RELATORIOS-RS.md**. Na tela do Processo seletivo há um botão **Relatórios** que leva até lá.

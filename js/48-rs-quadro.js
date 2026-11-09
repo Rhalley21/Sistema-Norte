@@ -53,6 +53,8 @@ function acoesPendentesRS({
   candidaturasPendentes,
   vagaSelecionadaId,
   gestor,
+  entrevistas,
+  agora,
 }) {
   const abertas = (requisicoes || []).filter((r) => r.status === 'aprovada' && !r.encerrada);
   const idsAbertas = new Set(abertas.map((r) => r.id));
@@ -118,6 +120,9 @@ function acoesPendentesRS({
       texto: `${paraContratar.length} aprovado(s) para contratar`,
       vagaId: paraContratar[0].vagaId,
     });
+  // Agenda: entrevistas de hoje, as que já passaram sem resultado e quem está em entrevista sem data.
+  if (gestor && entrevistas && typeof acoesAgendaRS === 'function')
+    acoes.push(...acoesAgendaRS({ entrevistas, candidatos, requisicoes, agora }));
   return acoes;
 }
 
@@ -137,6 +142,7 @@ function vagaSelecionadaRS() {
 function selecionarVagaRS(vagaId) {
   _rsRequisicaoExpandida = vagaId || null;
   _psFichaAberta = null;
+  if (typeof encerrarSelecaoRS === 'function') encerrarSelecaoRS();
   render();
 }
 function abrirSecaoVagasRS() {
@@ -162,6 +168,7 @@ function avancarCandidatoRS(candidatoId) {
 }
 // Clicou numa pendência: vai para a vaga onde resolver (e abre a configuração, se for a prova prática).
 function resolverPendenciaRS(chave, vagaId) {
+  if (chave === 'entrevistas_hoje' || chave === 'entrevistas_atualizar') return goto('rs_agenda');
   if (chave === 'aprovar') return abrirSecaoVagasRS();
   if (chave === 'prova' && vagaId) _rsOrientacoesVagaAberta = vagaId;
   selecionarVagaRS(vagaId);
@@ -178,6 +185,7 @@ function faixaPendenciasHtml(gestor) {
     candidaturasPendentes: _rsCandidaturasPendentes,
     vagaSelecionadaId: vaga ? vaga.id : null,
     gestor,
+    entrevistas: state.rs.entrevistas || [],
   });
   const e = escaparHtml;
   return `<div class="card" style="padding:12px 16px;">
@@ -217,6 +225,7 @@ function cartaoDoCandidatoRS(c, vaga) {
         ? `<button class="btn btn-sm btn-primary" style="width:100%;" onclick="avancarCandidatoRS('${id}')">Avançar → ${e(proxima.nome)}</button>`
         : '';
   return `<div style="border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:8px;background:var(--surface-2);">
+    ${typeof caixaSelecaoCartaoHtml === 'function' ? caixaSelecaoCartaoHtml(c) : ''}
     <a href="#" onclick="abrirFichaRS('${id}');return false;" style="font-weight:600;font-size:14px;">${e(c.nome)}</a>
     <div style="margin:4px 0 6px;"><span class="pill pill-desenvolver">${e(etapaNomeRS(c.etapa))}</span></div>
     ${statusVideoDoCartaoRS(c)}
@@ -301,8 +310,10 @@ function fichaDoCandidatoHtml(c, vaga) {
         <div style="margin-top:6px;">${c.reprovado ? '<span class="pill pill-iniciar">Reprovado(a) / desistiu</span>' : `<span class="pill pill-desenvolver">Etapa: ${e(etapaNomeRS(c.etapa))}</span>`}</div></div>
       <button class="btn btn-sm btn-ghost" onclick="fecharFichaRS()">Fechar</button>
     </div>
-    <div style="margin:10px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">${acoes}</div>
+    <div style="margin:10px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">${acoes}${typeof whatsAppBotaoHtml === 'function' ? whatsAppBotaoHtml(c) : ''}</div>
+    ${typeof whatsAppPainelHtml === 'function' ? whatsAppPainelHtml(c) : ''}
     ${c.reprovado ? '' : blocoDaEtapaRS(c, vaga)}
+    ${typeof entrevistasPainelRS === 'function' ? entrevistasPainelRS(c, vaga) : ''}
     ${typeof entregaPainelRS === 'function' ? entregaPainelRS(c, vaga) : ''}
     ${c.curriculo ? `<details style="margin-top:10px;"><summary style="cursor:pointer;font-weight:600;font-size:13px;">Currículo / resumo</summary><div style="white-space:pre-wrap;font-size:13px;margin-top:6px;">${e(c.curriculo)}</div></details>` : ''}
     ${c.perfil && typeof renderPerfilCandidatoRS === 'function' ? renderPerfilCandidatoRS(c) : ''}
@@ -320,11 +331,13 @@ function quadroDaVagaHtml(vaga) {
     .map(
       ({ fase, candidatos: lista }) => `<div style="min-width:0;">
       <div style="font-size:13px;font-weight:600;padding:0 2px 6px;border-bottom:2px solid var(--line);margin-bottom:8px;">${e(fase.nome)} <span class="small-muted">(${lista.length})</span></div>
+      ${typeof cabecalhoFaseLoteHtml === 'function' ? cabecalhoFaseLoteHtml(fase, lista) : ''}
       ${lista.length ? lista.map((c) => cartaoDoCandidatoRS(c, vaga)).join('') : '<div class="small-muted" style="font-size:12px;">Ninguém aqui.</div>'}
     </div>`
     )
     .join('');
   return `
+    ${typeof barraLoteHtml === 'function' ? barraLoteHtml(vaga) : ''}
     ${ficha ? fichaDoCandidatoHtml(ficha, vaga) : ''}
     ${candidatos.length ? '' : '<div class="empty" style="margin-bottom:10px;">Nenhum candidato nesta vaga ainda. Quem se candidata pelo link aparece acima para importar; ou leve pessoas do <a href="#" onclick="goto(\'rs\');return false;">Recrutamento</a>.</div>'}
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;align-items:start;">${colunas}</div>
@@ -345,6 +358,7 @@ function iniciarNovaVagaRS() {
 // ---------- "O que fazer hoje" no painel inicial ----------
 // Vai direto para a pendência: abre o Processo seletivo já na vaga certa (e na seção certa).
 function irParaPendenciaRS(chave, vagaId) {
+  if (chave === 'entrevistas_hoje' || chave === 'entrevistas_atualizar') return goto('rs_agenda');
   if (chave === 'aprovar') _psVagasAberto = true;
   if (chave === 'prova' && vagaId) _rsOrientacoesVagaAberta = vagaId;
   _rsRequisicaoExpandida = vagaId || null;
@@ -375,6 +389,7 @@ function renderPendenciasRecrutamento() {
     candidaturasPendentes: {},
     vagaSelecionadaId: null,
     gestor: true,
+    entrevistas: state.rs.entrevistas || [],
   });
   if (!acoes.length) return '';
   const e = escaparHtml;

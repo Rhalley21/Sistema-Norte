@@ -3,6 +3,8 @@ let modoLogin = 'entrar'; // entrar | cadastrar
 let temConviteLogin = false;
 let aceiteTermosLogin = false;
 let erroLogin = null;
+let erroContratarLogin = null; // a mensagem de erro que pede para falar com a equipe (o botão do WhatsApp só aparece junto dela)
+const WHATSAPP_CONTRATAR_URL = 'https://wa.me/558999857062?text=Ol%C3%A1!%20Quero%20continuar%20usando%20o%20INETRIS.';
 let carregandoLogin = false;
 // BUG CORRIGIDO: o formulário de login não preservava o que a pessoa já
 // tinha digitado quando a tela re-renderizava (ex.: depois de um erro de
@@ -153,7 +155,8 @@ function renderLogin() {
             </label>`
               : ''
           }
-          ${erroLogin ? `<p style="color:var(--iniciar-texto);font-size:12.5px;margin:-4px 0 12px;">${erroLogin}</p>` : ''}
+          ${erroLogin ? `<p style="color:var(--iniciar-texto);font-size:12.5px;margin:-4px 0 12px;">${escaparHtml(erroLogin)}</p>` : ''}
+          ${erroLogin && erroLogin === erroContratarLogin ? `<a class="btn btn-primary" href="${WHATSAPP_CONTRATAR_URL}" target="_blank" rel="noopener" style="width:100%;justify-content:center;margin:0 0 12px;">Falar no WhatsApp para continuar</a>` : ''}
           <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="${modoLogin === 'entrar' ? 'entrarLogin()' : 'cadastrarLogin()'}" ${carregandoLogin || statusAtual.bloqueado ? 'disabled' : ''}>
             ${carregandoLogin ? 'Aguarde…' : statusAtual.bloqueado ? `Bloqueado (${statusAtual.minutosRestantes} min)` : modoLogin === 'entrar' ? 'Entrar' : 'Criar conta'}
           </button>
@@ -343,15 +346,15 @@ async function cadastrarLogin() {
   // E-mail de boas-vindas — não bloqueia nada se falhar (fire-and-forget).
   enviarEmailNotificacao(
     email,
-    'Bem-vindo(a) à Plataforma NORTE',
+    'Bem-vindo(a) ao INETRIS',
     temConvite
       ? emailWrapperHTML(
           'Conta criada com sucesso!',
-          `Olá, ${escaparHtml(nome)}! Sua conta na Plataforma NORTE foi criada com sucesso. Você já pode entrar com o e-mail e a senha que acabou de cadastrar.`
+          `Olá, ${escaparHtml(nome)}! Sua conta no INETRIS foi criada com sucesso. Você já pode entrar com o e-mail e a senha que acabou de cadastrar.`
         )
       : emailWrapperHTML(
           'Conta criada com sucesso!',
-          `Olá, ${escaparHtml(nome)}! A empresa <b>${escaparHtml(nomeEmpresa)}</b> foi cadastrada com sucesso na Plataforma NORTE, e você é a pessoa Administradora responsável por ela. Bem-vindo(a)!`
+          `Olá, ${escaparHtml(nome)}! A empresa <b>${escaparHtml(nomeEmpresa)}</b> foi cadastrada com sucesso no INETRIS, e você é a pessoa Administradora responsável por ela. Bem-vindo(a)!`
         )
   );
   // se der certo, o listener onAuthStateChange cuida de iniciar o app
@@ -437,6 +440,7 @@ async function iniciarComSessao(sessao) {
     await sb.auth.signOut();
     erroLogin =
       'O acesso da sua Empresa a esta plataforma está temporariamente suspenso. Entre em contato com o Instituto INETRIS para regularizar.';
+    erroContratarLogin = erroLogin;
     renderLogin();
     return;
   }
@@ -446,7 +450,8 @@ async function iniciarComSessao(sessao) {
   if (empresaCheck?.trial_ate && !empresaCheck.is_pagante && new Date(empresaCheck.trial_ate) < new Date()) {
     await sb.auth.signOut();
     erroLogin =
-      'Seu teste grátis de 7 dias expirou. Para continuar usando o sistema, assine um plano — fale com o Instituto INETRIS.';
+      'Seu teste grátis de 7 dias expirou. Seus dados continuam guardados: para continuar usando, escolha um plano.';
+    erroContratarLogin = erroLogin;
     renderLogin();
     return;
   }
@@ -509,11 +514,15 @@ async function processarTokensDaUrlSeHouver() {
 // js/35-tela-entrada.js (carregado bem mais tarde) termina de rodar. Em vez
 // de reordenar todos os arquivos (arriscado), esperamos a função existir de
 // verdade antes de chamar — tenta de novo a cada 50ms se ainda não existir.
+// Espera também o fim do carregamento da página (document.readyState): renderTelaAuth passa a existir assim que o js/35 roda, mas
+// o js/58 (que preenche o cadastro vindo do teste grátis) vem DEPOIS na lista. Sem esta espera, a tela era desenhada antes do
+// preenchimento e o cadastro abria vazio (achado num teste em navegador real).
 function _chamarRenderTelaAuthQuandoPronto() {
-  if (typeof renderTelaAuth !== 'function') {
+  if (typeof renderTelaAuth !== 'function' || document.readyState === 'loading') {
     setTimeout(_chamarRenderTelaAuthQuandoPronto, 50);
     return;
   }
+  if (typeof aplicarPrefillCadastro === 'function') aplicarPrefillCadastro(); // vem do teste grátis: cadastro já preenchido
   renderTelaAuth();
 }
 
@@ -595,7 +604,7 @@ function renderRedefinirSenha() {
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
           ${compassSVG ? compassSVG() : ''}
           <div>
-            <div class="brand-name">NORTE</div>
+            <div class="brand-name">INETRIS</div>
             <div class="brand-sub">Redefinir senha</div>
           </div>
         </div>

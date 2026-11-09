@@ -3,6 +3,57 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.130.0 — Teste grátis pronto para divulgar
+Auditoria do teste grátis de ponta a ponta (formulário, função do servidor, cadastro, prazo, avisos) e correção do que fazia perder lead. **Sem SQL novo.** Guia, passos de ativação e roteiro de teste real: docs/TESTE-GRATIS.md.
+- **O código aparece na tela** do site (com copiar e botão para o cadastro), além de ir por e-mail. Antes dependia só do e-mail, e a falha do e-mail era silenciosa ("Teste liberado!" sem ninguém receber nada).
+- **O servidor confere se o e-mail saiu** e, se não saiu, **avisa a equipe com o código** para entregar à mão. **Cada teste novo avisa a equipe por e-mail.**
+- **E-mail do código**: botão "Criar minha conta agora" com o código preenchido e link do WhatsApp; sem a promessa "responda este e-mail" (as respostas não chegam a uma caixa); sem emoji no assunto.
+- **Cadastro preenchido**: o código vai no endereço (`#cadastro&codigo=...`) e nome, e-mail e empresa só pela sessão do navegador (nunca no endereço, que passa por histórico e pelo Sentry).
+- **Limites reformulados**: pedido com erro não gasta a cota; 10 pedidos válidos por IP por dia (IP de operadora é compartilhado), 2 por e-mail por dia (barra "mail bombing") e 30 tentativas por hora. Quem pede de novo e ainda não usou o código **recebe o mesmo código** (sem aviso duplicado).
+- **Mensagem do 8º dia** diz que os dados continuam guardados e traz o botão de WhatsApp (também no acesso suspenso). **Aviso de privacidade** junto do botão do formulário. Botão fixo do rodapé some depois do sucesso.
+- **Marca INETRIS** no e-mail de boas-vindas, no convite, nos e-mails de avaliação e na tela de nova senha (antes "Plataforma NORTE").
+- Corrigido: a mensagem de erro da tela de entrada ia **sem escape** para o HTML.
+- **Achado em navegador real**: o cadastro abria vazio porque a tela de entrada era desenhada antes de o `js/58` carregar. Agora a abertura espera o fim do carregamento. (Os testes simulados não podiam ver isso.)
+- **Corrigido na minha própria entrega anterior**: o deck da campanha dizia que só o e-mail do código era automático; os avisos de fim de teste (dias 5, 7, 8 e 14) já existiam.
+
+**Testes:** 45 novos (a função do servidor roda inteira contra um banco falso; a página inicial roda num DOM simulado) e **47 regressões plantadas, todas detectadas**. Fluxo conferido também num **Chromium real, em tamanho de celular**: página inicial, sucesso, cadastro preenchido, só o link do e-mail (outro aparelho) e acesso normal sem link.
+**Não verificado** (depende de contas suas): reCAPTCHA no domínio novo, Auth do Supabase, entrega de e-mail, caixa de resposta.
+
+## v0.129.0 — WhatsApp com o candidato e divulgação da vaga
+**WhatsApp na ficha do candidato** (Administrador e RH): o botão abre o WhatsApp com uma **mensagem pronta e editável** (primeiro contato; entrevista marcada e lembrete, que usam a data, a hora e o link da agenda). O sistema **não envia nada**, não lê respostas e não faz envio em massa. Na página R&S — Agenda, cada entrevista tem um botão que abre direto com o lembrete.
+- **Telefone brasileiro**: aceita `(89) 99999-1234`, `+55…`, zero de discagem etc., monta o número com o 55 e **recusa com o motivo** (vazio, incompleto, DDD inválido, celular sem 9). Fixo e celular antigo sem o 9 valem, com aviso. Números de outro país funcionam com `+`.
+- Guarda só **quando** o WhatsApp foi aberto (a equipe não chama a mesma pessoa duas vezes); **o conteúdo da mensagem não é guardado**; a Auditoria guarda só contagens.
+
+**Divulgar a vaga** (cartão da vaga publicada): botões para **WhatsApp**, **LinkedIn**, **e-mail** e **copiar o texto do anúncio**. O texto usa só o que já é público; **vaga confidencial nunca revela o cargo nem a empresa**.
+- **Descoberto:** a vaga **não guardava**, depois de publicada, o título, a modalidade e se a empresa aparecia. Sem isso o texto poderia vazar o que é confidencial. Agora a publicação guarda esses dados (`publico`). Vagas publicadas **antes** desta versão saem de forma conservadora (sem empresa e sem modalidade).
+- **Descoberto:** a prévia do link no WhatsApp e no LinkedIn mostra "Candidatura — INETRIS" para **toda** vaga, porque a página se preenche por JavaScript e esses serviços leem o HTML cru. Fica avisado na própria tela; a correção é a **página de divulgação** (próxima etapa), que também serve o Google Vagas.
+- **Correção de registro:** o plano anterior dizia que a página pública da vaga bloqueava buscadores; **não bloqueia** (não há marcação `robots`).
+
+**Testes:** 30 novos e **33 regressões plantadas, todas detectadas** (uma lacuna, o corte de 140 caracteres das atividades, foi achada assim e fechada). Não foi visto em navegador de verdade: siga o roteiro de 10 minutos de docs/WHATSAPP-E-DIVULGACAO-RS.md.
+
+## v0.128.0 — Agenda das entrevistas
+Nova tela **R&S — Agenda** (Administrador e RH) e agendamento na ficha do candidato:
+- **Agendar, remarcar, cancelar, marcar como realizada ou "faltou", reenviar e-mail e baixar .ics**, com data, hora, duração, fuso (Brasília, Manaus, Rio Branco ou Noronha), formato (online, presencial ou telefone), link ou local, entrevistador e observação.
+- O **candidato recebe um e-mail** com data por extenso, hora e fuso, formato e local, e botões de **Google Agenda** e **Outlook**. Só mostra o que o RH preencheu (nada inventado); tudo que o RH digita sai escapado.
+- **Aviso de conflito** (mesmo candidato ou mesmo entrevistador no mesmo horário), sem impedir. Encostar (uma termina quando a outra começa) não conflita.
+- A página mostra **hoje**, os **próximos 30 dias** por dia, as entrevistas que **já passaram** e esperam resultado, e quem está **em etapa de entrevista sem data**; lembrete manual por e-mail; **arquivo .ics** da agenda.
+- O painel "o que fazer hoje" e o cartão do painel inicial avisam de entrevistas hoje, para atualizar e sem data.
+- **Reprovar** (individual ou em lote) cancela as entrevistas que ainda estavam agendadas.
+- Cada entrevista é um **item próprio** da lista `rs.entrevistas`: duas pessoas agendando ao mesmo tempo **não perdem** nenhuma (provado com o módulo de mesclagem real). Arquivo .ics com linhas de até 75 bytes, escape correto e sem partir letras acentuadas.
+- **Limites declarados:** lembrete manual (o servidor não grava no documento da empresa), links de calendário em vez de anexo .ics, o candidato não escolhe o horário.
+
+**Testes:** 50 novos, com relógio fixo (quarta-feira, 4/11/2026, 12:00 em Brasília) e datas conferíveis à mão, e **40 regressões plantadas, todas detectadas** (duas lacunas dos próprios testes, achadas assim, foram fechadas). Não foi visto em navegador de verdade: siga o roteiro de 10 minutos de docs/AGENDA-E-LOTE-RS.md.
+
+## v0.127.0 — Mover e reprovar em lote
+No quadro da vaga, **Selecionar vários** liga caixas nos cartões (e "Selecionar todos desta fase") e a barra oferece **Avançar para a próxima etapa**, **Mover para…** e **Reprovar** (Administrador e RH).
+- **O mesmo código da movimentação individual** (`aplicarMovimentoRS` e `aplicarReprovacaoRS`, extraídos do código antigo sem mudar o comportamento: 803 testes continuaram passando): histórico, e-mail da etapa e, nas etapas de vídeo e de resultado, o link pessoal de cada candidato.
+- **Confirmação antes de agir**: quantos vão para onde, quantos recebem e-mail, quantos não têm e-mail, os avisos da etapa (links ou prova prática faltando) e quem será ignorado, com o motivo.
+- Um candidato por vez, com pausa; **até 50 por lote**; duplo clique não dobra os e-mails; quem **mudou enquanto o painel estava aberto é pulado**; um erro em um candidato não derruba os outros.
+- **Antes, uma falha de e-mail passava em silêncio** (só um aviso no console). Agora `enviarEmailEtapaRS` devolve se saiu, e o resumo diz **quem ficou sem aviso**, com "Tentar enviar de novo".
+- A Auditoria guarda só as contagens, nunca nomes ou e-mails.
+
+**Testes:** 34 novos e **25 regressões plantadas, todas detectadas** (uma lacuna, o escape de nomes no painel final, foi achada assim e fechada).
+
 ## v0.126.0 — Segurança por papel (correção urgente)
 Uma auditoria automática das regras do banco e testes contra um **Postgres de verdade** (PGlite, com as migrações reais) mostraram que a tela escondia o que o banco
 deixava fazer. Qualquer usuário logado, inclusive um colaborador, conseguia pela API: **virar Administrador**, **criar convite de RH**, **sobrescrever ou apagar o documento

@@ -203,6 +203,37 @@ const FAQ_CENTRAL = [
     ],
   },
   {
+    p: 'Posso chamar um candidato pelo WhatsApp?',
+    r: 'Sim. Na ficha do candidato, clique em "WhatsApp": o sistema abre o WhatsApp com uma mensagem pronta (primeiro contato, entrevista marcada ou lembrete), que você pode editar antes de enviar. O sistema não envia nada sozinho: quem aperta enviar é você. O botão só funciona se o telefone do candidato estiver completo, com DDD. Prefira um número da empresa. O sistema guarda só quando o WhatsApp foi aberto, para a equipe não chamar a mesma pessoa duas vezes; o conteúdo da mensagem não fica guardado.',
+    k: ['whatsapp', 'zap', 'mensagem', 'telefone', 'contato', 'candidato'],
+  },
+  {
+    p: 'Como divulgo a vaga em outros lugares?',
+    r: 'Depois de publicar a vaga, o cartão dela mostra o link público e a linha "Divulgar", com botões para WhatsApp, LinkedIn, e-mail e "Copiar texto do anúncio". O texto usa só o que já aparece na página da vaga: se a vaga for confidencial, ele não revela o cargo nem a empresa. A prévia do link no WhatsApp e no LinkedIn ainda mostra o título genérico da página.',
+    k: [
+      'divulgar',
+      'divulgo',
+      'divulgacao',
+      'vaga',
+      'lugares',
+      'compartilhar',
+      'linkedin',
+      'anuncio',
+      'link',
+      'publicar',
+    ],
+  },
+  {
+    p: 'Como agendo uma entrevista e aviso o candidato?',
+    r: 'Abra a ficha do candidato numa etapa de entrevista e use "Agendar entrevista": data, hora, formato (online, presencial ou telefone), link ou local. O candidato recebe um e-mail com a data por extenso e botões para pôr no Google Agenda ou no Outlook. Em R&S — Agenda (menu Pessoas) você vê as entrevistas de hoje e dos próximos 30 dias, as que já passaram e esperam resultado, e quem está sem data. O sistema avisa se o mesmo candidato ou entrevistador já tem outra entrevista no horário.',
+    k: ['agenda', 'entrevista', 'entrevistas', 'agendar', 'calendario', 'lembrete', 'remarcar', 'horario'],
+  },
+  {
+    p: 'Posso mover ou reprovar vários candidatos de uma vez?',
+    r: 'Sim. No quadro da vaga, clique em "Selecionar vários", marque os candidatos (ou "Selecionar todos desta fase") e escolha Avançar, Mover para uma etapa ou Reprovar. Um painel mostra quantos vão para onde e quantos recebem e-mail, e só age depois de você confirmar. Cada candidato é tratado como se fosse movido um por um, com o e-mail e o link pessoal da etapa. Se algum e-mail não sair, o resumo final mostra quem foi. O limite é de 50 candidatos por vez.',
+    k: ['lote', 'varios', 'reprovar', 'avancar', 'selecionar', 'candidatos', 'mover', 'massa'],
+  },
+  {
     p: 'Onde vejo o funil, o tempo de cada etapa e onde os candidatos ficam parados?',
     r: 'Em R&S — Relatórios (menu Pessoas, para Administrador e RH). Você escolhe uma vaga ou todas e o período, e vê o funil (quantos chegaram a cada etapa), o tempo médio em cada etapa, os candidatos parados há mais de 7 dias (com um botão para abrir a ficha), de onde vêm os candidatos e em que etapa e por qual motivo eles saem. O botão "Exportar para planilha" baixa tudo em CSV. Os números vêm do histórico de movimentações; candidatos antigos podem ter lacunas.',
     k: [

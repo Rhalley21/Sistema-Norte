@@ -88,10 +88,10 @@ async function gerarConvite() {
   if (emailDestino) {
     const enviado = await enviarEmailNotificacao(
       emailDestino,
-      `Você foi convidado para a Plataforma NORTE — ${state.empresa?.nomeFantasia || ''}`,
+      `Você foi convidado para o INETRIS — ${state.empresa?.nomeFantasia || ''}`,
       emailWrapperHTML(
         'Você recebeu um convite',
-        `Você foi convidado para acessar a Plataforma NORTE como <b>${PAPEL_LABEL_UI[_papelNovoConvite]}</b>${nodeEstrutura ? ` (${escaparHtml(nodeEstrutura.nome)})` : ''}. Use o código abaixo na tela de cadastro:<br><br><span style="font-family:monospace;font-size:18px;letter-spacing:2px;">${codigo}</span>`
+        `Você foi convidado para acessar o INETRIS como <b>${PAPEL_LABEL_UI[_papelNovoConvite]}</b>${nodeEstrutura ? ` (${escaparHtml(nodeEstrutura.nome)})` : ''}. Use o código abaixo na tela de cadastro:<br><br><span style="font-family:monospace;font-size:18px;letter-spacing:2px;">${codigo}</span>`
       )
     );
     showToast(

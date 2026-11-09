@@ -94,9 +94,12 @@ function urlBaseVideoRS() {
   return `${location.origin}${location.pathname.replace(/[^/]*$/, '')}`;
 }
 
+// Devolve { enviado }: true (o e-mail com o link saiu), false (não saiu: o link existe e pode ser copiado, ou o pedido falhou)
+// ou null. silencioso: sem avisos na tela nem recarga da lista (o lote faz isso uma vez no fim).
 async function pedirVideoRS(candidatoId, opcoes) {
+  const silencioso = !!(opcoes && opcoes.silencioso);
   const cand = state.rs.candidatos.find((c) => c.id === candidatoId);
-  if (!cand) return;
+  if (!cand) return { enviado: null };
   const vaga = state.rs.requisicoes.find((r) => r.id === cand.vagaId);
   const cfg = configEfetivaEtapaRS(vaga, 'video');
   const r = await chamarVideoRS('video_solicitar', {
@@ -108,18 +111,21 @@ async function pedirVideoRS(candidatoId, opcoes) {
     url_base: urlBaseVideoRS(),
   });
   if (!r.ok) {
-    showToast(`Não foi possível pedir o vídeo: ${r.erro}`);
-    if (opcoes && opcoes.automatico) enviarEmailEtapaRS(cand, 'video'); // pelo menos o aviso da etapa sai
-    return;
+    if (!silencioso) showToast(`Não foi possível pedir o vídeo: ${r.erro}`);
+    if (opcoes && opcoes.automatico) return { enviado: await enviarEmailEtapaRS(cand, 'video'), pedidoFalhou: true }; // pelo menos o aviso da etapa sai
+    return { enviado: false, pedidoFalhou: true };
   }
   _rsVideoLinks[r.data.pedido.id] = r.data.link;
   registrarAuditoria('rs.video_solicitado', { candidatoId: cand.id, pedidoId: r.data.pedido.id });
-  showToast(
-    r.data.emailEnviado
-      ? `Pedido de vídeo enviado por e-mail a ${cand.nome}.`
-      : 'Pedido criado. Copie o link e envie ao candidato.'
-  );
-  await carregarVideosRS(true);
+  if (!silencioso) {
+    showToast(
+      r.data.emailEnviado
+        ? `Pedido de vídeo enviado por e-mail a ${cand.nome}.`
+        : 'Pedido criado. Copie o link e envie ao candidato.'
+    );
+    await carregarVideosRS(true);
+  }
+  return { enviado: cand.email ? !!r.data.emailEnviado : null };
 }
 
 async function reenviarVideoRS(id) {

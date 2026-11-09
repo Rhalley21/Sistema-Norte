@@ -17,6 +17,7 @@ function garantirRS() {
   if (!state.rs.requisicoes) state.rs.requisicoes = [];
   if (!state.rs.candidatos) state.rs.candidatos = [];
   if (!state.rs.configEtapas) state.rs.configEtapas = {};
+  if (!Array.isArray(state.rs.entrevistas)) state.rs.entrevistas = [];
   migrarEtapasLegadasRS(state.rs.candidatos, typeof meuPerfilId !== 'undefined' ? meuPerfilId : null);
 }
 
@@ -180,6 +181,8 @@ async function publicarVagaRS(id) {
   r.publicada = true;
   r.publicadaEm = new Date().toISOString();
   r.vagaPublicaId = data.vagaPublicaId;
+  // O que a página pública mostra, guardado para o texto de divulgação usar só isso (vaga confidencial não revela cargo nem empresa).
+  r.publico = { titulo, modalidade, mostrarEmpresa, local };
   _rsConfigurarPublicaAberta = null;
   showToast('Vaga publicada! Copie o link abaixo pra divulgar.');
   render();
@@ -454,22 +457,61 @@ function previaEmailEtapaRS(etapa, nomeVaga, cfg) {
   return `<p><b>Assunto:</b> ${escaparHtml(m.assunto)}</p>${m.corpoHtml}`;
 }
 
+// Devolve true (o e-mail saiu), false (falhou) ou null (a etapa não tem e-mail ou o candidato não tem endereço).
+// O pipeline nunca é bloqueado por isso; quem precisa saber (o lote) usa o retorno.
 async function enviarEmailEtapaRS(candidato, etapa, extra = {}) {
   const tpl = RS_EMAIL_POR_ETAPA[etapa];
-  if (!tpl || !candidato.email) return;
+  if (!tpl || !candidato.email) return null;
   const vaga = state.rs.requisicoes.find((r) => r.id === candidato.vagaId);
   const nomeVaga = vaga ? state.cargos.find((c) => c.id === vaga.cargoId)?.nome || vaga.codigo : 'nossa vaga';
   const cfgEtapa = configEfetivaEtapaRS(vaga, etapa); // orientações da vaga (ou, na falta, as da empresa)
   const email = montarEmailEtapaRS({ nome: candidato.nome, nomeVaga, etapa, cfg: cfgEtapa, entrega: extra.entrega });
   try {
-    await sb.functions.invoke('enviar-email', {
+    const { data, error } = await sb.functions.invoke('enviar-email', {
       // O nome do candidato vem do formulário público: o montador escapa, senão dava pra mandar HTML
       // (links) dentro de um e-mail da INETRIS pro endereço de qualquer pessoa.
       body: { destinatario: candidato.email, assunto: email.assunto, corpoHtml: email.corpoHtml },
     });
+    if (error || (data && data.error)) {
+      console.warn(
+        'Falha ao enviar e-mail de atualização de candidatura (não bloqueia o pipeline)',
+        error || data.error
+      );
+      return false;
+    }
+    return true;
   } catch (e) {
     console.warn('Falha ao enviar e-mail de atualização de candidatura (não bloqueia o pipeline)', e);
+    return false;
   }
+}
+
+// A parte que MUDA o candidato de etapa e dispara o e-mail (ou o pedido de vídeo/resultado) da etapa. É a mesma para a
+// movimentação individual e para o lote. silencioso: sem avisos na tela (o lote mostra um resumo no fim).
+// Devolve uma promessa de { enviado }: true (saiu), false (falhou) ou null (não havia e-mail a mandar).
+function aplicarMovimentoRS(cand, novaEtapa, opcoes) {
+  const silencioso = !!(opcoes && opcoes.silencioso);
+  const anterior = cand.etapa;
+  cand.etapa = novaEtapa;
+  cand.historico = cand.historico || [];
+  cand.historico.push({
+    de: anterior,
+    para: novaEtapa,
+    autorId: meuPerfilId,
+    em: new Date().toISOString(),
+    observacao: '',
+  });
+  if (novaEtapa === 'video' && rsVideoHabilitado()) {
+    // Entrar na etapa de vídeo já cria o pedido e manda o link (com as orientações da vaga): não manda também o aviso genérico.
+    return pedirVideoRS(cand.id, { automatico: true, silencioso });
+  }
+  if (ETAPAS_COM_ENTREGA_RS.includes(novaEtapa) && rsEntregaHabilitado()) {
+    // Etapa com teste/entrega: cria o pedido e manda o e-mail da etapa JÁ com o botão "Enviar meu resultado".
+    return enviarEtapaComEntregaRS(cand, novaEtapa, { silencioso });
+  }
+  const envio = enviarEmailEtapaRS(cand, novaEtapa).then((enviado) => ({ enviado }));
+  if (!silencioso) showToast(`Etapa atualizada — e-mail enviado a ${cand.nome}.`);
+  return envio;
 }
 
 function moverEtapaCandidatoRS(candidatoId, novaEtapa) {
@@ -503,33 +545,20 @@ function moverEtapaCandidatoRS(candidatoId, novaEtapa) {
       return;
     }
   }
-  cand.etapa = novaEtapa;
-  cand.historico.push({
-    de: anterior,
-    para: novaEtapa,
-    autorId: meuPerfilId,
-    em: new Date().toISOString(),
-    observacao: '',
-  });
-  if (novaEtapa === 'video' && rsVideoHabilitado()) {
-    // Entrar na etapa de vídeo já cria o pedido e manda o link (com as orientações da vaga): não manda também o aviso genérico.
-    pedirVideoRS(cand.id, { automatico: true });
-  } else if (ETAPAS_COM_ENTREGA_RS.includes(novaEtapa) && rsEntregaHabilitado()) {
-    // Etapa com teste/entrega: cria o pedido e manda o e-mail da etapa JÁ com o botão "Enviar meu resultado".
-    enviarEtapaComEntregaRS(cand, novaEtapa);
-  } else {
-    enviarEmailEtapaRS(cand, novaEtapa);
-    showToast(`Etapa atualizada — e-mail enviado a ${cand.nome}.`);
-  }
+  aplicarMovimentoRS(cand, novaEtapa);
   render();
 }
 
-function reprovarCandidatoRS(candidatoId) {
-  const cand = state.rs.candidatos.find((c) => c.id === candidatoId);
-  if (!cand) return;
-  const motivo = prompt('Motivo da reprovação/desistência (fica no histórico). O candidato será avisado por e-mail.');
-  if (motivo === null) return;
+// Marca o candidato como reprovado (ou desistente), registra o motivo no histórico e avisa por e-mail.
+// Devolve uma promessa de { enviado } (true, false ou null), como aplicarMovimentoRS.
+function aplicarReprovacaoRS(cand, motivo, opcoes) {
+  const silencioso = !!(opcoes && opcoes.silencioso);
   cand.reprovado = true;
+  // Entrevistas ainda marcadas deixam de valer: quem foi reprovado não fica na agenda.
+  (state.rs.entrevistas || []).forEach((e) => {
+    if (e.candidatoId === cand.id && e.status === 'agendada') e.status = 'cancelada';
+  });
+  cand.historico = cand.historico || [];
   cand.historico.push({
     de: cand.etapa,
     para: 'reprovado',
@@ -537,8 +566,17 @@ function reprovarCandidatoRS(candidatoId) {
     em: new Date().toISOString(),
     observacao: motivo,
   });
-  enviarEmailEtapaRS(cand, 'reprovado');
-  showToast(`Candidato reprovado — e-mail enviado a ${cand.nome}.`);
+  const envio = enviarEmailEtapaRS(cand, 'reprovado').then((enviado) => ({ enviado }));
+  if (!silencioso) showToast(`Candidato reprovado — e-mail enviado a ${cand.nome}.`);
+  return envio;
+}
+
+function reprovarCandidatoRS(candidatoId) {
+  const cand = state.rs.candidatos.find((c) => c.id === candidatoId);
+  if (!cand) return;
+  const motivo = prompt('Motivo da reprovação/desistência (fica no histórico). O candidato será avisado por e-mail.');
+  if (motivo === null) return;
+  aplicarReprovacaoRS(cand, motivo);
   render();
 }
 
@@ -976,6 +1014,7 @@ function rsRequisicoesCardHtml() {
                   ? `<tr><td colspan="5" class="small-muted" style="padding-top:0;">🔗 Link público: <code style="font-size:11px;">${linkPublicoRS(r)}</code> <button class="btn btn-ghost btn-sm" onclick="copiarLinkPublicoRS('${r.id}')">Copiar</button></td></tr>`
                   : ''
               }
+              ${typeof compartilharVagaHtml === 'function' ? compartilharVagaHtml(r) : ''}
               ${
                 _rsConfigurarPublicaAberta === r.id
                   ? `<tr><td colspan="5">

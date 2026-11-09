@@ -138,7 +138,7 @@ function pageProcessoSeletivoRS() {
             : '<span class="small-muted">nenhuma vaga aprovada ainda</span>'
         }
       </div>
-      <span style="display:flex;gap:8px;flex-wrap:wrap;">${gestor ? '<button class="btn btn-ghost btn-sm" onclick="goto(\'rs_relatorios\')">Relatórios</button>' : ''}
+      <span style="display:flex;gap:8px;flex-wrap:wrap;">${gestor ? '<button class="btn btn-ghost btn-sm" onclick="goto(\'rs_agenda\')">Agenda</button>' : ''} ${gestor ? '<button class="btn btn-ghost btn-sm" onclick="goto(\'rs_relatorios\')">Relatórios</button>' : ''}
       <button class="btn btn-primary btn-sm" onclick="iniciarNovaVagaRS()">+ Nova vaga</button></span>
     </div>
 
