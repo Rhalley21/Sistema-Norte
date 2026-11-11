@@ -880,15 +880,6 @@
           <h2>Um plano para cada tamanho de equipe</h2>
           <p>A plataforma é a mesma em todos os planos — o que muda é quantos colaboradores cabem.</p>
         </div>
-        <div class="tg">
-          <div class="tgl" role="group" aria-label="Condição de preço">
-            <button type="button" data-m="std" aria-pressed="false">Mês a mês</button>
-            <button type="button" data-m="loy" aria-pressed="true">
-              Fidelidade 12 meses
-              <small>MENOR PREÇO</small>
-            </button>
-          </div>
-        </div>
         <p class="pricing-note rv">
           A mensalidade é por faixa de colaboradores. A implantação é cobrada uma única vez, na contratação.
         </p>
@@ -897,11 +888,9 @@
             <h3>Essencial</h3>
             <p class="detail">Até 10 colaboradores</p>
             <div class="price">
-              <strong data-std="297" data-loy="197">R$ 197</strong>
+              <strong>R$ 297</strong>
               <span>/mês</span>
             </div>
-            <div class="old" data-std="" data-loy="R$ 297,00/mês">R$ 297,00/mês</div>
-            <p class="note" data-std="" data-loy="Preço com fidelidade de 12 meses">Preço com fidelidade de 12 meses</p>
             <div class="impl">
               Implantação (única vez):
               <b>R$ 590,00</b>
@@ -913,11 +902,9 @@
             <h3>Gestão</h3>
             <p class="detail">11 a 30 colaboradores</p>
             <div class="price">
-              <strong data-std="597" data-loy="397">R$ 397</strong>
+              <strong>R$ 597</strong>
               <span>/mês</span>
             </div>
-            <div class="old" data-std="" data-loy="R$ 597,00/mês">R$ 597,00/mês</div>
-            <p class="note" data-std="" data-loy="Preço com fidelidade de 12 meses">Preço com fidelidade de 12 meses</p>
             <div class="impl">
               Implantação (única vez):
               <b>R$ 990,00</b>
@@ -928,11 +915,9 @@
             <h3>Estratégico</h3>
             <p class="detail">31 a 60 colaboradores</p>
             <div class="price">
-              <strong data-std="997" data-loy="697">R$ 697</strong>
+              <strong>R$ 997</strong>
               <span>/mês</span>
             </div>
-            <div class="old" data-std="" data-loy="R$ 997,00/mês">R$ 997,00/mês</div>
-            <p class="note" data-std="" data-loy="Preço com fidelidade de 12 meses">Preço com fidelidade de 12 meses</p>
             <div class="impl">
               Implantação (única vez):
               <b>R$ 1.490,00</b>
@@ -1067,13 +1052,6 @@
             </p>
           </details>
           <details>
-            <summary>O que é a condição de fidelidade?</summary>
-            <p>
-              É um valor mensal reduzido, válido nos primeiros 12 meses de contrato. Use o seletor acima para comparar
-              com o valor mês a mês.
-            </p>
-          </details>
-          <details>
             <summary>O que é a taxa de implantação?</summary>
             <p>
               Uma cobrança única, feita só na contratação, que cobre a configuração inicial da sua empresa no sistema. O
@@ -1124,14 +1102,6 @@
         a.target = '_blank';
         a.rel = 'noopener';
       });
-      const btns = document.querySelectorAll('.tgl button');
-      function setMode(m) {
-        btns.forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === m));
-        document.querySelectorAll('.price strong').forEach((e) => (e.textContent = 'R$ ' + e.dataset[m]));
-        document.querySelectorAll('.old,.note').forEach((e) => (e.textContent = e.dataset[m]));
-      }
-      btns.forEach((b) => (b.onclick = () => setMode(b.dataset.m)));
-      setMode('loy');
 
       // ---- Teste grátis automático: mesma Edge Function "teste-gratis"
       // já usada no resto do sistema (gera o código, aprova e manda o

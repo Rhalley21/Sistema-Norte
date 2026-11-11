@@ -6,6 +6,8 @@ Legenda: **papel** = a regra olha o papel de quem acessa (Administrador, RH, lí
 
 | Tabela | Acesso direto pela API | Regras (comando: política → controle) |
 |---|---|---|
+| `assinaturas` | RLS ligado | ler: `assinaturas_le_dono` → papel<br>ler: `assinaturas_le_super` → papel |
+| `assinaturas_eventos` | RLS ligado | ler: `assinaturas_eventos_le_dono` → papel<br>ler: `assinaturas_eventos_le_super` → papel |
 | `auditoria` | RLS ligado | ler: `auditoria - consulta por empresa` → só empresa/dono<br>criar: `auditoria - insercao por empresa` → só empresa/dono (exceção documentada) |
 | `avaliacoes` | **só servidor** | todas as permissões da API foram revogadas |
 | `banco_acoes` | **só servidor** | todas as permissões da API foram revogadas |
@@ -20,6 +22,7 @@ Legenda: **papel** = a regra olha o papel de quem acessa (Administrador, RH, lí
 | `empresas` | RLS ligado | alterar: `edita a propria empresa` → só empresa/dono (exceção documentada)<br>alterar: `super admin atualiza qualquer empresa` → papel<br>ler: `super admin ve todas as empresas` → papel<br>ler: `ve a propria empresa` → só empresa/dono |
 | `eventos_dominio` | RLS ligado | ler: `eventos_dominio - consulta por empresa` → só empresa/dono<br>criar: `eventos_dominio - insercao por empresa` → só empresa/dono (exceção documentada) |
 | `folhas_ponto_papel` | RLS ligado | apagar: `gestor apaga so rascunho de folha de ponto em papel` → papel<br>criar: `gestor cria folhas de ponto em papel da empresa` → papel<br>alterar: `gestor edita folhas de ponto em papel da empresa` → papel<br>ler: `gestor ve folhas de ponto em papel da empresa` → papel |
+| `links_pagamento` | **só servidor** | todas as permissões da API foram revogadas |
 | `notificacoes` | RLS ligado | apagar: `cada um apaga suas proprias notificacoes` → só empresa/dono (exceção documentada)<br>alterar: `cada um marca como lida suas proprias notificacoes` → só empresa/dono (exceção documentada)<br>ler: `cada um ve suas proprias notificacoes` → só empresa/dono<br>criar: `qualquer um da empresa cria notificacao pra empresa` → só empresa/dono (exceção documentada) |
 | `nr1_campanhas` | RLS ligado | (nenhuma política: ninguém acessa) |
 | `nr1_consentimentos` | RLS ligado | (nenhuma política: ninguém acessa) |

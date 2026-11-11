@@ -3,6 +3,20 @@
 Registro de versões da própria plataforma (não confundir com o versionamento
 de Desenho de Cargo, que é por cargo/empresa — ver RN024).
 
+## v0.131.0 — Cobrança por link de pagamento (desligada por padrão) e fim da fidelidade
+O teste grátis continua **sem cartão**. No fim dos 7 dias a pessoa recebe o link de pagamento do plano dela e paga se quiser continuar; **nada é cobrado automaticamente**. Guia, ordem para ligar e teste real: docs/COBRANCA.md.
+- **Sem fidelidade**: só os valores normais (R$ 297 / 597 / 997). Saiu o seletor "Mês a mês / Fidelidade 12 meses", os preços riscados e a pergunta do FAQ nas duas páginas de planos, o desconto de "cliente atual" da tela Pagamento e o texto do assistente. Os Termos de Uso **não foram alterados** (texto jurídico: vão para o advogado).
+- **sql/46-cobranca.sql** (rodar o `46-cobranca-sem-aspas.sql`): tabelas `assinaturas` (plano, valores, datas, situação e o **aceite**: texto exato, versão, quem e quando), `assinaturas_eventos` (histórico e trava de aviso em dobro) e `links_pagamento` (só o servidor lê). Só o servidor escreve; o Administrador e o Super Admin leem. O banco impõe as contas (total = mensalidade + implantação), as situações e links `https://` sem espaço.
+- **Função `cobranca`** (Verify JWT ligado): resumo, escolher plano (o texto do aceite nasce no servidor), cancelar e confirmar pagamento (Super Admin: ativa a assinatura e marca a empresa como cliente). O link só aparece a partir de 3 dias antes do fim do teste e é sempre o do plano da própria empresa.
+- **Rotina diária**: avisos ao Administrador 3 e 1 dia antes, no dia e 2 dias depois, com o link; a assinatura passa a "aguardando pagamento" no dia do fim; nada em dobro; e-mail que falhou é tentado de novo; link faltando avisa a equipe (uma vez por dia). Quem tem assinatura **não recebe** os avisos antigos de fim de teste, e quem já é cliente não é cobrado.
+- **Telas**: bloco na tela Pagamento (escolher, trocar, cancelar, pagar), botão "Pagar agora e continuar" na entrada depois do fim do teste, e situação da cobrança com "Confirmar pagamento" no Super Admin. O botão antigo "Marcar como pagante" some enquanto houver assinatura pendente.
+- **Desligada por padrão**: precisa do segredo `COBRANCA_ATIVA` e de `cobrancaAtiva: true` no `ambiente.js`. Desligada, nada muda.
+- **`scripts/gerar-sql-links.py`**: gera o SQL dos links de pagamento e **recusa** o link cujo valor, escrito no fim do endereço, não é o esperado para o plano e o tipo (evita cadastrar o link de R$ 297 como primeiro pagamento de R$ 887).
+- Corrigido de passagem: o endereço padrão do site nos e-mails da rotina era o do ambiente de testes antigo.
+
+**Testes:** 77 novos de cobrança (Postgres de verdade, função com banco falso e relógio parado, rotina, telas) e **85 regressões plantadas, todas detectadas** (uma proteção redundante, equivalente). A checagem achou três lacunas nos meus próprios testes, já corrigidas (cancelar duas vezes, alerta de link faltando repetido, status com link).
+**Não verificado** (depende de contas suas): o link real do InfinitePay, o envio real de e-mail e o pagamento de verdade. **Mensalidades seguintes, confirmação automática do pagamento, nota fiscal e revisão jurídica** continuam pendentes.
+
 ## v0.130.0 — Teste grátis pronto para divulgar
 Auditoria do teste grátis de ponta a ponta (formulário, função do servidor, cadastro, prazo, avisos) e correção do que fazia perder lead. **Sem SQL novo.** Guia, passos de ativação e roteiro de teste real: docs/TESTE-GRATIS.md.
 - **O código aparece na tela** do site (com copiar e botão para o cadastro), além de ir por e-mail. Antes dependia só do e-mail, e a falha do e-mail era silenciosa ("Teste liberado!" sem ninguém receber nada).

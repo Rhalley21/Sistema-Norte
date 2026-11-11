@@ -4,6 +4,7 @@ let temConviteLogin = false;
 let aceiteTermosLogin = false;
 let erroLogin = null;
 let erroContratarLogin = null; // a mensagem de erro que pede para falar com a equipe (o botão do WhatsApp só aparece junto dela)
+let linkPagamentoLogin = null; // o link de pagamento do plano, quando a empresa já escolheu um (cobrança por link)
 const WHATSAPP_CONTRATAR_URL = 'https://wa.me/558999857062?text=Ol%C3%A1!%20Quero%20continuar%20usando%20o%20INETRIS.';
 let carregandoLogin = false;
 // BUG CORRIGIDO: o formulário de login não preservava o que a pessoa já
@@ -156,6 +157,7 @@ function renderLogin() {
               : ''
           }
           ${erroLogin ? `<p style="color:var(--iniciar-texto);font-size:12.5px;margin:-4px 0 12px;">${escaparHtml(erroLogin)}</p>` : ''}
+          ${erroLogin && erroLogin === erroContratarLogin && linkPagamentoLogin ? `<a class="btn btn-primary" href="${escaparHtml(linkPagamentoLogin)}" target="_blank" rel="noopener" style="width:100%;justify-content:center;margin:0 0 12px;">Pagar agora e continuar</a>` : ''}
           ${erroLogin && erroLogin === erroContratarLogin ? `<a class="btn btn-primary" href="${WHATSAPP_CONTRATAR_URL}" target="_blank" rel="noopener" style="width:100%;justify-content:center;margin:0 0 12px;">Falar no WhatsApp para continuar</a>` : ''}
           <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="${modoLogin === 'entrar' ? 'entrarLogin()' : 'cadastrarLogin()'}" ${carregandoLogin || statusAtual.bloqueado ? 'disabled' : ''}>
             ${carregandoLogin ? 'Aguarde…' : statusAtual.bloqueado ? `Bloqueado (${statusAtual.minutosRestantes} min)` : modoLogin === 'entrar' ? 'Entrar' : 'Criar conta'}
@@ -448,10 +450,14 @@ async function iniciarComSessao(sessao) {
   // já passou da data, e ainda não virou pagante, bloqueia o acesso (dia 8).
   // Os dados NÃO são apagados aqui — só o acesso é bloqueado (ver sql/24).
   if (empresaCheck?.trial_ate && !empresaCheck.is_pagante && new Date(empresaCheck.trial_ate) < new Date()) {
+    // Com a cobrança por link a pessoa já pode pagar daqui: busca o link ANTES de sair (precisa da sessão).
+    const pagamento = typeof cobrancaDadosParaBloqueio === 'function' ? await cobrancaDadosParaBloqueio() : null;
     await sb.auth.signOut();
-    erroLogin =
-      'Seu teste grátis de 7 dias expirou. Seus dados continuam guardados: para continuar usando, escolha um plano.';
+    erroLogin = pagamento
+      ? `Seu teste grátis de 7 dias expirou. Seus dados continuam guardados: pague ${pagamento.total} para continuar usando.`
+      : 'Seu teste grátis de 7 dias expirou. Seus dados continuam guardados: para continuar usando, escolha um plano.';
     erroContratarLogin = erroLogin;
+    linkPagamentoLogin = pagamento ? pagamento.link : null;
     renderLogin();
     return;
   }

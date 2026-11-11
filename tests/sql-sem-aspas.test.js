@@ -13,8 +13,8 @@ const gerar = (arquivo) =>
     encoding: 'utf8',
   });
 
-test('a conversão sem aspas funciona para as migrações 44 e 45 e não deixa nenhuma aspa (reta ou curva)', () => {
-  for (const arquivo of ['44-dados-sistema-versao.sql', '45-seguranca-papeis.sql']) {
+test('a conversão sem aspas funciona para as migrações 44, 45 e 46 e não deixa nenhuma aspa (reta ou curva)', () => {
+  for (const arquivo of ['44-dados-sistema-versao.sql', '45-seguranca-papeis.sql', '46-cobranca.sql']) {
     const r = gerar(arquivo);
     assert.equal(r.status, 0, r.stderr);
     for (const aspa of ["'", '"', '\u2018', '\u2019', '\u201c', '\u201d'])

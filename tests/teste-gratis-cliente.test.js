@@ -355,7 +355,7 @@ test('tela de entrada: o erro é ESCAPADO (antes ia cru para o HTML) e o botão 
 });
 
 test('teste expirado e acesso suspenso mostram o botão do WhatsApp; a mensagem do 8º dia diz que os dados continuam guardados', () => {
-  const exp = /erroLogin =\s*'(Seu teste grátis de 7 dias expirou[^']*)';\s*erroContratarLogin = erroLogin;/.exec(auth);
+  const exp = /:\s*'(Seu teste grátis de 7 dias expirou[^']*)';\s*erroContratarLogin = erroLogin;/.exec(auth);
   assert.ok(exp, 'teste expirado não liga o botão');
   assert.ok(exp[1].includes('Seus dados continuam guardados') && exp[1].includes('escolha um plano'));
   assert.ok(

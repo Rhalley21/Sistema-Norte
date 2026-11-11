@@ -142,7 +142,7 @@ Menu R&S — Recrutamento (Administrador, RH e Líder): requisição de vaga, ap
 - Folha de Ponto (papel) (Administrador e RH): para quem registra o ponto à mão. O RH fotografa a folha, o sistema lê os horários por IA, o RH confere e corrige, e só depois confirma. Há dois formatos: a folha mensal de um colaborador, e a lista de presença do dia (várias pessoas na mesma folha). A leitura pode errar, por isso a conferência é obrigatória; a foto original fica guardada. Folha confirmada só pode ser alterada reabrindo, com motivo registrado.
 
 # PLANOS, PAGAMENTO E TESTE GRÁTIS
-- Planos: Essencial (até 10 colaboradores), Gestão (até 30), Estratégico (até 60). Há taxa de implantação única, e condição de fidelidade de 12 meses com mensalidade menor. Valores atuais ficam na tela Pagamento e na página de planos.
+- Planos: Essencial (até 10 colaboradores), Gestão (até 30), Estratégico (até 60). Há taxa de implantação única, e a mensalidade é a mesma em todos os meses, sem fidelidade.
 - Menu Pagamento (só Administrador): mostra o plano e permite solicitar mudança de plano ("Solicitar este plano").
 - Teste grátis: 7 dias, com o código recebido por e-mail. Ao terminar o teste, o acesso é bloqueado, mas os dados NÃO são apagados. Depois que o pagamento é confirmado, a equipe do Instituto INETRIS libera o acesso e tudo que foi cadastrado continua lá. O Administrador da empresa recebe e-mails de aviso 2 dias antes do fim do teste, no último dia, e depois (1 e 7 dias após o fim).
 

@@ -10,6 +10,7 @@
 let _superAdminCarregando = false;
 let _superAdminJaCarregou = false; // BUG CORRIGIDO abaixo (ver pageSuperAdmin)
 let _superAdminEmpresas = [];
+let _superAdminAssinaturas = []; // cobrança por link: a situação de cada empresa (só carrega com a cobrança ligada)
 let _superAdminCodigos = [];
 let _superAdminMetricas = null;
 let _superAdminPayloads = [];
@@ -72,6 +73,7 @@ async function carregarDadosSuperAdmin() {
     { data: solicitacoes },
     { data: solicitacoesContratacao },
     { data: chamados },
+    { data: assinaturasCobranca },
   ] = await Promise.all([
     sb
       .from('empresas')
@@ -100,8 +102,12 @@ async function carregarDadosSuperAdmin() {
         'id, empresa_id, nome_solicitante, email, assunto, mensagem, status, resposta, criado_em, respondido_por_ia, feedback_cliente'
       )
       .order('criado_em', { ascending: false }),
+    cobrancaLigada()
+      ? sb.from('assinaturas').select('empresa_id, plano, status, primeira_cobranca_centavos, primeira_cobranca_em')
+      : Promise.resolve({ data: [] }),
   ]);
   _superAdminSolicitacoes = solicitacoes || [];
+  _superAdminAssinaturas = assinaturasCobranca || [];
   _superAdminSolicitacoesContratacao = solicitacoesContratacao || [];
   _superAdminChamados = chamados || [];
   // Não bloqueia o painel: se a função ainda não existe, só mostra o aviso.
@@ -790,13 +796,13 @@ function pageSuperAdmin() {
             <td class="small-muted">${e.cnpj || '—'}</td>
             <td>${e.acesso_suspenso ? '<span class="pill pill-iniciar">Suspensa</span>' : '<span class="pill pill-alavancar">Ativa</span>'}</td>
             <td>${seloTeste}</td>
-            <td>${statusPagamento ? `<span class="pill ${corPagamento[statusPagamento] || 'pill-neutral'}">${statusPagamento}</span>` : '<span class="small-muted">—</span>'}</td>
+            <td>${statusPagamento ? `<span class="pill ${corPagamento[statusPagamento] || 'pill-neutral'}">${statusPagamento}</span>` : '<span class="small-muted">—</span>'}${cobrancaSeloSuperAdmin(e.id)}</td>
             <td class="small-muted">${e.created_at ? new Date(e.created_at).toLocaleDateString('pt-BR') : '—'}</td>
             <td style="display:flex;gap:6px;justify-content:flex-end;">${
               e.id === empresaIdAtual
                 ? '<span class="small-muted">Não é possível suspender aqui</span>'
-                : `${
-                    !e.is_pagante && e.trial_ate
+                : `${cobrancaBotaoConfirmar(e.id, e.nome_fantasia)}${
+                    !e.is_pagante && e.trial_ate && !cobrancaTemAssinaturaPendente(e.id)
                       ? `<button class="btn btn-sm btn-primary" onclick="marcarEmpresaComoPagante('${e.id}','${escaparParaOnclick(e.nome_fantasia)}')">Marcar como pagante</button>`
                       : ''
                   }${

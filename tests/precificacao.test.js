@@ -1,5 +1,5 @@
 // =========================================================================
-// Testa precoVigentePlano() e limiteColaboradoresDaEmpresa() — decidem
+// Testa os preços dos planos (sem fidelidade) e limiteColaboradoresDaEmpresa() — decidem
 // quanto cobrar e quantos colaboradores uma empresa pode cadastrar. Erro
 // aqui é dinheiro saindo errado da conta de um cliente de verdade.
 // =========================================================================
@@ -7,49 +7,69 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { carregarArquivos } = require('./helpers/carregar-arquivos.js');
 
+const fs = require('fs');
+const path = require('path');
+const ler = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+const vm = require('vm');
 const ctx = carregarArquivos(['js/31-page-pagamento.js']);
-const planoTeste = { precoNovo: 297, precoAtual: 197 };
+const PLANOS = () => vm.runInContext('PLANOS_NORTE', ctx); // const não vira propriedade do contexto
+const plano = (x) => JSON.parse(JSON.stringify(x));
 
-function diasAtras(dias) {
-  const d = new Date();
-  d.setDate(d.getDate() - dias);
-  return d.toISOString().slice(0, 10);
-}
-
-test('precoVigentePlano: dentro dos 12 meses de contrato, usa o preço com desconto', () => {
-  ctx.state.empresa = { faturamento: { dataInicio: diasAtras(90) } }; // 3 meses atrás
-  const r = ctx.precoVigentePlano(planoTeste);
-  assert.equal(r.valor, 197);
-  assert.equal(r.comDesconto, true);
+// Sem fidelidade: a mensalidade é a mesma em todos os meses (decisão: tirar a fidelidade e ficar com os valores normais).
+test('a tabela de planos: mensalidade e implantação certas, sem preço de fidelidade nem desconto de "cliente atual"', () => {
+  assert.deepEqual(
+    plano(PLANOS()).map((p) => [p.nome, p.limiteColaboradores, p.preco, p.implantacao]),
+    [
+      ['Essencial', 10, 297, 590],
+      ['Gestão', 30, 597, 990],
+      ['Estratégico', 60, 997, 1490],
+    ]
+  );
+  for (const p of PLANOS()) {
+    assert.ok(!('precoAtual' in p) && !('precoNovo' in p), `${p.nome} ainda tem campo de fidelidade`);
+  }
+  assert.equal(typeof ctx.precoVigentePlano, 'undefined', 'a função do desconto de 12 meses não deve existir mais');
 });
 
-test('precoVigentePlano: depois de 12 meses, volta pro valor cheio', () => {
-  ctx.state.empresa = { faturamento: { dataInicio: diasAtras(400) } }; // mais de 12 meses atrás
-  const r = ctx.precoVigentePlano(planoTeste);
-  assert.equal(r.valor, 297);
-  assert.equal(r.comDesconto, false);
+test('a tela de Pagamento mostra o mesmo valor em qualquer época do contrato (nunca "preço especial" nem "valor cheio")', () => {
+  for (const dias of [30, 400]) {
+    const d = new Date();
+    d.setDate(d.getDate() - dias);
+    ctx.state.empresa = { faturamento: { plano: 'Essencial', dataInicio: d.toISOString().slice(0, 10) } };
+    const html = ctx.pagePagamento();
+    for (const v of ['297,00', '597,00', '997,00']) assert.ok(html.includes(v), `${v} (contrato com ${dias} dias)`);
+    assert.ok(
+      !/Preço especial|Valor cheio|condição especial|197,00|397,00|697,00/.test(html),
+      `sobrou texto de fidelidade (${dias} dias)`
+    );
+  }
 });
 
-test('precoVigentePlano: a 364 dias do início, ainda está dentro do desconto', () => {
-  // Evita testar o limite exato de 365 dias — o cálculo usa a hora exata,
-  // não só a data (ver 366 dias abaixo), então o resultado bem na borda
-  // varia conforme a hora do dia em que o teste roda. 364 é estável.
-  ctx.state.empresa = { faturamento: { dataInicio: diasAtras(364) } };
-  const r = ctx.precoVigentePlano(planoTeste);
-  assert.equal(r.comDesconto, true);
+test('as páginas de planos (planos.html e a página inicial) mostram só os valores normais, sem seletor de fidelidade', () => {
+  for (const arq of ['planos.html', 'index.html']) {
+    const h = ler(arq);
+    const precos = [...h.matchAll(/<div class="price">\s*<strong>([^<]+)<\/strong>/g)].map((m) => m[1]);
+    assert.deepEqual(precos, ['R$ 297', 'R$ 597', 'R$ 997'], arq);
+    const impl = [...h.matchAll(/Implantação \(única vez\):\s*<b>([^<]+)<\/b>/g)].map((m) => m[1]);
+    assert.deepEqual(impl, ['R$ 590,00', 'R$ 990,00', 'R$ 1.490,00'], arq);
+    for (const proibido of [
+      'data-loy',
+      'data-std',
+      'setMode',
+      'Fidelidade 12 meses',
+      'condição de fidelidade',
+      'Preço com fidelidade',
+      'class="tgl"',
+      'class="old"',
+    ]) {
+      assert.ok(!h.includes(proibido), `${arq} ainda tem: ${proibido}`);
+    }
+  }
 });
 
-test('precoVigentePlano: a 366 dias do início, já perdeu o desconto', () => {
-  ctx.state.empresa = { faturamento: { dataInicio: diasAtras(366) } };
-  const r = ctx.precoVigentePlano(planoTeste);
-  assert.equal(r.comDesconto, false);
-});
-
-test('precoVigentePlano: sem data de início cadastrada, usa o valor cheio (nunca quebra)', () => {
-  ctx.state.empresa = { faturamento: {} };
-  const r = ctx.precoVigentePlano(planoTeste);
-  assert.equal(r.valor, 297);
-  assert.equal(r.comDesconto, false);
+test('a tela de entrada do sistema mostra o mesmo preço normal dos planos', () => {
+  const e = ler('js/35-tela-entrada.js');
+  assert.ok(e.includes('p.preco') && !e.includes('precoNovo'));
 });
 
 test('limiteColaboradoresDaEmpresa: cada plano retorna o limite certo', () => {

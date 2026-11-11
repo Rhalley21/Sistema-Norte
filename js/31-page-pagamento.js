@@ -13,30 +13,27 @@
 // tabela de preços mostrada — o valor cobrado real é o valorMensal do contrato.
 // Definição central dos planos — usada na tela de Pagamento, no cadastro da
 // empresa e no bloqueio de cadastro de colaboradores por limite.
-// precoNovo = cliente novo; precoAtual = cliente com 12 meses (fidelidade).
+// preco = a mensalidade (a mesma em todos os meses: não há fidelidade nem desconto de "cliente atual").
 // limiteColaboradores define o teto de cadastro daquele plano.
 const PLANOS_NORTE = [
   {
     nome: 'Essencial',
     limiteColaboradores: 10,
-    precoNovo: 297,
-    precoAtual: 197,
+    preco: 297,
     implantacao: 590,
     detalhe: 'Até 10 colaboradores',
   },
   {
     nome: 'Gestão',
     limiteColaboradores: 30,
-    precoNovo: 597,
-    precoAtual: 397,
+    preco: 597,
     implantacao: 990,
     detalhe: '11 a 30 colaboradores',
   },
   {
     nome: 'Estratégico',
     limiteColaboradores: 60,
-    precoNovo: 997,
-    precoAtual: 697,
+    preco: 997,
     implantacao: 1490,
     detalhe: '31 a 60 colaboradores',
   },
@@ -52,17 +49,6 @@ function limiteColaboradoresDaEmpresa() {
 
 function formatarPrecoPlano(valor) {
   return `R$ ${Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-}
-
-// O desconto de "cliente atual" vale só nos primeiros 12 meses de contrato
-// (contando a partir de faturamento.dataInicio). Depois disso, volta pro
-// valor cheio de cliente novo — mesmo sem mudar de plano.
-function precoVigentePlano(plano) {
-  const dataInicio = state.empresa?.faturamento?.dataInicio;
-  if (!dataInicio) return { valor: plano.precoNovo, comDesconto: false };
-  const diasDesde = (Date.now() - new Date(`${dataInicio}T00:00:00`).getTime()) / 86400000;
-  const comDesconto = diasDesde <= 365;
-  return { valor: comDesconto ? plano.precoAtual : plano.precoNovo, comDesconto };
 }
 
 function corDoStatusPagamento(status) {
@@ -100,6 +86,8 @@ function pagePagamento() {
       <p class="page-desc">Seu plano, o valor da mensalidade e o link para pagamento.</p>
     </div>
 
+    ${typeof blocoCobrancaHtml === 'function' ? blocoCobrancaHtml() : ''}
+
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
         <h3 style="margin:0;">Assinatura e pagamento</h3>
@@ -108,15 +96,13 @@ function pagePagamento() {
 
       <div class="grid3" style="margin:18px 0;">
         ${PLANOS_NORTE.map((p) => {
-          const { valor, comDesconto } = precoVigentePlano(p);
+          const valor = p.preco;
           return `
           <div class="card" style="margin:0;${p.nome === planoAtual ? 'border:2px solid var(--gold);position:relative;' : ''}">
             ${p.nome === planoAtual ? '<span class="pill pill-alavancar" style="position:absolute;top:-12px;left:12px;">Seu plano</span>' : ''}
             <div class="small-muted">${p.nome}</div>
             <div style="font-size:24px;font-weight:600;margin:4px 0;">${formatarPrecoPlano(valor)}<span class="small-muted" style="font-size:13px;font-weight:400;">/mês</span></div>
             <div class="small-muted" style="font-size:12px;">${p.detalhe}</div>
-            ${p.nome === planoAtual && comDesconto ? '<div class="small-muted" style="font-size:11px;color:var(--gold);">Preço especial de cliente atual (12 primeiros meses)</div>' : ''}
-            ${p.nome === planoAtual && !comDesconto ? '<div class="small-muted" style="font-size:11px;">Valor cheio — os 12 meses de condição especial já passaram</div>' : ''}
             ${p.nome !== planoAtual ? `<button class="btn btn-ghost btn-sm" style="margin-top:10px;width:100%;" onclick="solicitarMudancaPlano('${p.nome}')">Solicitar este plano</button>` : ''}
           </div>
         `;

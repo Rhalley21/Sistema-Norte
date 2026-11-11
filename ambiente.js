@@ -19,8 +19,9 @@
       nome: 'producao',
       supabaseUrl: 'https://mgkmvrgfmuexgxkuslur.supabase.co',
       anonKey: 'sb_publishable_uOz0hehVdqv_7Q2LBzVbzg_J6ZH40fh',
+      cobrancaAtiva: false, // liga a cobrança por link (junto do segredo COBRANCA_ATIVA no servidor): ver docs/COBRANCA.md
     },
-    teste: { nome: 'teste', supabaseUrl: '', anonKey: '' }, // preencher quando o projeto de testes for criado
+    teste: { nome: 'teste', supabaseUrl: '', anonKey: '', cobrancaAtiva: false }, // preencher quando o projeto de testes for criado
   };
 
   // Decide o ambiente só pelo endereço do site (nunca por parâmetro da URL).
@@ -46,6 +47,7 @@
       supabaseUrl: base.supabaseUrl,
       anonKey: base.anonKey,
       configurado: !!(base.supabaseUrl && base.anonKey),
+      cobrancaAtiva: base.cobrancaAtiva === true,
     };
   }
 

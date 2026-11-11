@@ -50,6 +50,7 @@ Ficam no Supabase (**Edge Functions → a função → Secrets**), não no GitHu
 |---|---|
 | `acesso-sem-email` | nenhum |
 | `assistente-ajuda` | `ASSISTENTE_AJUDA_ATIVO` (só `true` liga o assistente — padrão desligado) · `ANTHROPIC_API_KEY` · opcional: `ANTHROPIC_MODEL_AJUDA` |
+| `cobranca` | `COBRANCA_ATIVA` (só `true` liga a cobrança por link — padrão desligado) |
 | `chamado-automatico` | `CRON_SECRET` · opcional: `EMAIL_EQUIPE`, `ASSISTENTE_AJUDA_ATIVO` (só `true` liga a resposta automática por IA — padrão desligado) |
 | `enviar-email` | `RESEND_API_KEY` |
 | `folha-ponto` | `ANTHROPIC_API_KEY` · opcional: `ANTHROPIC_MODEL` |
@@ -60,7 +61,7 @@ Ficam no Supabase (**Edge Functions → a função → Secrets**), não no GitHu
 | `entrega-rs` | opcional: `URL_SITE` (endereço de reserva do link do resultado) |
 | `rotinas-agendadas` | `CRON_SECRET` · opcional: `EMAIL_EQUIPE`, `URL_SITE` |
 | `rs` | `RECAPTCHA_SECRET_KEY` |
-| `teste-gratis` | `RECAPTCHA_SECRET_KEY` |
+| `teste-gratis` | `RECAPTCHA_SECRET_KEY` · opcional: `URL_SITE` (endereço do botão do e-mail), `EMAIL_EQUIPE` (quem recebe o aviso de teste novo) |
 
 ## Se algo der errado
 

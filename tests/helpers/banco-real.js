@@ -56,7 +56,7 @@ const PAYLOAD_A = {
   rs: { candidatos: [{ id: 'cand1', nome: 'Candidata' }] },
 };
 
-async function criarBancoReal({ com45 }) {
+async function criarBancoReal({ com45, com46 }) {
   const { PGlite } = await import('@electric-sql/pglite');
   const db = new PGlite();
   await db.exec(`
@@ -74,7 +74,7 @@ async function criarBancoReal({ com45 }) {
     alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
     alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
   `);
-  const arquivos = com45 ? [...BASE, '45'] : BASE;
+  const arquivos = [...BASE, ...(com45 ? ['45'] : []), ...(com46 ? ['46'] : [])];
   for (const prefixo of arquivos) {
     const nome = fs.readdirSync(SQL).find((f) => f.startsWith(`${prefixo}-`));
     await db.exec(fs.readFileSync(path.join(SQL, nome), 'utf8').replace(/create extension[^;]*;/gi, ''));

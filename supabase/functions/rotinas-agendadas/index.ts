@@ -42,7 +42,7 @@ function jsonResponse(body: unknown, status = 200) {
 const EMAIL_EQUIPE = Deno.env.get('EMAIL_EQUIPE') || 'inetris25@gmail.com';
 const CRON_SECRET = Deno.env.get('CRON_SECRET') || '';
 // Site (onde ficam os planos) e WhatsApp comercial — usados nos e-mails de fim de teste.
-const URL_SITE = (Deno.env.get('URL_SITE') || 'https://rhalley21.github.io/testes/').replace(/\/?$/, '/');
+const URL_SITE = (Deno.env.get('URL_SITE') || 'https://rhalley21.github.io/Sistema-Norte/').replace(/\/?$/, '/');
 const LINKS_TESTE = {
   planos: `${URL_SITE}index.html#planos`,
   whatsapp: 'https://wa.me/558999857062?text=Ol%C3%A1!%20Quero%20continuar%20usando%20o%20INETRIS.',
@@ -60,6 +60,9 @@ const DIAS_RETENCAO_LOG = 35; // cobre as janelas de 30 dias dos limites de uso
 // Teste grátis: dias em relação ao FIM do teste em que o Administrador recebe e-mail
 // (positivo = faltam N dias; 0 = último dia; negativo = já terminou há N dias).
 const TRIAL_DIAS_AVISO = [2, 0, -1, -7];
+// Cobrança por link (a assinatura gravada pela função "cobranca"): dias em relação ao FIM do teste (a data da primeira cobrança)
+// em que o Administrador recebe o aviso com o link de pagamento: 3 e 1 dia antes, no dia, e 2 dias depois (acesso pausado).
+const COBRANCA_DIAS_AVISO = [3, 1, 0, -2];
 
 // ---- Ajudantes puros (testados) ----------------------------------------------
 
@@ -187,6 +190,55 @@ function corpoTrial(dias: number, nomePessoa: string, nomeEmpresa: string, fimIS
 <p>Instituto INETRIS</p>`;
 }
 
+// ---- Cobrança por link: a lógica pura dos avisos (testada). Valores e plano vêm da assinatura gravada pela função "cobranca". ----
+function formatarReaisCobranca(centavos: number): string {
+  const c = Math.round(Number(centavos) || 0);
+  const reais = Math.floor(c / 100);
+  const cent = c % 100;
+  return `R$ ${String(reais).replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${String(cent).padStart(2, '0')}`;
+}
+const NOMES_PLANO_COBRANCA: Record<string, string> = { essencial: 'Essencial', gestao: 'Gestão', estrategico: 'Estratégico' };
+type AssinaturaAviso = { status?: string; primeira_cobranca_em?: string };
+// Esta assinatura deve receber aviso HOJE? Antes do fim do teste (3 e 1 dia) só enquanto "agendada"; no dia do fim e 2 dias depois
+// só enquanto aguarda o pagamento. Já paga, cancelada, em atraso ou suspensa: nada daqui (quem já pagou ou cancelou não recebe cobrança).
+function avisoDeCobranca(a: AssinaturaAviso | null | undefined, hojeISO: string): number | null {
+  if (!a || !a.primeira_cobranca_em) return null;
+  const dias = diasAteOPrazo(a.primeira_cobranca_em, hojeISO);
+  if (dias === null || !COBRANCA_DIAS_AVISO.includes(dias)) return null;
+  if (a.status === 'agendada') return dias >= 0 ? dias : null;
+  if (a.status === 'aguardando_pagamento') return dias <= 0 ? dias : null;
+  return null;
+}
+// O mesmo aviso do mesmo fim de teste só sai uma vez.
+function chaveAvisoCobranca(a: { primeira_cobranca_em: string }, dias: number): string {
+  return `${a.primeira_cobranca_em}:D${dias}`;
+}
+function assuntoCobranca(dias: number): string {
+  if (dias === 3) return 'Seu teste grátis do INETRIS termina em 3 dias';
+  if (dias === 1) return 'Seu teste grátis do INETRIS termina amanhã';
+  if (dias === 0) return 'Hoje é o último dia do seu teste grátis do INETRIS';
+  return 'Seu acesso ao INETRIS está pausado: pague para voltar';
+}
+type DadosCobranca = { nomePessoa: string; nomeEmpresa: string; plano: string; mensalidade: string; implantacao: string; total: string; fim: string; link: string | null; whatsapp: string };
+function corpoCobranca(dias: number, d: DadosCobranca): string {
+  const empresa = `<b>${escaparHtml(d.nomeEmpresa)}</b>`;
+  const principal =
+    dias > 0
+      ? `O teste grátis de ${empresa} termina em <b>${escaparHtml(d.fim)}</b>${dias === 1 ? ' (amanhã)' : ` (daqui a ${dias} dias)`}. O plano da sua empresa é o <b>${escaparHtml(d.plano)}</b>: mensalidade de ${escaparHtml(d.mensalidade)} (sem fidelidade) e implantação de ${escaparHtml(d.implantacao)} (cobrada uma única vez).`
+      : dias === 0
+        ? `Hoje é o último dia do teste grátis de ${empresa}. O plano da sua empresa é o <b>${escaparHtml(d.plano)}</b>: mensalidade de ${escaparHtml(d.mensalidade)} (sem fidelidade) e implantação de ${escaparHtml(d.implantacao)} (cobrada uma única vez).`
+        : `O acesso de ${empresa} está pausado desde ${escaparHtml(d.fim)}. <b>Seus dados continuam guardados</b> e o acesso volta assim que o pagamento do plano <b>${escaparHtml(d.plano)}</b> for confirmado.`;
+  const pagar = d.link
+    ? `<p>Para continuar, pague <b>${escaparHtml(d.total)}</b> (implantação e primeira mensalidade) pelo cartão: <a href="${escaparHtml(d.link)}">pagar agora</a>.</p>
+<p>Nada é cobrado automaticamente: o acesso continua se você pagar e, se não pagar, é pausado (seus dados ficam guardados). Depois de pagar, a confirmação pode levar algumas horas.</p>`
+    : `<p>Para continuar, <a href="${escaparHtml(d.whatsapp)}">fale com a gente no WhatsApp</a> e enviaremos o link de pagamento (${escaparHtml(d.total)}).</p>`;
+  return `<p>Olá, ${escaparHtml(d.nomePessoa || '')}!</p>
+<p>${principal}</p>
+${pagar}
+<p>Dúvidas? <a href="${escaparHtml(d.whatsapp)}">Fale com a gente no WhatsApp</a>.</p>
+<p>Instituto INETRIS</p>`;
+}
+
 // ---- NR1 ----
 function corpoNr1Encerrada(nomeCampanha: string, dataFimISO: string): string {
   const [a, m, d] = String(dataFimISO).slice(0, 10).split('-');
@@ -287,8 +339,13 @@ async function avisosDoTeste(admin: Banco, enviar: Enviar, agora: number, links:
     .gte('trial_ate', diasAtras(agora, 9)) // o último aviso é 7 dias depois do fim
     .limit(2000);
   if (error) throw new Error(error.message);
+  // Empresa com assinatura (a cobrança por link) recebe os avisos de cobrança, não estes: senão seriam dois e-mails diferentes.
+  const idsDoTeste = (empresas || []).map((e: { id: string }) => e.id);
+  const { data: comAssinatura } = idsDoTeste.length ? await admin.from('assinaturas').select('empresa_id').in('empresa_id', idsDoTeste) : { data: [] };
+  const temAssinatura = new Set((comAssinatura || []).map((x: { empresa_id: string }) => x.empresa_id));
   const candidatas: { e: EmpresaTeste & { id: string }; dias: number }[] = [];
   for (const e of empresas || []) {
+    if (temAssinatura.has(e.id)) continue;
     const dias = avisoDoTeste(e, hojeISO);
     if (dias !== null) candidatas.push({ e, dias });
   }
@@ -329,6 +386,82 @@ async function avisosDoTeste(admin: Banco, enviar: Enviar, agora: number, links:
     if (resumoEnviado) await admin.from('rate_limit_log').insert({ chave: chaveResumo, acao: 'trial_resumo' });
   }
   return { enviados, jaEnviados, resumoEnviado };
+}
+
+// 4b) Cobrança por link: no fim do teste a assinatura passa a aguardar o pagamento e o Administrador recebe o link do plano
+// (3 e 1 dia antes, no dia, e 2 dias depois). Nada é cobrado sozinho: quem não paga fica com o acesso pausado e os dados guardados.
+async function avisosDeCobranca(admin: Banco, enviar: Enviar, agora: number, whatsapp: string, emailEquipe: string) {
+  const hojeISO = hojeBrasilISO(agora);
+  const { data: assinaturas, error } = await admin
+    .from('assinaturas')
+    .select('*')
+    .in('status', ['agendada', 'aguardando_pagamento'])
+    .gte('primeira_cobranca_em', hojeBrasilISO(agora - 4 * 86400000))
+    .lte('primeira_cobranca_em', hojeBrasilISO(agora + 4 * 86400000))
+    .limit(2000);
+  if (error) throw new Error(error.message);
+  let enviados = 0;
+  let jaEnviados = 0;
+  let viraramAguardando = 0;
+  const semLink = new Set<string>();
+  for (const a of assinaturas || []) {
+    const dias = diasAteOPrazo(a.primeira_cobranca_em, hojeISO);
+    if (dias === null) continue;
+    // chegou o dia do fim do teste (ou passou): a assinatura passa a aguardar o pagamento
+    let status = a.status;
+    if (status === 'agendada' && dias <= 0) {
+      const { error: erroStatus } = await admin.from('assinaturas').update({ status: 'aguardando_pagamento' }).eq('empresa_id', a.empresa_id).eq('status', 'agendada');
+      if (!erroStatus) {
+        status = 'aguardando_pagamento';
+        viraramAguardando++;
+      }
+    }
+    const aviso = avisoDeCobranca({ status, primeira_cobranca_em: a.primeira_cobranca_em }, hojeISO);
+    if (aviso === null) continue;
+    const chave = chaveAvisoCobranca(a, aviso);
+    const { count } = await admin.from('assinaturas_eventos').select('*', { count: 'exact', head: true }).eq('empresa_id', a.empresa_id).eq('tipo', 'aviso_cobranca').eq('chave', chave);
+    if ((count || 0) > 0) {
+      jaEnviados++;
+      continue;
+    }
+    const { data: donos } = await admin.from('perfis').select('nome, email').eq('empresa_id', a.empresa_id).eq('papel', 'owner').eq('desativado', false);
+    const { data: empresa } = await admin.from('empresas').select('nome_fantasia, is_pagante').eq('id', a.empresa_id).maybeSingle();
+    if (empresa && empresa.is_pagante) continue; // já é cliente (por exemplo, marcado à mão pelo Super Admin): não cobra de novo
+    const { data: linhaLink } = await admin.from('links_pagamento').select('url').eq('plano', a.plano).eq('tipo', 'primeira').maybeSingle();
+    const link = linhaLink && /^https:\/\//.test(String(linhaLink.url)) ? String(linhaLink.url) : null;
+    if (!link) semLink.add(String(a.plano));
+    let algum = false;
+    for (const d of (donos || []).filter((x: { email: string | null }) => x.email)) {
+      const ok = await enviar(
+        d.email,
+        assuntoCobranca(aviso),
+        corpoCobranca(aviso, {
+          nomePessoa: d.nome,
+          nomeEmpresa: (empresa && empresa.nome_fantasia) || 'sua empresa',
+          plano: NOMES_PLANO_COBRANCA[a.plano] || String(a.plano),
+          mensalidade: formatarReaisCobranca(a.mensalidade_centavos),
+          implantacao: formatarReaisCobranca(a.implantacao_centavos),
+          total: formatarReaisCobranca(a.primeira_cobranca_centavos),
+          fim: String(a.primeira_cobranca_em).split('-').reverse().join('/'),
+          link,
+          whatsapp,
+        })
+      );
+      if (ok) {
+        algum = true;
+        enviados++;
+      }
+    }
+    if (algum) await admin.from('assinaturas_eventos').insert({ empresa_id: a.empresa_id, tipo: 'aviso_cobranca', chave, detalhes: { dias: aviso, comLink: !!link } });
+  }
+  // Link do plano sem cadastro: a pessoa recebeu o aviso com o WhatsApp no lugar. Avisa a equipe (uma vez por dia e por plano).
+  for (const plano of semLink) {
+    const chave = `cobranca-semlink:${plano}:${hojeISO}`;
+    if (await jaRegistrado(admin, chave, 'cobranca_semlink', agora)) continue;
+    const ok = await enviar(emailEquipe, `Falta o link de pagamento do plano ${NOMES_PLANO_COBRANCA[plano] || plano}`, `<p>Uma empresa chegou ao fim do teste no plano <b>${escaparHtml(NOMES_PLANO_COBRANCA[plano] || plano)}</b>, mas o link de pagamento desse plano não está cadastrado. A pessoa recebeu o aviso com o seu WhatsApp no lugar. Cadastre o link (tabela links_pagamento).</p>`);
+    if (ok) await admin.from('rate_limit_log').insert({ chave, acao: 'cobranca_semlink' });
+  }
+  return { enviados, jaEnviados, viraramAguardando, semLink: [...semLink] };
 }
 
 // 5) Campanhas do NR1 vencidas: encerra (de forma atômica) e avisa o Administrador e o RH.
@@ -489,6 +622,7 @@ serve(async (req: Request) => {
 
     await tarefa('banco_talentos', () => purgarBancoTalentos(admin, agora));
     await tarefa('teste_gratis', () => avisosDoTeste(admin, enviarEmail, agora, LINKS_TESTE, EMAIL_EQUIPE));
+    await tarefa('cobranca_avisos', () => avisosDeCobranca(admin, enviarEmail, agora, LINKS_TESTE.whatsapp, EMAIL_EQUIPE));
     await tarefa('nr1_campanhas', () => encerrarCampanhasNr1(admin, enviarEmail, agora));
     await tarefa('videos_rs', () => manterVideosRs(admin, agora));
     await tarefa('entregas_rs', () => manterEntregasRs(admin, agora));

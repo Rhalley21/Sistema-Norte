@@ -172,7 +172,7 @@ function _cardPlanoLanding(p, destaque) {
       ${destaque ? '<div class="landing-plano-tag">Mais escolhido</div>' : ''}
       <div class="landing-plano-nome">${p.nome}</div>
       <div class="landing-plano-faixa">${p.detalhe}</div>
-      <div class="landing-plano-preco">${formatarPrecoPlano(p.precoNovo)}<span>/mês</span></div>
+      <div class="landing-plano-preco">${formatarPrecoPlano(p.preco)}<span>/mês</span></div>
       <div class="landing-plano-implantacao">Implantação (única vez): <b>${formatarPrecoPlano(p.implantacao)}</b></div>
       <button class="btn ${destaque ? 'btn-primary' : 'btn-ghost'} btn-sm" onclick="abrirSolicitacaoContratacao('${p.nome}')">Quero contratar agora</button>
     </div>`;

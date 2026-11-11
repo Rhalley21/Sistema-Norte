@@ -40,6 +40,9 @@ verify_jwt = true
 [functions.assistente-ajuda]
 verify_jwt = true
 
+[functions.cobranca]           # cobrança por link: Administrador logado (e o Super Admin); só liga com o segredo COBRANCA_ATIVA
+verify_jwt = true
+
 [functions.enviar-email]       # usuário logado, ou outra função nossa com a chave de serviço
 verify_jwt = true
 
