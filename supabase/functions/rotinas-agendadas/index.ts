@@ -219,19 +219,84 @@ function assuntoCobranca(dias: number): string {
   if (dias === 0) return 'Hoje é o último dia do seu teste grátis do INETRIS';
   return 'Seu acesso ao INETRIS está pausado: pague para voltar';
 }
-type DadosCobranca = { nomePessoa: string; nomeEmpresa: string; plano: string; mensalidade: string; implantacao: string; total: string; fim: string; link: string | null; whatsapp: string };
+type DadosCobranca = { nomePessoa: string; nomeEmpresa: string; plano: string; mensalidade: string; implantacao: string | null; total: string; fim: string; link: string | null; whatsapp: string };
 function corpoCobranca(dias: number, d: DadosCobranca): string {
   const empresa = `<b>${escaparHtml(d.nomeEmpresa)}</b>`;
+  const plano = `<b>${escaparHtml(d.plano)}</b>`;
+  const valores = d.implantacao
+    ? `mensalidade de ${escaparHtml(d.mensalidade)} (sem fidelidade) e implantação de ${escaparHtml(d.implantacao)} (cobrada uma única vez)`
+    : `mensalidade de ${escaparHtml(d.mensalidade)} (sem fidelidade). A implantação é combinada com a gente pelo WhatsApp`;
   const principal =
     dias > 0
-      ? `O teste grátis de ${empresa} termina em <b>${escaparHtml(d.fim)}</b>${dias === 1 ? ' (amanhã)' : ` (daqui a ${dias} dias)`}. O plano da sua empresa é o <b>${escaparHtml(d.plano)}</b>: mensalidade de ${escaparHtml(d.mensalidade)} (sem fidelidade) e implantação de ${escaparHtml(d.implantacao)} (cobrada uma única vez).`
+      ? `O teste grátis de ${empresa} termina em <b>${escaparHtml(d.fim)}</b>${dias === 1 ? ' (amanhã)' : ` (daqui a ${dias} dias)`}. O plano da sua empresa é o ${plano}: ${valores}.`
       : dias === 0
-        ? `Hoje é o último dia do teste grátis de ${empresa}. O plano da sua empresa é o <b>${escaparHtml(d.plano)}</b>: mensalidade de ${escaparHtml(d.mensalidade)} (sem fidelidade) e implantação de ${escaparHtml(d.implantacao)} (cobrada uma única vez).`
-        : `O acesso de ${empresa} está pausado desde ${escaparHtml(d.fim)}. <b>Seus dados continuam guardados</b> e o acesso volta assim que o pagamento do plano <b>${escaparHtml(d.plano)}</b> for confirmado.`;
+        ? `Hoje é o último dia do teste grátis de ${empresa}. O plano da sua empresa é o ${plano}: ${valores}.`
+        : `O acesso de ${empresa} está pausado desde ${escaparHtml(d.fim)}. <b>Seus dados continuam guardados</b> e o acesso volta assim que o pagamento do plano ${plano} for confirmado.`;
   const pagar = d.link
-    ? `<p>Para continuar, pague <b>${escaparHtml(d.total)}</b> (implantação e primeira mensalidade) pelo cartão: <a href="${escaparHtml(d.link)}">pagar agora</a>.</p>
+    ? `<p>Para continuar, pague <b>${escaparHtml(d.total)}</b> ${d.implantacao ? '(implantação e primeira mensalidade)' : '(a primeira mensalidade)'} pelo cartão: <a href="${escaparHtml(d.link)}">pagar agora</a>.</p>
 <p>Nada é cobrado automaticamente: o acesso continua se você pagar e, se não pagar, é pausado (seus dados ficam guardados). Depois de pagar, a confirmação pode levar algumas horas.</p>`
     : `<p>Para continuar, <a href="${escaparHtml(d.whatsapp)}">fale com a gente no WhatsApp</a> e enviaremos o link de pagamento (${escaparHtml(d.total)}).</p>`;
+  return `<p>Olá, ${escaparHtml(d.nomePessoa || '')}!</p>
+<p>${principal}</p>
+${pagar}
+<p>Dúvidas? <a href="${escaparHtml(d.whatsapp)}">Fale com a gente no WhatsApp</a>.</p>
+<p>Instituto INETRIS</p>`;
+}
+
+// ---- Cobrança por link: o CICLO MENSAL (depois do primeiro pagamento). A lógica pura, testada. ----
+// Dias em relação ao VENCIMENTO da mensalidade em que o Administrador recebe o aviso com o link: 3 dias antes, no dia, 3 dias depois
+// (atrasada, com a data da suspensão) e 7 dias depois (acesso suspenso).
+const MENSALIDADE_DIAS_AVISO = [3, 0, -3, -7];
+const DIAS_ATE_SUSPENDER_MENSALIDADE = 7;
+const ORDEM_MENSALIDADE = ['ativa', 'aguardando_pagamento', 'em_atraso', 'suspensa'];
+// Em que situação a assinatura DEVE estar, pelos dias até o vencimento: antes dele, ativa; no dia, aguardando o pagamento; de 1 a 6
+// dias de atraso, em atraso; a partir de 7 dias de atraso, suspensa.
+function estadoDaMensalidade(dias: number): string {
+  if (dias > 0) return 'ativa';
+  if (dias === 0) return 'aguardando_pagamento';
+  if (dias > -DIAS_ATE_SUSPENDER_MENSALIDADE) return 'em_atraso';
+  return 'suspensa';
+}
+// A situação só AVANÇA aqui (ativa, aguardando, em atraso, suspensa): quem já está mais adiante nunca volta por esta rotina.
+function mensalidadeAvanca(statusAtual: string, alvo: string): boolean {
+  return ORDEM_MENSALIDADE.indexOf(alvo) > ORDEM_MENSALIDADE.indexOf(statusAtual) && ORDEM_MENSALIDADE.indexOf(statusAtual) >= 0;
+}
+// O aviso de HOJE (ou null), conforme os dias até o vencimento e a situação já atualizada: cada aviso só combina com a sua situação.
+// Os avisos de 3 dias antes e do dia só valem naquele dia exato (o texto diz o prazo). Os de atraso e de suspensão não citam um número
+// de dias, então valem por uma janela: se o e-mail falhar, a rotina do dia seguinte tenta de novo (o aviso de suspensão, por até 14 dias).
+function avisoDeMensalidade(status: string, dias: number): number | null {
+  if (dias === 3) return status === 'ativa' ? 3 : null;
+  if (dias === 0) return status === 'aguardando_pagamento' ? 0 : null;
+  if (dias <= -3 && dias > -DIAS_ATE_SUSPENDER_MENSALIDADE) return status === 'em_atraso' ? -3 : null;
+  if (dias <= -DIAS_ATE_SUSPENDER_MENSALIDADE && dias >= -14) return status === 'suspensa' ? -7 : null;
+  return null;
+}
+// O mesmo aviso do mesmo vencimento só sai uma vez.
+function chaveAvisoMensalidade(vencimentoISO: string, dias: number): string {
+  return `${vencimentoISO}:M${dias}`;
+}
+function assuntoMensalidade(dias: number): string {
+  if (dias === 3) return 'Sua mensalidade do INETRIS vence em 3 dias';
+  if (dias === 0) return 'Sua mensalidade do INETRIS vence hoje';
+  if (dias === -3) return 'Mensalidade do INETRIS em atraso: pague para evitar a suspensão';
+  return 'Seu acesso ao INETRIS foi suspenso: pague para voltar';
+}
+type DadosMensalidade = { nomePessoa: string; nomeEmpresa: string; plano: string; mensalidade: string; vencimento: string; suspensao: string; link: string | null; whatsapp: string };
+function corpoMensalidade(dias: number, d: DadosMensalidade): string {
+  const empresa = `<b>${escaparHtml(d.nomeEmpresa)}</b>`;
+  const plano = `<b>${escaparHtml(d.plano)}</b>`;
+  const principal =
+    dias === 3
+      ? `A mensalidade de ${empresa} (plano ${plano}, ${escaparHtml(d.mensalidade)}) vence em <b>${escaparHtml(d.vencimento)}</b> (daqui a 3 dias). Pague pelo link para continuar sem interrupção.`
+      : dias === 0
+        ? `A mensalidade de ${empresa} (plano ${plano}, ${escaparHtml(d.mensalidade)}) <b>vence hoje</b>. Pague pelo link para continuar sem interrupção.`
+        : dias === -3
+          ? `A mensalidade de ${empresa}, vencida em ${escaparHtml(d.vencimento)}, ainda não foi paga. Para evitar a suspensão do acesso (em <b>${escaparHtml(d.suspensao)}</b>), pague pelo link.`
+          : `O acesso de ${empresa} foi suspenso por falta de pagamento da mensalidade vencida em ${escaparHtml(d.vencimento)}. <b>Seus dados continuam guardados</b> e o acesso volta assim que o pagamento for confirmado.`;
+  const pagar = d.link
+    ? `<p>Pague <b>${escaparHtml(d.mensalidade)}</b> pelo cartão: <a href="${escaparHtml(d.link)}">pagar agora</a>.</p>
+<p>Depois de pagar, a confirmação pode levar algumas horas. Se você já pagou, desconsidere este aviso.</p>`
+    : `<p>Para pagar, <a href="${escaparHtml(d.whatsapp)}">fale com a gente no WhatsApp</a> e enviaremos o link de pagamento (${escaparHtml(d.mensalidade)}).</p>`;
   return `<p>Olá, ${escaparHtml(d.nomePessoa || '')}!</p>
 <p>${principal}</p>
 ${pagar}
@@ -405,6 +470,7 @@ async function avisosDeCobranca(admin: Banco, enviar: Enviar, agora: number, wha
   let viraramAguardando = 0;
   const semLink = new Set<string>();
   for (const a of assinaturas || []) {
+    if (a.ultima_cobranca_em) continue; // já pagou uma vez: o ciclo mensal é da tarefa de mensalidade
     const dias = diasAteOPrazo(a.primeira_cobranca_em, hojeISO);
     if (dias === null) continue;
     // chegou o dia do fim do teste (ou passou): a assinatura passa a aguardar o pagamento
@@ -440,7 +506,7 @@ async function avisosDeCobranca(admin: Banco, enviar: Enviar, agora: number, wha
           nomeEmpresa: (empresa && empresa.nome_fantasia) || 'sua empresa',
           plano: NOMES_PLANO_COBRANCA[a.plano] || String(a.plano),
           mensalidade: formatarReaisCobranca(a.mensalidade_centavos),
-          implantacao: formatarReaisCobranca(a.implantacao_centavos),
+          implantacao: a.implantacao_centavos > 0 ? formatarReaisCobranca(a.implantacao_centavos) : null, // 0 = combinada por WhatsApp
           total: formatarReaisCobranca(a.primeira_cobranca_centavos),
           fim: String(a.primeira_cobranca_em).split('-').reverse().join('/'),
           link,
@@ -462,6 +528,107 @@ async function avisosDeCobranca(admin: Banco, enviar: Enviar, agora: number, wha
     if (ok) await admin.from('rate_limit_log').insert({ chave, acao: 'cobranca_semlink' });
   }
   return { enviados, jaEnviados, viraramAguardando, semLink: [...semLink] };
+}
+
+// 4c) Cobrança por link, o CICLO MENSAL: a assinatura já paga uma vez avisa o Administrador antes do vencimento, no dia e depois;
+// passa sozinha a "aguardando pagamento", "em atraso" e, com 7 dias de atraso, "suspensa" (o acesso é pausado e os dados ficam guardados).
+// A confirmação de cada pagamento continua com o Super Admin (o InfinitePay não avisa o sistema).
+async function avisosDeMensalidade(admin: Banco, enviar: Enviar, agora: number, whatsapp: string, emailEquipe: string) {
+  const hojeISO = hojeBrasilISO(agora);
+  const { data: assinaturas, error } = await admin
+    .from('assinaturas')
+    .select('*')
+    .in('status', ['ativa', 'aguardando_pagamento', 'em_atraso', 'suspensa'])
+    .gte('proxima_cobranca_em', hojeBrasilISO(agora - 90 * 86400000))
+    .lte('proxima_cobranca_em', hojeBrasilISO(agora + 4 * 86400000))
+    .limit(2000);
+  if (error) throw new Error(error.message);
+  let enviados = 0;
+  let jaEnviados = 0;
+  let mudaramDeSituacao = 0;
+  let suspensas = 0;
+  const semLink = new Set<string>();
+  for (const a of assinaturas || []) {
+    if (!a.ultima_cobranca_em || !a.proxima_cobranca_em) continue; // ainda no primeiro pagamento: é a outra tarefa
+    const dias = diasAteOPrazo(a.proxima_cobranca_em, hojeISO);
+    if (dias === null) continue;
+    let status = a.status;
+    const alvo = estadoDaMensalidade(dias);
+    if (mensalidadeAvanca(status, alvo)) {
+      const { error: erroStatus } = await admin.from('assinaturas').update({ status: alvo }).eq('empresa_id', a.empresa_id).eq('status', status);
+      if (!erroStatus) {
+        status = alvo;
+        mudaramDeSituacao++;
+        if (alvo === 'suspensa') {
+          await admin.from('empresas').update({ acesso_suspenso: true }).eq('id', a.empresa_id);
+          await admin.from('assinaturas_eventos').insert({ empresa_id: a.empresa_id, tipo: 'suspensa_por_falta_de_pagamento', chave: a.proxima_cobranca_em, detalhes: { dias } });
+          suspensas++;
+        }
+      }
+    }
+    const aviso = avisoDeMensalidade(status, dias);
+    if (aviso === null) continue;
+    const chave = chaveAvisoMensalidade(a.proxima_cobranca_em, aviso);
+    const { count } = await admin.from('assinaturas_eventos').select('*', { count: 'exact', head: true }).eq('empresa_id', a.empresa_id).eq('tipo', 'aviso_mensalidade').eq('chave', chave);
+    if ((count || 0) > 0) {
+      jaEnviados++;
+      continue;
+    }
+    const { data: donos } = await admin.from('perfis').select('nome, email').eq('empresa_id', a.empresa_id).eq('papel', 'owner').eq('desativado', false);
+    const { data: empresa } = await admin.from('empresas').select('nome_fantasia').eq('id', a.empresa_id).maybeSingle();
+    const { data: linhaLink } = await admin.from('links_pagamento').select('url').eq('plano', a.plano).eq('tipo', 'mensalidade').maybeSingle();
+    const link = linhaLink && /^https:\/\//.test(String(linhaLink.url)) ? String(linhaLink.url) : null;
+    if (!link) semLink.add(String(a.plano));
+    const brData = (iso: string) => String(iso).split('-').reverse().join('/');
+    let algum = false;
+    for (const d of (donos || []).filter((x: { email: string | null }) => x.email)) {
+      const ok = await enviar(
+        d.email,
+        assuntoMensalidade(aviso),
+        corpoMensalidade(aviso, {
+          nomePessoa: d.nome,
+          nomeEmpresa: (empresa && empresa.nome_fantasia) || 'sua empresa',
+          plano: NOMES_PLANO_COBRANCA[a.plano] || String(a.plano),
+          mensalidade: formatarReaisCobranca(a.mensalidade_centavos),
+          vencimento: brData(a.proxima_cobranca_em),
+          suspensao: brData(new Date(Date.parse(`${a.proxima_cobranca_em}T12:00:00Z`) + DIAS_ATE_SUSPENDER_MENSALIDADE * 86400000).toISOString().slice(0, 10)),
+          link,
+          whatsapp,
+        })
+      );
+      if (ok) {
+        algum = true;
+        enviados++;
+      }
+    }
+    if (algum) await admin.from('assinaturas_eventos').insert({ empresa_id: a.empresa_id, tipo: 'aviso_mensalidade', chave, detalhes: { dias: aviso, comLink: !!link } });
+  }
+  for (const plano of semLink) {
+    const chave = `cobranca-semlink:mensalidade:${plano}:${hojeISO}`;
+    if (await jaRegistrado(admin, chave, 'cobranca_semlink', agora)) continue;
+    const ok = await enviar(emailEquipe, `Falta o link de MENSALIDADE do plano ${NOMES_PLANO_COBRANCA[plano] || plano}`, `<p>Uma empresa chegou ao vencimento da mensalidade no plano <b>${escaparHtml(NOMES_PLANO_COBRANCA[plano] || plano)}</b>, mas o link de pagamento da mensalidade desse plano não está cadastrado. A pessoa recebeu o aviso com o seu WhatsApp no lugar. Cadastre o link (tabela links_pagamento, tipo mensalidade).</p>`);
+    if (ok) await admin.from('rate_limit_log').insert({ chave, acao: 'cobranca_semlink' });
+  }
+  return { enviados, jaEnviados, mudaramDeSituacao, suspensas, semLink: [...semLink] };
+}
+
+// 4d) Quem CANCELOU depois de pagar mantém o acesso até o fim do período já pago (até o dia do vencimento, inclusive) e então o acesso é encerrado
+// (pausado, com os dados guardados). Quem cancelou antes de pagar não entra aqui: segue o prazo normal do teste.
+async function encerrarCanceladas(admin: Banco, agora: number) {
+  const hojeISO = hojeBrasilISO(agora);
+  const { data: canceladas, error } = await admin.from('assinaturas').select('*').eq('status', 'cancelada').lt('proxima_cobranca_em', hojeISO).limit(2000);
+  if (error) throw new Error(error.message);
+  let encerradas = 0;
+  for (const a of canceladas || []) {
+    if (!a.pago_em || !a.ultima_cobranca_em || !a.proxima_cobranca_em) continue;
+    const { count } = await admin.from('assinaturas_eventos').select('*', { count: 'exact', head: true }).eq('empresa_id', a.empresa_id).eq('tipo', 'acesso_encerrado').eq('chave', a.proxima_cobranca_em);
+    if ((count || 0) > 0) continue;
+    const { error: erroEmpresa } = await admin.from('empresas').update({ is_pagante: false, acesso_suspenso: true }).eq('id', a.empresa_id);
+    if (erroEmpresa) continue;
+    await admin.from('assinaturas_eventos').insert({ empresa_id: a.empresa_id, tipo: 'acesso_encerrado', chave: a.proxima_cobranca_em, detalhes: { motivo: 'cancelada depois de pagar: o período pago terminou' } });
+    encerradas++;
+  }
+  return { encerradas };
 }
 
 // 5) Campanhas do NR1 vencidas: encerra (de forma atômica) e avisa o Administrador e o RH.
@@ -623,6 +790,8 @@ serve(async (req: Request) => {
     await tarefa('banco_talentos', () => purgarBancoTalentos(admin, agora));
     await tarefa('teste_gratis', () => avisosDoTeste(admin, enviarEmail, agora, LINKS_TESTE, EMAIL_EQUIPE));
     await tarefa('cobranca_avisos', () => avisosDeCobranca(admin, enviarEmail, agora, LINKS_TESTE.whatsapp, EMAIL_EQUIPE));
+    await tarefa('cobranca_mensalidade', () => avisosDeMensalidade(admin, enviarEmail, agora, LINKS_TESTE.whatsapp, EMAIL_EQUIPE));
+    await tarefa('cobranca_encerramentos', () => encerrarCanceladas(admin, agora));
     await tarefa('nr1_campanhas', () => encerrarCampanhasNr1(admin, enviarEmail, agora));
     await tarefa('videos_rs', () => manterVideosRs(admin, agora));
     await tarefa('entregas_rs', () => manterEntregasRs(admin, agora));

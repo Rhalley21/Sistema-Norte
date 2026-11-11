@@ -9,17 +9,18 @@ Cada argumento e plano:tipo=link. Planos: essencial, gestao, estrategico. Tipos:
 implantacao) e mensalidade.
 
 TRAVA DE SEGURANCA: os links do InfinitePay trazem o valor no fim do endereco (por exemplo ...-297,00). O script LE esse valor e
-RECUSA o link se ele nao for exatamente o valor esperado para aquele plano e tipo. Assim nao entra, por engano, um link de 297 no
-lugar do primeiro pagamento de 887 (o cliente pagaria menos e a implantacao nunca seria cobrada).
+RECUSA o link se ele nao for exatamente o valor esperado para aquele plano e tipo. Assim nao entra, por engano, um link de valor errado
+(por exemplo, o de outro plano).
 """
 import re
 import sys
 
-# valores esperados, em centavos (sem fidelidade): mensalidade; primeiro pagamento = mensalidade + implantacao
+# valores esperados, em centavos (sem fidelidade). A implantacao NAO entra: e combinada com o cliente pelo WhatsApp, entao o
+# primeiro pagamento por link e so a mensalidade.
 ESPERADO = {
-    ('essencial', 'mensalidade'): 29700, ('essencial', 'primeira'): 29700 + 59000,
-    ('gestao', 'mensalidade'): 59700, ('gestao', 'primeira'): 59700 + 99000,
-    ('estrategico', 'mensalidade'): 99700, ('estrategico', 'primeira'): 99700 + 149000,
+    ('essencial', 'mensalidade'): 29700, ('essencial', 'primeira'): 29700,
+    ('gestao', 'mensalidade'): 59700, ('gestao', 'primeira'): 59700,
+    ('estrategico', 'mensalidade'): 99700, ('estrategico', 'primeira'): 99700,
 }
 
 def reais(c):

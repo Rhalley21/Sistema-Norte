@@ -103,7 +103,11 @@ async function carregarDadosSuperAdmin() {
       )
       .order('criado_em', { ascending: false }),
     cobrancaLigada()
-      ? sb.from('assinaturas').select('empresa_id, plano, status, primeira_cobranca_centavos, primeira_cobranca_em')
+      ? sb
+          .from('assinaturas')
+          .select(
+            'empresa_id, plano, status, primeira_cobranca_centavos, primeira_cobranca_em, proxima_cobranca_em, ultima_cobranca_em'
+          )
       : Promise.resolve({ data: [] }),
   ]);
   _superAdminSolicitacoes = solicitacoes || [];

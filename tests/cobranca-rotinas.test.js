@@ -43,7 +43,7 @@ function tarefas() {
 }
 
 const ass = (empresa, plano_, status, primeira, extra = {}) => {
-  const v = { essencial: [29700, 59000], gestao: [59700, 99000], estrategico: [99700, 149000] }[plano_];
+  const v = { essencial: [29700, 0], gestao: [59700, 0], estrategico: [99700, 0] }[plano_]; // implantação combinada por WhatsApp: fora do pagamento
   return {
     empresa_id: empresa,
     plano: plano_,
@@ -194,6 +194,60 @@ test('e-mail sem link cadastrado: troca o botão pelo WhatsApp (nunca um link va
 });
 
 test(
+  'e-mail SEM implantação no pagamento (o caso real): diz que a implantação é combinada por WhatsApp e cobra só a primeira mensalidade',
+  opcoes,
+  () => {
+    const c = tarefas();
+    for (const dias of [3, 1, 0]) {
+      const h = c.corpoCobranca(dias, plano({ ...DADOS, implantacao: null, total: 'R$ 297,00' }));
+      assert.ok(
+        h.includes('mensalidade de R$ 297,00 (sem fidelidade)') &&
+          h.includes('A implantação é combinada com a gente pelo WhatsApp'),
+        `D${dias}`
+      );
+      assert.ok(h.includes('pague <b>R$ 297,00</b> (a primeira mensalidade) pelo cartão'), `D${dias}`);
+      assert.ok(
+        !h.includes('R$ 590,00') &&
+          !h.includes('implantação e primeira mensalidade') &&
+          !h.includes('cobrada uma única vez'),
+        `D${dias}: não pode citar implantação como parte do pagamento`
+      );
+    }
+    const pausado = c.corpoCobranca(-2, plano({ ...DADOS, implantacao: null, total: 'R$ 297,00' }));
+    assert.ok(
+      pausado.includes('pague <b>R$ 297,00</b> (a primeira mensalidade)') &&
+        !pausado.includes('implantação e primeira mensalidade')
+    );
+  }
+);
+
+test(
+  'a rotina manda o e-mail SEM implantação quando a assinatura tem implantação 0 (o caso real), e COM implantação quando há valor',
+  opcoes,
+  async () => {
+    const c = tarefas();
+    const { lista, enviar } = emailsFalsos();
+    const dados = cenario(); // A: essencial, implantação 0
+    const b = dados.assinaturas.find((x) => x.empresa_id === 'B');
+    b.implantacao_centavos = 149000; // B: com implantação
+    b.primeira_cobranca_centavos = 99700 + 149000;
+    await c.avisosDeCobranca(criarBanco(dados), enviar, AGORA, WHATS, 'equipe@x.com');
+    const a = emailPara(lista, 'donoA@x.com')[0].corpoHtml;
+    assert.ok(
+      a.includes('A implantação é combinada com a gente pelo WhatsApp') &&
+        a.includes('(a primeira mensalidade)') &&
+        !a.includes('implantação de')
+    );
+    const comImpl = emailPara(lista, 'donoB@x.com')[0].corpoHtml;
+    assert.ok(
+      comImpl.includes('implantação de R$ 1.490,00') &&
+        comImpl.includes('(implantação e primeira mensalidade)') &&
+        comImpl.includes('R$ 2.487,00')
+    );
+  }
+);
+
+test(
   'tudo que vem do banco entra escapado no e-mail (nome da pessoa, empresa e até o endereço do link)',
   opcoes,
   () => {
@@ -266,9 +320,9 @@ test(
     assert.ok(
       aviso('B')[0].corpoHtml.includes('estrategico-2487') && !aviso('B')[0].corpoHtml.includes('essencial-887')
     );
-    assert.ok(aviso('B')[0].corpoHtml.includes('R$ 2.487,00'));
+    assert.ok(aviso('B')[0].corpoHtml.includes('R$ 997,00'));
     assert.ok(
-      aviso('A')[0].corpoHtml.includes('R$ 887,00') &&
+      aviso('A')[0].corpoHtml.includes('R$ 297,00') &&
         aviso('A')[0].corpoHtml.includes('<b>Empresa A</b>') &&
         aviso('A')[0].corpoHtml.includes('13/10/2026')
     );
@@ -347,7 +401,7 @@ test(
     await c.avisosDeCobranca(banco, enviar, AGORA, WHATS, 'equipe@x.com'); // o plano "gestao" (empresa C) está sem link
     const paraC = emailPara(lista, 'donoC@x.com')[0].corpoHtml;
     assert.ok(
-      !paraC.includes('pagar agora') && paraC.includes('fale com a gente no WhatsApp') && paraC.includes('R$ 1.587,00')
+      !paraC.includes('pagar agora') && paraC.includes('fale com a gente no WhatsApp') && paraC.includes('R$ 597,00')
     );
     const alerta = emailPara(lista, 'equipe@x.com');
     assert.deepEqual(

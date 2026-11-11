@@ -1,8 +1,9 @@
 -- =========================================================================
 -- 46 - COBRANCA POR LINK DE PAGAMENTO (base independente do provedor)
 -- -------------------------------------------------------------------------
--- O teste gratis continua SEM cartao. No fim dos 7 dias, a pessoa recebe o link de pagamento do plano dela (mensalidade mais
--- implantacao, sem fidelidade) e PAGA se quiser continuar. Nada e cobrado sem a pessoa pagar por conta propria.
+-- O teste gratis continua SEM cartao. No fim dos 7 dias, a pessoa recebe o link de pagamento do plano dela (a primeira mensalidade,
+-- sem fidelidade; a implantacao e combinada com o cliente por WhatsApp e fica fora do sistema) e PAGA se quiser continuar.
+-- Nada e cobrado sem a pessoa pagar por conta propria.
 --
 -- Esta migracao guarda so o que o sistema precisa saber:
 --   assinaturas         o plano escolhido, os valores, a data do fim do teste, a situacao e o ACEITE (o texto exato que a

@@ -123,6 +123,8 @@ const SEED = () => ({
   super_admins: [{ id: ID.superAdmin }],
   links_pagamento: [
     { plano: 'essencial', tipo: 'primeira', url: 'https://pague.exemplo.com/essencial-887' },
+    { plano: 'essencial', tipo: 'mensalidade', url: 'https://pague.exemplo.com/essencial-mensal' },
+    { plano: 'gestao', tipo: 'mensalidade', url: 'https://pague.exemplo.com/gestao-mensal' },
     { plano: 'gestao', tipo: 'primeira', url: 'https://pague.exemplo.com/gestao-1587' },
     { plano: 'estrategico', tipo: 'primeira', url: 'https://pague.exemplo.com/estrategico-2487' },
   ],
@@ -206,7 +208,7 @@ test('dinheiro em reais, a partir de centavos inteiros', opcoes, () => {
 });
 
 test(
-  'a tabela de planos: mensalidade e implantação sem fidelidade, e a primeira cobrança é a soma (887, 1.587 e 2.487 reais)',
+  'a tabela de planos: só a mensalidade (sem fidelidade); a implantação é combinada por WhatsApp e NÃO entra no pagamento (297, 597 e 997 reais)',
   opcoes,
   () => {
     const { ler } = logica();
@@ -214,20 +216,28 @@ test(
     assert.deepEqual(
       planos.map((p) => [p.chave, p.ate, p.mensalidade, p.implantacao]),
       [
-        ['essencial', 10, 29700, 59000],
-        ['gestao', 30, 59700, 99000],
-        ['estrategico', 60, 99700, 149000],
+        ['essencial', 10, 29700, 0],
+        ['gestao', 30, 59700, 0],
+        ['estrategico', 60, 99700, 0],
       ]
     );
     const totais = planos.map((p) => plano(ler(`valoresDoPlano(PLANOS.find(p => p.chave === '${p.chave}'))`)).total);
-    assert.deepEqual(totais, [88700, 158700, 248700]);
     assert.deepEqual(
-      plano(ler('listaDePlanos()')).map((p) => p.total),
-      ['R$ 887,00', 'R$ 1.587,00', 'R$ 2.487,00']
+      totais,
+      [29700, 59700, 99700],
+      'o primeiro pagamento é só a mensalidade: o link cobra exatamente isso'
+    );
+    const lista = plano(ler('listaDePlanos()'));
+    assert.deepEqual(
+      lista.map((p) => p.total),
+      ['R$ 297,00', 'R$ 597,00', 'R$ 997,00']
+    );
+    assert.deepEqual(
+      lista.map((p) => p.implantacao),
+      ['Combinada pelo WhatsApp', 'Combinada pelo WhatsApp', 'Combinada pelo WhatsApp']
     );
   }
 );
-
 test(
   'o plano de cada quantidade de colaboradores: as bordas 10/11, 30/31 e 60/61; acima de 60 e valores inválidos não têm plano de tabela',
   opcoes,
@@ -273,43 +283,73 @@ test(
 );
 
 test(
-  'o texto do aceite diz o plano, os valores, a data, que não há fidelidade e que NADA é cobrado automaticamente',
+  'o texto do aceite: plano, mensalidade, sem fidelidade, implantação combinada por WhatsApp (fora do pagamento), data e que NADA é cobrado automaticamente',
   opcoes,
   () => {
     const { ler } = logica();
     const t = ler("textoDoAceite(PLANOS[0], '2026-11-17')");
     for (const trecho of [
       'Plano Essencial (até 10 colaboradores)',
-      'R$ 297,00',
+      'mensalidade de R$ 297,00',
       'sem fidelidade',
-      'R$ 590,00',
-      'única vez',
+      'A taxa de implantação é combinada separadamente com você, pelo WhatsApp, e não faz parte deste pagamento',
       '17/11/2026',
-      'R$ 887,00',
+      'pagar R$ 297,00 (a primeira mensalidade) pelo cartão',
       'Nada é cobrado automaticamente',
       'o acesso é pausado e seus dados ficam guardados',
       'cancelar quando quiser',
     ])
       assert.ok(t.includes(trecho), trecho);
     assert.ok(
-      !/débito automático|cobrança automática no|renova/i.test(t),
-      'o texto não pode prometer o que não existe'
+      !t.includes('R$ 590') && !/débito automático|cobrança automática no|renova/i.test(t),
+      'o texto não pode prometer o que não existe nem citar uma implantação que não é cobrada aqui'
     );
+    assert.equal(ler('VERSAO_ACEITE'), 'v2');
   }
 );
 
-test('quem pode trocar de plano, cancelar e ter o pagamento confirmado, por situação', opcoes, () => {
-  const { ler } = logica();
-  const tabela = (fn, arg) =>
-    ['agendada', 'aguardando_pagamento', 'ativa', 'em_atraso', 'suspensa', 'cancelada'].map((s) =>
-      ler(`${fn}('${s}')`)
+test(
+  'o texto do aceite COM implantação no pagamento (o código ainda suporta): valor da implantação e total somado',
+  opcoes,
+  () => {
+    const { ler } = logica();
+    const t = ler(
+      "textoDoAceite({ nome: 'Essencial', detalhe: 'Até 10 colaboradores', mensalidade: 29700, implantacao: 59000 }, '2026-11-17')"
     );
-  assert.deepEqual(tabela('podeEscolherPlano'), [true, true, false, false, false, true]);
-  assert.deepEqual(tabela('podeCancelar'), [true, true, true, true, true, false]);
-  assert.deepEqual(tabela('podeConfirmarPagamento'), [true, true, false, true, true, false]);
-  assert.equal(ler('podeEscolherPlano(null)'), true, 'quem ainda não escolheu plano pode escolher');
-});
-
+    for (const trecho of [
+      'mensalidade de R$ 297,00, sem fidelidade e implantação de R$ 590,00 (cobrada uma única vez).',
+      'pagar R$ 887,00 (implantação e primeira mensalidade) pelo cartão',
+    ])
+      assert.ok(t.includes(trecho), trecho);
+    assert.ok(!t.includes('WhatsApp'));
+  }
+);
+test(
+  'quem pode trocar de plano, cancelar e ter o pagamento confirmado, por situação (ativa só dentro da janela do vencimento)',
+  opcoes,
+  () => {
+    const { ler } = logica();
+    const sts = ['agendada', 'aguardando_pagamento', 'ativa', 'em_atraso', 'suspensa', 'cancelada'];
+    assert.deepEqual(
+      sts.map((s) => ler(`podeEscolherPlano('${s}')`)),
+      [true, true, false, false, false, true]
+    );
+    assert.deepEqual(
+      sts.map((s) => ler(`podeCancelar('${s}')`)),
+      [true, true, true, true, true, false]
+    );
+    const confirma = (s, ciclo) => ler(`podeConfirmarPagamento('${s}', '${ciclo}', '2026-11-10')`);
+    assert.deepEqual(
+      sts.map((s) => confirma(s, '2026-12-10')),
+      [true, true, false, true, true, false],
+      'ativa com o vencimento longe: não'
+    );
+    assert.equal(confirma('ativa', '2026-11-13'), true, 'ativa a 3 dias do vencimento: pagou adiantado');
+    assert.equal(confirma('ativa', '2026-11-14'), false, 'ativa a 4 dias: cedo demais');
+    assert.equal(confirma('ativa', '2026-11-10'), true);
+    assert.equal(ler('podeEscolherPlano(null)'), true, 'quem ainda não escolheu plano pode escolher');
+  }
+);
 test(
   'a situação conforme a data: antes do fim do teste agendada; no dia e depois, aguardando pagamento',
   opcoes,
@@ -322,20 +362,94 @@ test(
 );
 
 test(
-  'o link de pagamento só aparece a partir de 3 dias antes do fim do teste (nunca no primeiro dia), e depois dele',
+  'o link de pagamento só aparece a partir de 3 dias antes do vencimento (nunca logo depois de pagar), e depois dele',
   opcoes,
   () => {
     const { ler } = logica();
     const j = (status, data) => ler(`janelaDoLink('${status}', '${data}', '2026-11-10')`);
-    assert.equal(j('agendada', '2026-11-17'), false, '7 dias antes');
-    assert.equal(j('agendada', '2026-11-14'), false, '4 dias antes');
-    assert.equal(j('agendada', '2026-11-13'), true, '3 dias antes');
-    assert.equal(j('agendada', '2026-11-10'), true, 'no dia');
+    for (const s of ['agendada', 'ativa']) {
+      assert.equal(j(s, '2026-11-17'), false, `${s}: 7 dias antes`);
+      assert.equal(j(s, '2026-11-14'), false, `${s}: 4 dias antes`);
+      assert.equal(j(s, '2026-11-13'), true, `${s}: 3 dias antes`);
+      assert.equal(j(s, '2026-11-10'), true, `${s}: no dia`);
+    }
+    assert.equal(j('ativa', '2026-12-10'), false, 'acabou de pagar: o vencimento está a um mês');
     for (const s of ['aguardando_pagamento', 'em_atraso', 'suspensa']) assert.equal(j(s, '2026-11-17'), true, s);
-    for (const s of ['ativa', 'cancelada']) assert.equal(j(s, '2026-11-10'), false, `${s} não precisa do link`);
+    assert.equal(j('cancelada', '2026-11-10'), false);
   }
 );
 
+test(
+  'o ciclo mensal: a data do ciclo, o link certo, o próximo vencimento (no prazo, adiantado, atrasado) e somar dias',
+  opcoes,
+  () => {
+    const { ler } = logica();
+    assert.equal(ler("somarDias('2026-11-10', 7)"), '2026-11-17');
+    assert.equal(ler("somarDias('2026-12-28', 7)"), '2027-01-04');
+    const nunca = { primeira_cobranca_em: '2026-11-17', ultima_cobranca_em: null, proxima_cobranca_em: null };
+    const pagou = {
+      primeira_cobranca_em: '2026-11-17',
+      ultima_cobranca_em: '2026-10-10',
+      proxima_cobranca_em: '2026-11-10',
+    };
+    assert.deepEqual(
+      [ler(`dataDoCiclo(${JSON.stringify(nunca)})`), ler(`dataDoCiclo(${JSON.stringify(pagou)})`)],
+      ['2026-11-17', '2026-11-10']
+    );
+    assert.deepEqual(
+      [ler(`tipoDoLink(${JSON.stringify(nunca)})`), ler(`tipoDoLink(${JSON.stringify(pagou)})`)],
+      ['primeira', 'mensalidade']
+    );
+    const prox = (a, hoje) => ler(`proximoVencimento(${JSON.stringify(a)}, '${hoje}')`);
+    assert.equal(prox(nunca, '2026-11-17'), '2026-12-17', 'primeiro pagamento: um mês a partir de hoje');
+    assert.equal(prox(pagou, '2026-11-10'), '2026-12-10', 'pagou no vencimento: o dia do mês não anda');
+    assert.equal(prox(pagou, '2026-11-08'), '2026-12-10', 'pagou adiantado: continua no dia 10');
+    assert.equal(prox(pagou, '2026-11-25'), '2026-12-10', 'atrasou 15 dias: ainda cai no dia 10 do mês seguinte');
+    assert.equal(
+      prox(pagou, '2027-02-03'),
+      '2027-03-03',
+      'atrasou meses: um mês a partir de hoje, não uma fila de vencimentos antigos'
+    );
+    assert.equal(prox({ ...pagou, proxima_cobranca_em: '2026-01-31' }, '2026-01-31'), '2026-02-28', 'fim de mês');
+  }
+);
+
+test(
+  'o resumo da mensalidade: ciclo, o valor da mensalidade, o vencimento e a data em que o acesso é suspenso (7 dias depois)',
+  opcoes,
+  () => {
+    const { ler } = logica();
+    const linha = {
+      plano: 'gestao',
+      status: 'ativa',
+      mensalidade_centavos: 59700,
+      implantacao_centavos: 99000,
+      primeira_cobranca_centavos: 158700,
+      primeira_cobranca_em: '2026-10-10',
+      ultima_cobranca_em: '2026-10-10',
+      proxima_cobranca_em: '2026-11-12',
+      aceite_em: 'x',
+      aceite_texto: 'y',
+    };
+    const r = plano(ler(`montarResumo(${JSON.stringify(linha)}, 'https://p.com/mensal', '2026-11-10')`));
+    assert.deepEqual(
+      [r.ciclo, r.total, r.cicloEm, r.cicloEmBR, r.suspensaoEmBR, r.diasParaCobranca, r.link],
+      ['mensalidade', 'R$ 597,00', '2026-11-12', '12/11/2026', '19/11/2026', 2, 'https://p.com/mensal']
+    );
+    const longe = plano(
+      ler(
+        `montarResumo(${JSON.stringify({ ...linha, proxima_cobranca_em: '2026-12-10' })}, 'https://p.com/mensal', '2026-11-10')`
+      )
+    );
+    assert.deepEqual([longe.link, longe.linkIndisponivel], [null, false], 'ainda longe do vencimento: sem link');
+    const primeiro = plano(
+      ler(
+        `montarResumo(${JSON.stringify({ ...linha, status: 'agendada', ultima_cobranca_em: null, proxima_cobranca_em: null, primeira_cobranca_em: '2026-11-17' })}, null, '2026-11-10')`
+      )
+    );
+    assert.deepEqual([primeiro.ciclo, primeiro.total, primeiro.cicloEmBR], ['primeira', 'R$ 1.587,00', '17/11/2026']);
+  }
+);
 test(
   'o resumo mostra o link só dentro da janela, avisa quando o link do plano não foi cadastrado e formata os valores',
   opcoes,
@@ -460,13 +574,15 @@ test(
         a.aceite_por,
         a.aceite_versao,
       ],
-      [ID.empresaA, 'essencial', 29700, 59000, 88700, '2026-11-17', 'agendada', ID.ownerA, 'v1']
+      [ID.empresaA, 'essencial', 29700, 0, 29700, '2026-11-17', 'agendada', ID.ownerA, 'v2']
     );
     assert.ok(
       a.aceite_texto.startsWith('Plano Essencial') && !a.aceite_texto.includes('FALSO'),
       'o texto do aceite vem do servidor'
     );
-    assert.deepEqual([r.json.resumo.link, r.json.resumo.total, r.json.resumo.diasParaCobranca], [null, 'R$ 887,00', 7]);
+    assert.ok(a.aceite_texto.includes('pelo WhatsApp'));
+    assert.equal(r.json.resumo.implantacao, 'Combinada pelo WhatsApp');
+    assert.deepEqual([r.json.resumo.link, r.json.resumo.total, r.json.resumo.diasParaCobranca], [null, 'R$ 297,00', 7]);
     assert.deepEqual(
       f.banco.t.assinaturas_eventos.map((e) => [e.empresa_id, e.tipo]),
       [[ID.empresaA, 'plano_escolhido']]
@@ -506,7 +622,7 @@ test(
     const [a] = f.banco.t.assinaturas;
     assert.deepEqual(
       [a.plano, a.primeira_cobranca_centavos, a.mensalidade_centavos, a.implantacao_centavos],
-      ['estrategico', 248700, 99700, 149000]
+      ['estrategico', 99700, 99700, 0]
     );
     assert.ok(a.aceite_texto.startsWith('Plano Estratégico (31 a 60 colaboradores)'));
     assert.equal(f.banco.t.assinaturas_eventos.length, 2);
@@ -605,12 +721,12 @@ test(
 );
 
 test(
-  'confirmar pagamento: só o Super Admin; ativa a assinatura, marca a empresa como cliente e libera o acesso; confirmar duas vezes não vale',
+  'confirmar pagamento (primeiro): só o Super Admin; ativa a assinatura e marca a empresa como cliente; confirmar duas vezes não vale; suspensão feita à mão não é desfeita',
   opcoes,
   async () => {
     const f = montarFuncao();
     await f.chamar({ action: 'escolher_plano', plano: 'essencial' }, ID.ownerA);
-    f.banco.t.empresas[0].acesso_suspenso = true;
+    f.banco.t.empresas[0].acesso_suspenso = true; // suspensa à mão pelo Super Admin por outro motivo
     for (const quem of [ID.ownerA, ID.rhA, ID.ownerB])
       assert.equal(
         (await f.chamar({ action: 'confirmar_pagamento', empresa_id: ID.empresaA }, quem)).status,
@@ -635,16 +751,114 @@ test(
       [a.status, a.pago_confirmado_por, a.ultima_cobranca_em, a.proxima_cobranca_em, !!a.pago_em],
       ['ativa', ID.superAdmin, '2026-11-10', '2026-12-10', true]
     );
-    assert.deepEqual([f.banco.t.empresas[0].is_pagante, f.banco.t.empresas[0].acesso_suspenso], [true, false]);
+    assert.equal(f.banco.t.empresas[0].is_pagante, true);
+    assert.equal(
+      f.banco.t.empresas[0].acesso_suspenso,
+      true,
+      'a suspensão manual por outro motivo não é desfeita pela cobrança'
+    );
     assert.equal(f.banco.t.empresas[1].is_pagante, false, 'a outra empresa não é afetada');
-    assert.ok(f.banco.t.assinaturas_eventos.some((e) => e.tipo === 'pagamento_confirmado'));
+    assert.ok(f.banco.t.assinaturas_eventos.some((x) => x.tipo === 'pagamento_confirmado'));
     assert.equal(
       (await f.chamar({ action: 'confirmar_pagamento', empresa_id: ID.empresaA }, ID.superAdmin)).status,
-      409
+      409,
+      'recém paga: o vencimento está a um mês'
     );
   }
 );
 
+const PAGA = (extra = {}) => ({
+  empresa_id: ID.empresaA,
+  plano: 'essencial',
+  status: 'ativa',
+  mensalidade_centavos: 29700,
+  implantacao_centavos: 0,
+  primeira_cobranca_centavos: 29700,
+  primeira_cobranca_em: '2026-10-10',
+  ultima_cobranca_em: '2026-10-10',
+  proxima_cobranca_em: '2026-11-10',
+  aceite_em: 'x',
+  aceite_texto: 'y',
+  ...extra,
+});
+test(
+  'confirmar a MENSALIDADE: o vencimento anda um mês e o dia não muda (no prazo, adiantado ou atrasado)',
+  opcoes,
+  async () => {
+    for (const [status, proxima, esperado] of [
+      ['aguardando_pagamento', '2026-11-10', '2026-12-10'],
+      ['em_atraso', '2026-11-04', '2026-12-04'],
+      ['ativa', '2026-11-12', '2026-12-12'],
+      ['em_atraso', '2026-08-10', '2026-12-10'],
+    ]) {
+      const f = montarFuncao();
+      f.banco.t.assinaturas.push(PAGA({ status, proxima_cobranca_em: proxima }));
+      const r = await f.chamar({ action: 'confirmar_pagamento', empresa_id: ID.empresaA }, ID.superAdmin);
+      assert.equal(r.status, 200, `${status} ${proxima}`);
+      const [a] = f.banco.t.assinaturas;
+      assert.deepEqual(
+        [a.status, a.ultima_cobranca_em, a.proxima_cobranca_em],
+        ['ativa', '2026-11-10', esperado],
+        `${status} ${proxima}`
+      );
+    }
+    const f = montarFuncao();
+    f.banco.t.assinaturas.push(PAGA({ status: 'ativa', proxima_cobranca_em: '2026-12-10' }));
+    assert.equal(
+      (await f.chamar({ action: 'confirmar_pagamento', empresa_id: ID.empresaA }, ID.superAdmin)).status,
+      409,
+      'ativa e longe do vencimento: não confirma'
+    );
+  }
+);
+
+test('assinatura SUSPENSA pela cobrança: confirmar o pagamento devolve o acesso', opcoes, async () => {
+  const f = montarFuncao();
+  f.banco.t.assinaturas.push(PAGA({ status: 'suspensa', proxima_cobranca_em: '2026-11-01' }));
+  f.banco.t.empresas[0].is_pagante = true;
+  f.banco.t.empresas[0].acesso_suspenso = true;
+  const r = await f.chamar({ action: 'confirmar_pagamento', empresa_id: ID.empresaA }, ID.superAdmin);
+  assert.equal(r.status, 200);
+  assert.deepEqual(
+    [
+      f.banco.t.empresas[0].is_pagante,
+      f.banco.t.empresas[0].acesso_suspenso,
+      f.banco.t.assinaturas[0].status,
+      f.banco.t.assinaturas[0].proxima_cobranca_em,
+    ],
+    [true, false, 'ativa', '2026-12-01']
+  );
+});
+
+test(
+  'o resumo da mensalidade usa o link de MENSALIDADE (não o do primeiro pagamento) e só perto do vencimento',
+  opcoes,
+  async () => {
+    const f = montarFuncao();
+    f.banco.t.assinaturas.push(PAGA({ proxima_cobranca_em: '2026-11-12' }));
+    const r = await f.chamar({ action: 'resumo' }, ID.ownerA);
+    assert.equal(r.json.assinatura.link, 'https://pague.exemplo.com/essencial-mensal');
+    assert.deepEqual(
+      [r.json.assinatura.ciclo, r.json.assinatura.total, r.json.assinatura.cicloEmBR, r.json.assinatura.suspensaoEmBR],
+      ['mensalidade', 'R$ 297,00', '12/11/2026', '19/11/2026']
+    );
+    assert.ok(!r.texto.includes('essencial-887'));
+    f.banco.t.assinaturas[0].proxima_cobranca_em = '2026-12-10';
+    assert.equal((await f.chamar({ action: 'resumo' }, ID.ownerA)).json.assinatura.link, null);
+  }
+);
+
+test('cancelar uma assinatura paga mantém o vencimento (é até quando o acesso vale)', opcoes, async () => {
+  const f = montarFuncao();
+  f.banco.t.assinaturas.push(PAGA({ proxima_cobranca_em: '2026-11-28' }));
+  f.banco.t.empresas[0].is_pagante = true;
+  const r = await f.chamar({ action: 'cancelar' }, ID.ownerA);
+  assert.equal(r.status, 200);
+  assert.deepEqual(
+    [f.banco.t.assinaturas[0].status, f.banco.t.assinaturas[0].proxima_cobranca_em],
+    ['cancelada', '2026-11-28']
+  );
+});
 test('assinatura cancelada não pode ter o pagamento confirmado por engano', opcoes, async () => {
   const f = montarFuncao();
   await f.chamar({ action: 'escolher_plano', plano: 'essencial' }, ID.ownerA);
@@ -661,9 +875,7 @@ test(
       !/body\??\.aceite|body\??\.status|body\??\.valor|body\??\.total|body\??\.mensalidade/.test(origem),
       'valores e aceite não podem vir do navegador'
     );
-    assert.ok(
-      /from\('links_pagamento'\)\.select\('url'\)\.eq\('plano', plano\)\.eq\('tipo', 'primeira'\)/.test(origem)
-    );
+    assert.ok(/from\('links_pagamento'\)\.select\('url'\)\.eq\('plano', plano\)\.eq\('tipo', tipo\)/.test(origem));
     assert.ok(
       !/select\('\*'\)[^;]*links_pagamento|links_pagamento'\)\.select\('\*'/.test(origem),
       'nunca lê todos os links'

@@ -4,6 +4,8 @@
 // O teste grátis continua SEM cartão. No fim dos 7 dias a pessoa recebe o link de pagamento do plano dela (mensalidade mais
 // implantação, sem fidelidade) e PAGA se quiser continuar. Nada é cobrado sem a pessoa pagar por conta própria.
 //
+// Depois do primeiro pagamento o ciclo é mensal: a rotina diária avisa, marca em atraso e suspende; aqui o Super Admin só confirma.
+// A implantação é combinada com o cliente pelo WhatsApp: o primeiro pagamento por link é só a mensalidade.
 // Esta função atende o sistema (quem está logado) e o Super Admin:
 //   resumo               a assinatura da minha empresa e, na hora certa, o link de pagamento do meu plano (Administrador);
 //   escolher_plano       registra o plano escolhido e o ACEITE (o texto exato que a pessoa viu, gerado AQUI, nunca pelo navegador);
@@ -30,14 +32,16 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 // ---- LÓGICA DA COBRANÇA (a parte pura: testada, sem rede nem banco) ----------------------------
-const VERSAO_ACEITE = 'v1';
+const VERSAO_ACEITE = 'v2'; // v2: sem implantação neste pagamento (combinada por WhatsApp)
 const WHATSAPP_SUPORTE = '558999857062'; // o MESMO número das outras funções e da tela de entrada
 const DIAS_DA_JANELA_DO_LINK = 3; // o link aparece (e é avisado por e-mail) a partir de 3 dias antes do fim do teste
 // Valores em CENTAVOS (inteiros: nunca dinheiro em número com vírgula). Sem fidelidade: a mensalidade é uma só.
+// A IMPLANTAÇÃO não faz parte do pagamento por link: o valor é combinado com o cliente pelo WhatsApp (por isso 0 aqui). O primeiro
+// pagamento é só a mensalidade, e o link de cada plano cobra exatamente esse valor.
 const PLANOS = [
-  { chave: 'essencial', nome: 'Essencial', ate: 10, detalhe: 'Até 10 colaboradores', mensalidade: 29700, implantacao: 59000 },
-  { chave: 'gestao', nome: 'Gestão', ate: 30, detalhe: '11 a 30 colaboradores', mensalidade: 59700, implantacao: 99000 },
-  { chave: 'estrategico', nome: 'Estratégico', ate: 60, detalhe: '31 a 60 colaboradores', mensalidade: 99700, implantacao: 149000 },
+  { chave: 'essencial', nome: 'Essencial', ate: 10, detalhe: 'Até 10 colaboradores', mensalidade: 29700, implantacao: 0 },
+  { chave: 'gestao', nome: 'Gestão', ate: 30, detalhe: '11 a 30 colaboradores', mensalidade: 59700, implantacao: 0 },
+  { chave: 'estrategico', nome: 'Estratégico', ate: 60, detalhe: '31 a 60 colaboradores', mensalidade: 99700, implantacao: 0 },
 ];
 
 function planoPorChave(chave: unknown) {
@@ -80,12 +84,37 @@ function somarUmMes(iso: string): string {
   const ultimo = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
   return `${ano}-${String(mes).padStart(2, '0')}-${String(Math.min(d, ultimo)).padStart(2, '0')}`;
 }
+const DIAS_ATE_SUSPENDER = 7; // mensalidade em atraso há 7 dias: o acesso é suspenso
+function somarDias(iso: string, n: number): string {
+  const [a, m, d] = iso.slice(0, 10).split('-').map(Number);
+  return new Date(Date.UTC(a, m - 1, d + n)).toISOString().slice(0, 10);
+}
+type CicloAssinatura = { ultima_cobranca_em?: string | null; proxima_cobranca_em?: string | null; primeira_cobranca_em: string };
+// A data do ciclo atual: o fim do teste (primeiro pagamento) ou o vencimento da mensalidade (depois de já ter pago uma vez).
+function dataDoCiclo(a: CicloAssinatura): string {
+  return a.ultima_cobranca_em && a.proxima_cobranca_em ? a.proxima_cobranca_em : a.primeira_cobranca_em;
+}
+// Qual link vale: o do primeiro pagamento ou o da mensalidade.
+function tipoDoLink(a: { ultima_cobranca_em?: string | null }): 'primeira' | 'mensalidade' {
+  return a.ultima_cobranca_em ? 'mensalidade' : 'primeira';
+}
+// O próximo vencimento depois de um pagamento confirmado: na primeira vez, um mês a partir de hoje; depois, um mês depois do
+// vencimento que foi pago (o dia do mês não anda); se o cliente atrasou tanto que isso já passou, um mês a partir de hoje.
+function proximoVencimento(a: CicloAssinatura, hojeISO: string): string {
+  if (!a.ultima_cobranca_em || !a.proxima_cobranca_em) return somarUmMes(hojeISO);
+  const n = somarUmMes(a.proxima_cobranca_em);
+  return n > hojeISO ? n : somarUmMes(hojeISO);
+}
 // O texto que a pessoa vê e aceita. Fica guardado inteiro: é a prova do que foi combinado.
 function textoDoAceite(p: { nome: string; detalhe: string; mensalidade: number; implantacao: number }, dataISO: string): string {
   const v = valoresDoPlano(p);
+  const comImplantacao = v.implantacao > 0;
+  const parteImplantacao = comImplantacao
+    ? ` e implantação de ${formatarReais(v.implantacao)} (cobrada uma única vez)`
+    : '. A taxa de implantação é combinada separadamente com você, pelo WhatsApp, e não faz parte deste pagamento';
   return (
-    `Plano ${p.nome} (${p.detalhe.toLowerCase()}): mensalidade de ${formatarReais(v.mensalidade)}, sem fidelidade, e implantação de ${formatarReais(v.implantacao)} (cobrada uma única vez). ` +
-    `Seu teste grátis termina em ${formatarDataBR(dataISO)}. Nessa data você receberá o link para pagar ${formatarReais(v.total)} (implantação e primeira mensalidade) pelo cartão. ` +
+    `Plano ${p.nome} (${p.detalhe.toLowerCase()}): mensalidade de ${formatarReais(v.mensalidade)}, sem fidelidade${parteImplantacao}. ` +
+    `Seu teste grátis termina em ${formatarDataBR(dataISO)}. Nessa data você receberá o link para pagar ${formatarReais(v.total)} ${comImplantacao ? '(implantação e primeira mensalidade)' : '(a primeira mensalidade)'} pelo cartão. ` +
     'Nada é cobrado automaticamente: o acesso continua se você pagar e, se não pagar, o acesso é pausado e seus dados ficam guardados. Você pode cancelar quando quiser.'
   );
 }
@@ -96,31 +125,40 @@ function podeEscolherPlano(status: string | null): boolean {
 function podeCancelar(status: string): boolean {
   return status !== 'cancelada';
 }
-function podeConfirmarPagamento(status: string): boolean {
-  return status === 'agendada' || status === 'aguardando_pagamento' || status === 'em_atraso' || status === 'suspensa';
+// Quem já está ativa só pode ter o pagamento confirmado dentro da janela do aviso (pagou a mensalidade adiantado).
+function podeConfirmarPagamento(status: string, dataCicloISO: string, hojeISO: string): boolean {
+  if (status === 'agendada' || status === 'aguardando_pagamento' || status === 'em_atraso' || status === 'suspensa') return true;
+  if (status === 'ativa') return diasEntre(hojeISO, dataCicloISO) <= DIAS_DA_JANELA_DO_LINK;
+  return false;
 }
 // Na data do fim do teste (ou depois), a assinatura passa a aguardar o pagamento.
 function statusParaData(dataCobrancaISO: string, hojeISO: string): string {
   return hojeISO >= dataCobrancaISO ? 'aguardando_pagamento' : 'agendada';
 }
-// O link só aparece perto do fim do teste, ou depois dele (nunca no primeiro dia).
+// O link só aparece perto do vencimento (fim do teste ou mensalidade), ou depois dele: nunca logo depois de pagar.
 function janelaDoLink(status: string, dataCobrancaISO: string, hojeISO: string): boolean {
   if (status === 'aguardando_pagamento' || status === 'em_atraso' || status === 'suspensa') return true;
-  if (status === 'agendada') return diasEntre(hojeISO, dataCobrancaISO) <= DIAS_DA_JANELA_DO_LINK;
+  if (status === 'agendada' || status === 'ativa') return diasEntre(hojeISO, dataCobrancaISO) <= DIAS_DA_JANELA_DO_LINK;
   return false;
 }
 function montarResumo(a: Record<string, any>, link: string | null, hojeISO: string) {
   const p = planoPorChave(a.plano);
-  const janela = janelaDoLink(a.status, a.primeira_cobranca_em, hojeISO);
+  const ciclo = tipoDoLink(a);
+  const dataCiclo = dataDoCiclo(a as CicloAssinatura);
+  const janela = janelaDoLink(a.status, dataCiclo, hojeISO);
   return {
     status: a.status,
     plano: { chave: a.plano, nome: p ? p.nome : a.plano, detalhe: p ? p.detalhe : '' },
     mensalidade: formatarReais(a.mensalidade_centavos),
-    implantacao: formatarReais(a.implantacao_centavos),
-    total: formatarReais(a.primeira_cobranca_centavos),
+    implantacao: a.implantacao_centavos > 0 ? formatarReais(a.implantacao_centavos) : 'Combinada pelo WhatsApp',
+    total: formatarReais(ciclo === 'mensalidade' ? a.mensalidade_centavos : a.primeira_cobranca_centavos),
+    ciclo,
+    cicloEm: dataCiclo,
+    cicloEmBR: formatarDataBR(dataCiclo),
+    suspensaoEmBR: formatarDataBR(somarDias(dataCiclo, DIAS_ATE_SUSPENDER)),
     primeiraCobrancaEm: a.primeira_cobranca_em,
     primeiraCobrancaEmBR: formatarDataBR(a.primeira_cobranca_em),
-    diasParaCobranca: diasEntre(hojeISO, a.primeira_cobranca_em),
+    diasParaCobranca: diasEntre(hojeISO, dataCiclo),
     link: janela ? link : null,
     linkIndisponivel: janela && !link && a.status !== 'cancelada',
     whatsapp: `https://wa.me/${WHATSAPP_SUPORTE}?text=${encodeURIComponent('Olá! Tenho uma dúvida sobre o pagamento do INETRIS.')}`,
@@ -142,7 +180,7 @@ function listaDePlanos() {
       detalhe: p.detalhe,
       ate: p.ate,
       mensalidade: formatarReais(v.mensalidade),
-      implantacao: formatarReais(v.implantacao),
+      implantacao: v.implantacao > 0 ? formatarReais(v.implantacao) : 'Combinada pelo WhatsApp',
       total: formatarReais(v.total),
     };
   });
@@ -153,15 +191,15 @@ function listaDePlanos() {
 type Banco = any;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function linkDoPlano(admin: Banco, plano: string): Promise<string | null> {
-  const { data } = await admin.from('links_pagamento').select('url').eq('plano', plano).eq('tipo', 'primeira').maybeSingle();
+async function linkDoPlano(admin: Banco, plano: string, tipo: string): Promise<string | null> {
+  const { data } = await admin.from('links_pagamento').select('url').eq('plano', plano).eq('tipo', tipo).maybeSingle();
   return data && typeof data.url === 'string' ? data.url : null;
 }
 async function resumoDaEmpresa(admin: Banco, empresaId: string, hojeISO: string) {
   const { data: a } = await admin.from('assinaturas').select('*').eq('empresa_id', empresaId).maybeSingle();
   if (!a) return null;
-  const janela = janelaDoLink(a.status, a.primeira_cobranca_em, hojeISO);
-  const link = janela ? await linkDoPlano(admin, a.plano) : null;
+  const janela = janelaDoLink(a.status, dataDoCiclo(a), hojeISO);
+  const link = janela ? await linkDoPlano(admin, a.plano, tipoDoLink(a)) : null;
   return montarResumo(a, link, hojeISO);
 }
 async function registrarEvento(admin: Banco, empresaId: string, tipo: string, chave: string, detalhes: Record<string, unknown>) {
@@ -209,16 +247,16 @@ serve(async (req: Request) => {
       if (!sa) return jsonResponse({ error: 'Só o Super Admin confirma pagamentos.' }, 403);
       const empresaId = String(body?.empresa_id || '');
       if (!UUID.test(empresaId)) return jsonResponse({ error: 'empresa_id inválido.' }, 400);
-      const { data: a } = await admin.from('assinaturas').select('status').eq('empresa_id', empresaId).maybeSingle();
+      const { data: a } = await admin.from('assinaturas').select('status, primeira_cobranca_em, proxima_cobranca_em, ultima_cobranca_em').eq('empresa_id', empresaId).maybeSingle();
       if (!a) return jsonResponse({ error: 'Esta empresa não tem assinatura.' }, 404);
-      if (!podeConfirmarPagamento(a.status)) return jsonResponse({ error: `Não dá para confirmar pagamento de uma assinatura "${a.status}".` }, 409);
+      if (!podeConfirmarPagamento(a.status, dataDoCiclo(a), hojeISO)) return jsonResponse({ error: `Não dá para confirmar pagamento de uma assinatura "${a.status}" que ainda não está perto do vencimento.` }, 409);
       const { error: erroA } = await admin
         .from('assinaturas')
-        .update({ status: 'ativa', pago_em: agoraISO, pago_confirmado_por: user.id, ultima_cobranca_em: hojeISO, proxima_cobranca_em: somarUmMes(hojeISO) })
+        .update({ status: 'ativa', pago_em: agoraISO, pago_confirmado_por: user.id, ultima_cobranca_em: hojeISO, proxima_cobranca_em: proximoVencimento(a, hojeISO) })
         .eq('empresa_id', empresaId);
       if (erroA) return jsonResponse({ error: erroA.message }, 500);
-      // a empresa passa a ser cliente: o bloqueio do fim do teste deixa de valer
-      const { error: erroE } = await admin.from('empresas').update({ is_pagante: true, acesso_suspenso: false }).eq('id', empresaId);
+      // a empresa é cliente; e SÓ quem foi suspenso pela cobrança volta a ter acesso (uma suspensão feita à mão por outro motivo não é desfeita aqui)
+      const { error: erroE } = await admin.from('empresas').update(a.status === 'suspensa' ? { is_pagante: true, acesso_suspenso: false } : { is_pagante: true }).eq('id', empresaId);
       if (erroE) return jsonResponse({ error: `Pagamento registrado, mas não consegui liberar a empresa: ${erroE.message}` }, 500);
       await registrarEvento(admin, empresaId, 'pagamento_confirmado', agoraISO, { por: user.id, dia: hojeISO });
       return jsonResponse({ ok: true, resumo: await resumoDaEmpresa(admin, empresaId, hojeISO) });

@@ -439,10 +439,14 @@ async function iniciarComSessao(sessao) {
   }
 
   if (empresaCheck?.acesso_suspenso) {
+    // Suspensa por falta de pagamento? Então a pessoa já pode pagar daqui: busca o link ANTES de sair (precisa da sessão).
+    const pagamento = typeof cobrancaDadosParaBloqueio === 'function' ? await cobrancaDadosParaBloqueio() : null;
     await sb.auth.signOut();
-    erroLogin =
-      'O acesso da sua Empresa a esta plataforma está temporariamente suspenso. Entre em contato com o Instituto INETRIS para regularizar.';
+    erroLogin = pagamento
+      ? `O acesso da sua Empresa está suspenso por falta de pagamento. Seus dados continuam guardados: pague ${pagamento.total} para voltar a usar.`
+      : 'O acesso da sua Empresa a esta plataforma está temporariamente suspenso. Entre em contato com o Instituto INETRIS para regularizar.';
     erroContratarLogin = erroLogin;
+    linkPagamentoLogin = pagamento ? pagamento.link : null;
     renderLogin();
     return;
   }

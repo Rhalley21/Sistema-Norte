@@ -23,8 +23,8 @@ const PLANOS = [
     detalhe: 'Até 10 colaboradores',
     ate: 10,
     mensalidade: 'R$ 297,00',
-    implantacao: 'R$ 590,00',
-    total: 'R$ 887,00',
+    implantacao: 'Combinada pelo WhatsApp',
+    total: 'R$ 297,00',
   },
   {
     chave: 'gestao',
@@ -32,8 +32,8 @@ const PLANOS = [
     detalhe: '11 a 30 colaboradores',
     ate: 30,
     mensalidade: 'R$ 597,00',
-    implantacao: 'R$ 990,00',
-    total: 'R$ 1.587,00',
+    implantacao: 'Combinada pelo WhatsApp',
+    total: 'R$ 597,00',
   },
   {
     chave: 'estrategico',
@@ -41,16 +41,16 @@ const PLANOS = [
     detalhe: '31 a 60 colaboradores',
     ate: 60,
     mensalidade: 'R$ 997,00',
-    implantacao: 'R$ 1.490,00',
-    total: 'R$ 2.487,00',
+    implantacao: 'Combinada pelo WhatsApp',
+    total: 'R$ 997,00',
   },
 ];
 const ASSINATURA = (extra = {}) => ({
   status: 'agendada',
   plano: { chave: 'essencial', nome: 'Essencial', detalhe: 'Até 10 colaboradores' },
   mensalidade: 'R$ 297,00',
-  implantacao: 'R$ 590,00',
-  total: 'R$ 887,00',
+  implantacao: 'Combinada pelo WhatsApp',
+  total: 'R$ 297,00',
   primeiraCobrancaEm: '2026-11-17',
   primeiraCobrancaEmBR: '17/11/2026',
   diasParaCobranca: 7,
@@ -236,12 +236,12 @@ test('sem plano escolhido: mostra os 3 planos com os valores, destaca o da equip
     'R$ 297,00',
     'R$ 597,00',
     'R$ 997,00',
-    'R$ 590,00',
-    'R$ 990,00',
-    'R$ 1.490,00',
-    'R$ 887,00',
-    'R$ 1.587,00',
-    'R$ 2.487,00',
+    'Combinada pelo WhatsApp',
+    'Combinada pelo WhatsApp',
+    'Combinada pelo WhatsApp',
+    'R$ 297,00',
+    'R$ 597,00',
+    'R$ 997,00',
     'Nada é cobrado automaticamente',
     'seus dados ficam guardados',
   ])
@@ -267,15 +267,13 @@ test('empresa que já é cliente, ou que não está em teste, e ainda não tem a
   assert.equal(await cenario({ resposta: { ativa: false } }).carregar(), '');
 });
 
-test('erro ao carregar: avisa com a mensagem do servidor, sem quebrar a tela, e o texto sai escapado', async () => {
-  const t = cenario({ resposta: () => new Error('Só o Administrador <b>vê</b> isto') });
+test('erro ao carregar (servidor ainda não pronto): o bloco simplesmente NÃO aparece, sem mensagem de erro para o cliente, e o motivo fica registrado', async () => {
+  const t = cenario({ resposta: () => new Error('Só o Administrador vê isto') });
   const html = await t.carregar();
-  assert.ok(
-    html.includes('Não foi possível carregar a sua cobrança agora') &&
-      html.includes('Só o Administrador &lt;b&gt;vê&lt;/b&gt; isto')
-  );
+  assert.equal(html, '', 'ligar o site antes do servidor não pode mostrar erro ao cliente');
+  assert.equal(t.estado().erro, 'Só o Administrador vê isto');
+  assert.deepEqual(plano(t.reg.chamadas), [['cobranca', { action: 'resumo' }]]);
 });
-
 test('assinatura agendada, ainda sem link: plano, valores, data, quando o link aparece, trocar e cancelar; sem botão de pagar', async () => {
   const html = await cenario({ resposta: RESUMO({ assinatura: ASSINATURA() }) }).carregar();
   for (const x of [
@@ -283,10 +281,10 @@ test('assinatura agendada, ainda sem link: plano, valores, data, quando o link a
     'Pagamento no fim do teste',
     '17/11/2026',
     'daqui a 7 dias',
-    'R$ 887,00',
+    'R$ 297,00',
     'R$ 297,00',
     'sem fidelidade',
-    'R$ 590,00',
+    'Combinada pelo WhatsApp',
     '3 dias antes do fim do teste',
     'Trocar de plano',
     'Cancelar assinatura',
@@ -297,6 +295,22 @@ test('assinatura agendada, ainda sem link: plano, valores, data, quando o link a
   assert.ok(!html.includes('Pagar R$') && !html.includes('Pedir o link'));
 });
 
+test('implantação combinada por WhatsApp: o cartão do plano e a assinatura dizem isso, e o primeiro pagamento é só a primeira mensalidade', async () => {
+  const sem = await cenario({ resposta: RESUMO() }).carregar();
+  assert.equal((sem.match(/Implantação: Combinada pelo WhatsApp/g) || []).length, 3);
+  assert.ok(!/R\$ 590|R\$ 990|R\$ 1\.490/.test(sem));
+  const com = await cenario({ resposta: RESUMO({ assinatura: ASSINATURA() }) }).carregar();
+  assert.ok(
+    com.includes('(a primeira mensalidade)') &&
+      !com.includes('(implantação e primeira mensalidade)') &&
+      com.includes('Combinada pelo WhatsApp')
+  );
+  const comValor = await cenario({
+    resposta: RESUMO({ assinatura: ASSINATURA({ implantacao: 'R$ 590,00', total: 'R$ 887,00' }) }),
+  }).carregar();
+  assert.ok(comValor.includes('(implantação e primeira mensalidade)') && comValor.includes('R$ 590,00'));
+});
+
 test('com o link na janela de pagamento: botão "Pagar" abre o link em outra aba, com noopener', async () => {
   const html = await cenario({
     resposta: RESUMO({
@@ -304,7 +318,7 @@ test('com o link na janela de pagamento: botão "Pagar" abre o link em outra aba
     }),
   }).carregar();
   assert.ok(
-    /<a class="btn btn-primary" href="https:\/\/pague\.exemplo\.com\/essencial-887" target="_blank" rel="noopener" style="text-decoration:none;">Pagar R\$ 887,00 agora<\/a>/.test(
+    /<a class="btn btn-primary" href="https:\/\/pague\.exemplo\.com\/essencial-887" target="_blank" rel="noopener" style="text-decoration:none;">Pagar R\$ 297,00 agora<\/a>/.test(
       html
     )
   );
@@ -324,7 +338,7 @@ test('teste terminado e aguardando pagamento: pede o pagamento; sem link cadastr
     com.includes('Aguardando pagamento') &&
       com.includes('Seu teste terminou') &&
       com.includes('Seus dados continuam guardados') &&
-      com.includes('Pagar R$ 887,00 agora')
+      com.includes('Pagar R$ 297,00 agora')
   );
   const sem = await cenario({
     resposta: RESUMO({ assinatura: ASSINATURA({ status: 'aguardando_pagamento', linkIndisponivel: true }) }),
@@ -332,7 +346,7 @@ test('teste terminado e aguardando pagamento: pede o pagamento; sem link cadastr
   assert.ok(
     sem.includes('Pedir o link no WhatsApp') &&
       sem.includes('wa.me/558999857062') &&
-      !sem.includes('Pagar R$ 887,00 agora')
+      !sem.includes('Pagar R$ 297,00 agora')
   );
 });
 
@@ -390,7 +404,7 @@ test('escolher o plano: pede confirmação com os valores, manda SÓ o plano ao 
   assert.ok(
     t.reg.confirmacoes[0].includes('plano Essencial') &&
       t.reg.confirmacoes[0].includes('R$ 297,00') &&
-      t.reg.confirmacoes[0].includes('R$ 887,00') &&
+      t.reg.confirmacoes[0].includes('R$ 297,00') &&
       t.reg.confirmacoes[0].includes('Nada é cobrado automaticamente')
   );
   assert.deepEqual(t.reg.chamadas.at(-1), ['cobranca', { action: 'escolher_plano', plano: 'essencial' }]);
@@ -484,7 +498,7 @@ test('bloqueio do 8º dia: devolve o link e o valor só quando há assinatura ag
   const bom = await dados(
     ASSINATURA({ status: 'aguardando_pagamento', link: 'https://pague.exemplo.com/essencial-887' })
   ).ctx.cobrancaDadosParaBloqueio();
-  assert.deepEqual(plano(bom), { link: 'https://pague.exemplo.com/essencial-887', total: 'R$ 887,00' });
+  assert.deepEqual(plano(bom), { link: 'https://pague.exemplo.com/essencial-887', total: 'R$ 297,00' });
   for (const a of [
     null,
     ASSINATURA({ status: 'cancelada', link: 'https://pague.exemplo.com/essencial-887' }), // com link, mas cancelada: não oferece pagar
@@ -511,28 +525,28 @@ const ASSINATURAS_SA = [
     empresa_id: 'e1',
     plano: 'essencial',
     status: 'aguardando_pagamento',
-    primeira_cobranca_centavos: 88700,
+    primeira_cobranca_centavos: 29700,
     primeira_cobranca_em: '2026-11-17',
   },
   {
     empresa_id: 'e2',
     plano: 'gestao',
     status: 'ativa',
-    primeira_cobranca_centavos: 158700,
+    primeira_cobranca_centavos: 59700,
     primeira_cobranca_em: '2026-11-10',
   },
   {
     empresa_id: 'e3',
     plano: 'estrategico',
     status: 'cancelada',
-    primeira_cobranca_centavos: 248700,
+    primeira_cobranca_centavos: 99700,
     primeira_cobranca_em: '2026-11-20',
   },
   {
     empresa_id: 'e4',
     plano: '<img src=x>',
     status: 'agendada',
-    primeira_cobranca_centavos: 88700,
+    primeira_cobranca_centavos: 29700,
     primeira_cobranca_em: '2026-11-17',
   },
 ];
@@ -541,9 +555,9 @@ test('Super Admin: a situação da cobrança aparece na linha da empresa (plano,
   t.ctx._superAdminAssinaturas = ASSINATURAS_SA;
   assert.equal(
     t.ctx.cobrancaSeloSuperAdmin('e1'),
-    '<div class="small-muted" style="font-size:11px;margin-top:4px;">Cobrança: Essencial · Aguardando pagamento · R$ 887,00 · até 17/11/2026</div>'
+    '<div class="small-muted" style="font-size:11px;margin-top:4px;">Cobrança: Essencial · Aguardando pagamento · R$ 297,00 · até 17/11/2026</div>'
   );
-  assert.ok(t.ctx.cobrancaSeloSuperAdmin('e2').includes('Gestão · Ativa · R$ 1.587,00'));
+  assert.ok(t.ctx.cobrancaSeloSuperAdmin('e2').includes('Gestão · Ativa · R$ 597,00'));
   assert.equal(t.ctx.cobrancaSeloSuperAdmin('sem-assinatura'), '');
   assert.ok(!t.ctx.cobrancaSeloSuperAdmin('e4').includes('<img src=x>'));
 });
@@ -586,7 +600,7 @@ test('Super Admin: confirmar pede confirmação com o valor, chama a ação e re
   t.ctx._superAdminAssinaturas = ASSINATURAS_SA;
   await t.ctx.confirmarPagamentoCobranca('e1', 'Loja Aurora');
   assert.ok(
-    t.reg.confirmacoes[0].includes('"Loja Aurora" pagou R$ 887,00') &&
+    t.reg.confirmacoes[0].includes('"Loja Aurora" pagou R$ 297,00') &&
       t.reg.confirmacoes[0].includes('empresa passa a ser cliente')
   );
   assert.deepEqual(t.reg.chamadas.at(-1), ['cobranca', { action: 'confirmar_pagamento', empresa_id: 'e1' }]);
@@ -671,4 +685,214 @@ test('a chave cobrancaAtiva existe no ambiente (liga só quando o servidor tamb�
   assert.equal(typeof prod.cobrancaAtiva, 'boolean');
   assert.equal(teste.cobrancaAtiva, false);
   assert.ok(ler('ambiente.js').includes('cobrancaAtiva: base.cobrancaAtiva === true'), 'só vale o booleano true');
+});
+
+// ======================= o ciclo mensal (depois do primeiro pagamento) =======================
+const MENSAL = (extra = {}) =>
+  ASSINATURA({
+    ciclo: 'mensalidade',
+    status: 'ativa',
+    cicloEm: '2026-12-10',
+    cicloEmBR: '10/12/2026',
+    suspensaoEmBR: '17/12/2026',
+    diasParaCobranca: 30,
+    pagoEm: '2026-11-10T15:00:00Z',
+    podeTrocarPlano: false,
+    ...extra,
+  });
+
+test('assinatura ativa, longe do vencimento: diz quando vence a próxima mensalidade e que o link chega por e-mail 3 dias antes; sem botão de pagar', async () => {
+  const html = await cenario({ resposta: RESUMO({ assinatura: MENSAL() }) }).carregar();
+  for (const x of [
+    'Pagamento confirmado em 10/11/2026',
+    'A próxima mensalidade vence em <b>10/12/2026</b>',
+    'o link de pagamento chega no seu e-mail 3 dias antes',
+    'Próximo pagamento',
+    'Cancelar assinatura',
+  ])
+    assert.ok(html.includes(x), x);
+  assert.ok(!html.includes('Pagar R$') && !html.includes('Primeiro pagamento') && !html.includes('Trocar de plano'));
+});
+
+test('assinatura ativa perto do vencimento: mostra o valor, a data e o botão de pagar com o link da mensalidade', async () => {
+  const html = await cenario({
+    resposta: RESUMO({
+      assinatura: MENSAL({
+        cicloEmBR: '12/11/2026',
+        diasParaCobranca: 2,
+        link: 'https://pague.exemplo.com/essencial-mensal',
+      }),
+    }),
+  }).carregar();
+  assert.ok(html.includes('A próxima mensalidade (<b>R$ 297,00</b>) vence em <b>12/11/2026</b> (daqui a 2 dias)'));
+  assert.ok(/href="https:\/\/pague\.exemplo\.com\/essencial-mensal"[^>]*>Pagar R\$ 297,00 agora<\/a>/.test(html));
+});
+
+test('mensalidade em atraso: diz até quando pagar para evitar a suspensão; suspensa: explica e oferece pagar', async () => {
+  const atraso = await cenario({
+    resposta: RESUMO({
+      assinatura: MENSAL({
+        status: 'em_atraso',
+        cicloEmBR: '07/11/2026',
+        suspensaoEmBR: '14/11/2026',
+        diasParaCobranca: -3,
+        link: 'https://pague.exemplo.com/essencial-mensal',
+      }),
+    }),
+  }).carregar();
+  assert.ok(
+    atraso.includes('Em atraso') &&
+      atraso.includes('vencida em 07/11/2026') &&
+      atraso.includes('Pague até <b>14/11/2026</b> para evitar a suspensão do acesso') &&
+      atraso.includes('Seus dados continuam guardados') &&
+      atraso.includes('Pagar R$ 297,00 agora')
+  );
+  const suspensa = await cenario({
+    resposta: RESUMO({
+      assinatura: MENSAL({
+        status: 'suspensa',
+        cicloEmBR: '03/11/2026',
+        link: 'https://pague.exemplo.com/essencial-mensal',
+      }),
+    }),
+  }).carregar();
+  assert.ok(
+    suspensa.includes('O acesso está suspenso por falta de pagamento') &&
+      suspensa.includes('mensalidade vencida em 03/11/2026') &&
+      suspensa.includes('Pagar R$ 297,00 agora')
+  );
+});
+
+test('mensalidade vencendo hoje (aguardando pagamento): pede o pagamento do valor da mensalidade', async () => {
+  const html = await cenario({
+    resposta: RESUMO({
+      assinatura: MENSAL({
+        status: 'aguardando_pagamento',
+        cicloEmBR: '10/11/2026',
+        diasParaCobranca: 0,
+        link: 'https://pague.exemplo.com/essencial-mensal',
+      }),
+    }),
+  }).carregar();
+  assert.ok(
+    html.includes('A mensalidade de <b>R$ 297,00</b> vence em <b>10/11/2026</b>') &&
+      html.includes('Pagar R$ 297,00 agora') &&
+      !html.includes('Seu teste terminou')
+  );
+});
+
+test('cancelou DEPOIS de pagar: o cartão diz até quando o acesso continua, sem opções de escolher plano nem de cancelar de novo', async () => {
+  const html = await cenario({
+    resposta: RESUMO({
+      ehPagante: true,
+      assinatura: MENSAL({
+        status: 'cancelada',
+        canceladaEm: '2026-11-12T10:00:00Z',
+        cicloEmBR: '28/11/2026',
+        podeCancelar: false,
+      }),
+    }),
+  }).carregar();
+  for (const x of [
+    'Assinatura cancelada',
+    'Cancelada em 12/11/2026',
+    'O acesso continua até <b>28/11/2026</b>, o fim do período já pago',
+    'seus dados continuam guardados',
+  ])
+    assert.ok(html.includes(x), x);
+  assert.ok(!html.includes('Escolher este plano') && !html.includes('Cancelar assinatura'));
+});
+
+test('cancelar uma assinatura paga avisa até quando o acesso vale', async () => {
+  const t = cenario({ resposta: RESUMO({ assinatura: MENSAL({ cicloEmBR: '10/12/2026' }) }), confirma: false });
+  await t.carregar();
+  await t.ctx.cobrancaCancelar();
+  assert.ok(
+    t.reg.confirmacoes[0].includes('O acesso continua até 10/12/2026, o fim do período já pago') &&
+      t.reg.confirmacoes[0].includes('devolução de valores, fale com a gente')
+  );
+});
+
+test('bloqueio: quem está em atraso ou suspenso recebe o link da mensalidade para pagar na hora', async () => {
+  for (const status of ['aguardando_pagamento', 'em_atraso', 'suspensa']) {
+    const t = cenario({
+      resposta: RESUMO({ assinatura: MENSAL({ status, link: 'https://pague.exemplo.com/essencial-mensal' }) }),
+    });
+    assert.deepEqual(
+      plano(await t.ctx.cobrancaDadosParaBloqueio()),
+      { link: 'https://pague.exemplo.com/essencial-mensal', total: 'R$ 297,00' },
+      status
+    );
+  }
+});
+
+const SA_MENSAL = [
+  {
+    empresa_id: 'p1',
+    plano: 'essencial',
+    status: 'ativa',
+    primeira_cobranca_centavos: 29700,
+    primeira_cobranca_em: '2026-10-10',
+    ultima_cobranca_em: '2026-10-10',
+    proxima_cobranca_em: '2026-11-12',
+  },
+  {
+    empresa_id: 'p2',
+    plano: 'gestao',
+    status: 'ativa',
+    primeira_cobranca_centavos: 59700,
+    primeira_cobranca_em: '2026-10-10',
+    ultima_cobranca_em: '2026-10-10',
+    proxima_cobranca_em: '2026-12-10',
+  },
+  {
+    empresa_id: 'p3',
+    plano: 'essencial',
+    status: 'em_atraso',
+    primeira_cobranca_centavos: 29700,
+    primeira_cobranca_em: '2026-09-10',
+    ultima_cobranca_em: '2026-09-10',
+    proxima_cobranca_em: '2026-11-07',
+  },
+];
+test('Super Admin: assinatura ativa só pode ter o pagamento confirmado dentro da janela de 3 dias (pagamento adiantado), e a linha mostra o vencimento do ciclo', () => {
+  const t = cenario();
+  t.ctx.cobrancaHojeISO = () => '2026-11-10';
+  t.ctx._superAdminAssinaturas = SA_MENSAL;
+  assert.deepEqual(
+    ['p1', 'p2', 'p3'].map((id) => t.ctx.cobrancaBotaoConfirmar(id, 'X').includes('Confirmar pagamento')),
+    [true, false, true]
+  );
+  assert.deepEqual(
+    ['p1', 'p2', 'p3'].map((id) => t.ctx.cobrancaTemAssinaturaPendente(id)),
+    [true, false, true]
+  );
+  assert.ok(
+    t.ctx.cobrancaSeloSuperAdmin('p1').includes('Ativa · R$ 297,00 · até 12/11/2026'),
+    'mostra o vencimento da mensalidade, não a data do primeiro pagamento'
+  );
+  assert.ok(
+    t.ctx.cobrancaSeloSuperAdmin('p3').includes('Em atraso') &&
+      t.ctx.cobrancaSeloSuperAdmin('p3').includes('até 07/11/2026')
+  );
+  assert.equal(t.ctx.cobrancaPodeConfirmar('ativa'), false, 'só o texto da situação: ativa não vale sem as datas');
+  assert.equal(t.ctx.cobrancaPodeConfirmar({ status: 'ativa', proxima_cobranca_em: '2026-11-13' }), true);
+  assert.equal(t.ctx.cobrancaPodeConfirmar({ status: 'ativa', proxima_cobranca_em: '2026-11-14' }), false);
+  assert.equal(t.ctx.cobrancaPodeConfirmar({ status: 'cancelada', proxima_cobranca_em: '2026-11-10' }), false);
+});
+
+test('o encaixe do ciclo mensal: a entrada busca o link também para quem está suspenso (antes de sair), e o Super Admin traz as datas do ciclo', () => {
+  const auth = ler('js/19-auth.js');
+  const i = auth.indexOf('empresaCheck?.acesso_suspenso');
+  const bloco = auth.slice(i, auth.indexOf('renderLogin();', i));
+  const a = bloco.indexOf('await cobrancaDadosParaBloqueio()');
+  const b = bloco.indexOf('await sb.auth.signOut();');
+  assert.ok(a > 0 && b > a, 'no bloqueio por suspensão o link vem antes de sair da sessão');
+  assert.ok(
+    /linkPagamentoLogin = pagamento \? pagamento\.link : null/.test(bloco) &&
+      bloco.includes('suspenso por falta de pagamento')
+  );
+  assert.ok(bloco.includes('temporariamente suspenso'), 'sem link, a mensagem de sempre');
+  const sa = ler('js/23-page-super-admin.js');
+  assert.ok(sa.includes('primeira_cobranca_em, proxima_cobranca_em, ultima_cobranca_em'));
 });
